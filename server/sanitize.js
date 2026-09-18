@@ -38,6 +38,7 @@ function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
     if (!ALLOWED.has(tag)) return closing ? "" : "";
     if (closing) return `</${tag}>`;
     let out = "";
+    let imgSrc = false, imgAlt = "";
     const attrRe = /([a-zA-Z-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/g;
     let am;
     const allowed = new Set([...(ATTR["*"] || []), ...(ATTR[tag] || [])]);
@@ -69,16 +70,28 @@ function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
           // dumps (a single 68MB course file must never ship to the browser).
           if (val.length > 4096) continue;
           out += ` src="${esc(val)}"`;
+          imgSrc = true;
           continue;
         }
-        if (/^https?:/i.test(val)) continue; // drop remote images (privacy) — keep alt only
+        if (/^https?:/i.test(val)) continue; // remote images need the proxy (see below) — never inline
         const target = resolveRel(pageDir, val.split("#")[0].split("?")[0]);
         out += ` src="${mediaPrefix}/${encodeURIComponent(target)}"`;
+        imgSrc = true;
       } else if (name === "id" || name === "alt" || name === "title") {
+        if (tag === "img" && name === "alt") { imgAlt = val.slice(0, 200); continue; }
         out += ` ${name}="${esc(val.slice(0, 200))}"`;
       }
     }
-    if (tag === "img") return `<img${out} loading="lazy" alt="">`;
+    if (tag === "img") {
+      // A src-less <img> renders as a broken-image icon — never emit one.
+      // Missing/blocked images become a quiet captioned placeholder instead.
+      if (!imgSrc) {
+        return imgAlt
+          ? `<figure class="media-missing"><span aria-hidden="true">▦</span><figcaption>${esc(imgAlt)}</figcaption></figure>`
+          : "";
+      }
+      return `<img${out} loading="lazy" alt="${esc(imgAlt)}">`;
+    }
     return `<${tag}${out}>`;
   });
   // collect headings for the outline (ids returned so the sidebar can anchor to them)

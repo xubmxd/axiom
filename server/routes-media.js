@@ -91,6 +91,8 @@ const RESOURCE_MIME = {
   ".pdf": "application/pdf",
   ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
   ".webp": "image/webp", ".gif": "image/gif", ".svg": "image/svg+xml", ".avif": "image/avif",
+  ".bmp": "image/bmp", ".jfif": "image/jpeg", ".ico": "image/x-icon",
+  ".tif": "image/tiff", ".tiff": "image/tiff",
 };
 media.get("/:cid/resource/:rid", async (req, res) => {
   const r = await get(`SELECT r.*, c.dir_name, c.kind AS course_kind FROM resources r JOIN courses c ON c.id=r.course_id WHERE r.id=? AND r.is_active=1`, [req.params.rid]);
@@ -126,7 +128,7 @@ media.get("/:cid/asset/*", async (req, res) => {
   const c = await get(`SELECT * FROM courses WHERE id=?`, [req.params.cid]);
   if (!c) return res.status(404).end();
   const rel = req.params[0] || "";
-  if (!/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rel)) return res.status(403).end();
+  if (!/\.(png|jpe?g|webp|gif|svg|avif|bmp|jfif|ico|tiff?)$/i.test(rel)) return res.status(403).end();
   let fp;
   try { fp = resolveInside(c, rel); } catch { return res.status(403).end(); }
   if (!fs.existsSync(fp)) return res.status(404).end();

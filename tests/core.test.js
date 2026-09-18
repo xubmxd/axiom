@@ -87,4 +87,13 @@ describe("reader sanitizer", () => {
     assert.ok(html.includes('<div class="tscroll"><table>'));
     assert.ok(html.includes("</table></div>"));
   });
+  it("never emits a src-less img: remote/oversized images become captioned placeholders", async () => {
+    const { sanitize } = await import("../server/sanitize.js");
+    const big = "data:image/png;base64," + "A".repeat(100_000);
+    const { html } = sanitize(
+      `<img src="https://cdn.example.com/fig1.png" alt="Figure 1: Lifecycle"><img src="${big}" alt="Huge">`,
+      { mediaPrefix: "/m", linkPrefix: "/r/c", pageDir: "" });
+    assert.ok(!html.includes("<img"));
+    assert.ok(html.includes("media-missing") && html.includes("Figure 1: Lifecycle"));
+  });
 });

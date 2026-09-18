@@ -157,6 +157,10 @@ li.res a{gap:.5rem}.attach{margin-top:.4rem}
 .prose blockquote{border-left:3px solid var(--accent);margin:1.2em 0;padding:.2em 1em;color:var(--text2);background:var(--surface);border-radius:0 10px 10px 0}
 .prose img{max-width:100%;border-radius:12px;border:1px solid var(--border)}
 .prose a{color:#9db4ff}
+/* image referenced but unavailable (remote-blocked, oversized embed, or file
+   missing on disk): quiet placeholder, never a broken-image icon */
+.media-missing{border:1px dashed var(--border2);border-radius:12px;padding:.9rem 1.1rem;color:var(--text2);margin:1em 0;display:flex;gap:.7rem;align-items:center;font-size:.9em}
+.media-missing figcaption{margin:0}
 /* auth */
 .authwrap{display:grid;place-items:center;padding:4rem 1rem}.authcard{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:2rem;max-width:420px;width:100%}
 .form{display:grid;gap:.8rem;margin-top:1rem}.form label{display:grid;gap:.3rem;font-size:.88rem;color:var(--text2)}
