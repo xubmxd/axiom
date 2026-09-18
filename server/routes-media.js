@@ -2,6 +2,7 @@ import { Router } from "express";
 import fs from "node:fs";
 import path from "node:path";
 import { get } from "./db.js";
+import { config } from "./config.js";
 import { resolveInside } from "./scanner.js";
 export const media = Router();
 
@@ -117,6 +118,37 @@ media.get("/:cid/resource/:rid", async (req, res) => {
     res.setHeader("Content-Disposition", `inline; filename="${r.file_name.replace(/"/g, "")}"`);
     res.setHeader("X-Content-Type-Options", "nosniff");
   }
+  const stream = fs.createReadStream(fp);
+  stream.on("error", () => res.destroy());
+  stream.pipe(res);
+});
+
+// extracted embedded data: images (see reader). Files live under
+// DATA_DIR/embedded/<courseId>/<pageId>/img-N.<ext> — never inside courses/.
+const EMBEDDED_MIME = {
+  ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".gif": "image/gif", ".webp": "image/webp", ".avif": "image/avif",
+  ".bmp": "image/bmp", ".ico": "image/x-icon", ".tif": "image/tiff",
+  ".tiff": "image/tiff", ".svg": "image/svg+xml",
+};
+media.get("/:cid/embedded/:pid/:file", async (req, res) => {
+  const { cid, pid, file } = req.params;
+  if (!/^img-\d+\.[a-z0-9]+$/i.test(file || "")) return res.status(404).end();
+  const ext = path.extname(file).toLowerCase();
+  const mime = EMBEDDED_MIME[ext];
+  if (!mime) return res.status(403).end();
+  const page = await get(`SELECT id, course_id FROM reading_pages WHERE id=? AND course_id=? AND is_active=1`, [pid, cid]);
+  if (!page) return res.status(404).end();
+  const base = path.join(config.dataDir, "embedded", cid, pid);
+  const fp = path.normalize(path.join(base, file));
+  if (fp !== base && !fp.startsWith(base + path.sep)) return res.status(403).end();
+  let stat;
+  try { stat = fs.statSync(fp); } catch { return res.status(404).end(); }
+  if (!stat.isFile()) return res.status(404).end();
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Content-Length", stat.size);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   const stream = fs.createReadStream(fp);
   stream.on("error", () => res.destroy());
   stream.pipe(res);

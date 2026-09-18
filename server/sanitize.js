@@ -23,6 +23,44 @@ function safeUrl(u) {
   return s; // relative — caller rewrites
 }
 
+// Embedded data: images. Exported sources (clipboard/HTTrack dumps) inline
+// photos as base64 data: URIs — sometimes megabytes each, sometimes with a
+// wrong MIME (e.g. data:application/octet-stream holding a GIF). Sniff the
+// extension from the MIME or, for octet-stream, from the base64 magic prefix
+// (first bytes only — never decode the whole blob here). Returns ext or null
+// when the data: URI is not a servable image.
+export function guessEmbeddedExt(dataUri) {
+  const m = /^data:([^;,]+)?(;base64)?,/.exec(String(dataUri || "").slice(0, 256));
+  if (!m) return null;
+  const mime = (m[1] || "").toLowerCase();
+  const isB64 = !!m[2];
+  if (!isB64) return mime === "image/svg+xml" ? "svg" : null;
+  if (mime.startsWith("image/")) {
+    const sub = mime.slice(6).split(";")[0];
+    if (sub === "png") return "png";
+    if (sub === "jpeg" || sub === "jpg") return "jpg";
+    if (sub === "gif") return "gif";
+    if (sub === "webp") return "webp";
+    if (sub === "avif") return "avif";
+    if (sub === "bmp") return "bmp";
+    if (sub === "svg+xml") return "svg";
+    if (sub === "x-icon" || sub === "vnd.microsoft.icon") return "ico";
+    if (sub === "tiff") return "tif";
+    return null;
+  }
+  if (mime === "application/octet-stream" || mime === "") {
+    const b64 = String(dataUri).slice(String(dataUri).indexOf(",") + 1, String(dataUri).indexOf(",") + 32);
+    if (b64.startsWith("iVBORw0KGgo")) return "png";
+    if (b64.startsWith("R0lGODlh") || b64.startsWith("R0lGODdh")) return "gif";
+    if (b64.startsWith("/9j/")) return "jpg";
+    if (b64.startsWith("UklGR")) return "webp";
+    return null;
+  }
+  return null;
+}
+
+const INLINE_DATA_LIMIT = 4096;
+
 // Mirrored/authored HTML is messy: backslashes (Windows), pre-encoded %20
 // (HTTrack), fragments/queries. Normalize to a plain relative path before
 // resolving against the page directory — browsers apply the same leniency,
@@ -33,7 +71,7 @@ function normalizeRel(raw) {
   return rel.replace(/^\/+/, "");
 }
 
-function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
+function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir, onLargeImage }) {
   let html = String(rawHtml || "");
   html = html.replace(/<script[\s\S]*?<\/script\s*>/gi, "");
   html = html.replace(/<style[\s\S]*?<\/style\s*>/gi, "");
@@ -74,13 +112,26 @@ function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
           out += ` href="${esc(val)}"${ext}`;
         }
       } else if (name === "src") {
-        if (/^(javascript|data(?!:image\/)|vbscript):/i.test(val)) continue;
-        if (/^data:image\//i.test(val)) {
-          // Embedded images: keep tiny icons, drop multi-MB base64 photo
-          // dumps (a single 68MB course file must never ship to the browser).
-          if (val.length > 4096) continue;
-          out += ` src="${esc(val)}"`;
-          imgSrc = true;
+        if (/^(javascript|vbscript):/i.test(val)) continue;
+        if (/^data:/i.test(val)) {
+          const ext = guessEmbeddedExt(val);
+          if (!ext) continue; // non-image data: (or unknown mime) is never inlined
+          if (val.length <= INLINE_DATA_LIMIT && /^data:image\//i.test(val)) {
+            // Tiny icons stay inline; anything bigger becomes a file served
+            // by the media endpoint (or a quiet placeholder when no
+            // extractor is wired up, e.g. in unit tests).
+            out += ` src="${esc(val)}"`;
+            imgSrc = true;
+            continue;
+          }
+          if (typeof onLargeImage === "function") {
+            let url = "";
+            try { url = onLargeImage(val, ext) || ""; } catch { url = ""; }
+            if (url && typeof url === "string") {
+              out += ` src="${esc(url)}"`;
+              imgSrc = true;
+            }
+          }
           continue;
         }
         if (/^https?:/i.test(val)) continue; // remote images are never inlined (privacy)

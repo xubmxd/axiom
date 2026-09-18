@@ -397,6 +397,29 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
 });
 
 // ---------- Learn: reading ----------
+// Embedded data: images (base64 dumps in imported HTML) are extracted to
+// files under DATA_DIR on first render and served as ordinary media URLs.
+// Without this the sanitizer would have to either inline megabytes of
+// base64 per page view or drop the images entirely.
+const EMBEDDED_MIME = {
+  png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+  avif: "image/avif", bmp: "image/bmp", ico: "image/x-icon", tif: "image/tiff", svg: "image/svg+xml",
+};
+const readCache = new Map(); // key -> { html, headings }
+function embeddedFile(courseId, pageId, file) {
+  const base = path.join(config.dataDir, "embedded", courseId, pageId);
+  const target = path.normalize(path.join(base, file));
+  if (target !== base && !target.startsWith(base + path.sep)) throw new Error("path traversal blocked");
+  return target;
+}
+function sniffEmbedded(buf, fallbackExt) {
+  if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "png";
+  if (buf.length >= 6 && buf.toString("ascii", 0, 6) === "GIF89a") return "gif";
+  if (buf.length >= 6 && buf.toString("ascii", 0, 6) === "GIF87a") return "gif";
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg";
+  if (buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return "webp";
+  return fallbackExt;
+}
 pages.get("/learn/reading/:id", needAuth, async (req, res) => {
   const u = req.user;
   const p = await get(`SELECT p.*, c.title course, c.id course_id FROM reading_pages p JOIN courses c ON c.id=p.course_id WHERE p.id=? AND p.is_active=1`, [req.params.id]);
@@ -404,11 +427,67 @@ pages.get("/learn/reading/:id", needAuth, async (req, res) => {
   const { sanitize } = await import("./sanitize.js");
   const { resolveInside } = await import("./scanner.js");
   const course = await get(`SELECT * FROM courses WHERE id=?`, [p.course_id]);
-  let raw = "";
-  try { raw = fs.readFileSync(resolveInside(course, p.path_key), "utf8"); } catch { raw = ""; }
-  if (!raw) return res.status(500).send(layout({ title: "Parse error", user: u, body: `<div class="wrap">${emptyState("Couldn't render this page", "The source HTML could not be read. It may be encoded unusually.")}</div>` }));
-  const pageDir = p.path_key.includes("/") ? p.path_key.slice(0, p.path_key.lastIndexOf("/")) : "";
-  const { html, headings } = sanitize(raw, { mediaPrefix: `/media/${course.id}/asset`, linkPrefix: `/r/${course.id}`, pageDir });
+  let srcPath = "";
+  try { srcPath = resolveInside(course, p.path_key); } catch { srcPath = ""; }
+  let stat = null;
+  try { stat = srcPath ? fs.statSync(srcPath) : null; } catch { stat = null; }
+  const cacheKey = stat ? `${course.id}:${p.id}:${stat.mtimeMs}:${stat.size}` : "";
+  let html = "", headings = [];
+  if (cacheKey && readCache.has(cacheKey)) {
+    ({ html, headings } = readCache.get(cacheKey));
+  } else {
+    let raw = "";
+    try { raw = srcPath ? fs.readFileSync(srcPath, "utf8") : ""; } catch { raw = ""; }
+    if (!raw) return res.status(500).send(layout({ title: "Parse error", user: u, body: `<div class="wrap">${emptyState("Couldn't render this page", "The source HTML could not be read. It may be encoded unusually.")}</div>` }));
+    const pageDir = p.path_key.includes("/") ? p.path_key.slice(0, p.path_key.lastIndexOf("/")) : "";
+    let imgIdx = 0;
+    const onLargeImage = (dataUri, ext) => {
+      const idx = imgIdx++;
+      try {
+        const comma = String(dataUri).indexOf(",");
+        let b64 = comma >= 0 ? String(dataUri).slice(comma + 1) : "";
+        b64 = b64.replace(/\s+/g, "");
+        if (!b64 || b64.length > 200_000_000) return "";
+        // Reuse the file from a previous render when the payload size
+        // matches — avoids re-decoding a 100MB+ blob on every page view.
+        const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+        const expected = Math.floor((b64.length * 3) / 4) - pad;
+        const dir = path.join(config.dataDir, "embedded", course.id, p.id);
+        // Probe with the guessed ext first; sniff after decode may correct it.
+        let file = `img-${idx}.${ext}`;
+        let fp = embeddedFile(course.id, p.id, file);
+        try {
+          const st = fs.statSync(fp);
+          if (st.isFile() && st.size === expected) return `/media/${course.id}/embedded/${p.id}/${file}`;
+        } catch {}
+        const buf = Buffer.from(b64, "base64");
+        if (!buf.length) return "";
+        const realExt = EMBEDDED_MIME[sniffEmbedded(buf, ext)] ? sniffEmbedded(buf, ext) : ext;
+        file = `img-${idx}.${realExt}`;
+        fp = embeddedFile(course.id, p.id, file);
+        try {
+          const st = fs.statSync(fp);
+          if (st.isFile() && st.size === buf.length) return `/media/${course.id}/embedded/${p.id}/${file}`;
+        } catch {}
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(fp, buf);
+        return `/media/${course.id}/embedded/${p.id}/${file}`;
+      } catch { return ""; }
+    };
+    ({ html, headings } = sanitize(raw, { mediaPrefix: `/media/${course.id}/asset`, linkPrefix: `/r/${course.id}`, pageDir, onLargeImage }));
+    // Drop orphaned extracts from an older revision of the same page.
+    try {
+      const dir = path.join(config.dataDir, "embedded", course.id, p.id);
+      for (const f of fs.readdirSync(dir)) {
+        const m = /^img-(\d+)\.[a-z0-9]+$/i.exec(f);
+        if (m && Number(m[1]) >= imgIdx) fs.rmSync(path.join(dir, f), { force: true });
+      }
+    } catch {}
+    if (cacheKey) {
+      readCache.set(cacheKey, { html, headings });
+      if (readCache.size > 20) readCache.delete(readCache.keys().next().value);
+    }
+  }
   const prog = await get(`SELECT * FROM reading_progress WHERE user_id=? AND page_id=?`, [u.id, p.id]);
   const sibs = await all(`SELECT id, title, position FROM reading_pages WHERE course_id=? AND is_active=1 ORDER BY position ASC`, [p.course_id]);
   const idx = sibs.findIndex((s) => s.id === p.id);
