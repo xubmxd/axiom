@@ -1,0 +1,24 @@
+{
+  "name": "lumen-learn",
+  "version": "1.0.0",
+  "description": "Lumen — premium self-hosted learning platform",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "bootstrap:admin": "node server/bootstrap.js",
+    "scan": "node server/scan-cli.js",
+    "test": "node --test tests/"
+  },
+  "keywords": [
+    "lms",
+    "self-hosted",
+    "learning"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.22.3",
+    "pg": "^8.13.1"
+  }
+}

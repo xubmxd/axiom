@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    ports: ["3100:3100"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://lumen:lumen@db:5432/lumen
+      COURSES_ROOT: /courses
+      DATA_DIR: /data
+      APP_URL: ${APP_URL:-http://localhost:3100}
+    volumes:
+      - ./courses:/courses:ro
+      - appdata:/data
+    depends_on: [db]
+    restart: unless-stopped
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lumen
+      POSTGRES_PASSWORD: lumen
+      POSTGRES_DB: lumen
+    volumes: [pgdata:/var/lib/postgresql/data]
+    restart: unless-stopped
+volumes:
+  pgdata:
+  appdata:
