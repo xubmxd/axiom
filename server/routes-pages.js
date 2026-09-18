@@ -215,8 +215,9 @@ pages.get("/library", needAuth, async (req, res) => {
     const like = `%${q}%`;
     const ls = await all(`SELECT DISTINCT course_id FROM lessons WHERE LOWER(title) LIKE ? AND is_active=1`, [like]);
     const ps = await all(`SELECT DISTINCT course_id FROM reading_pages WHERE LOWER(title) LIKE ? AND is_active=1`, [like]);
+    const gs = await all(`SELECT DISTINCT course_id FROM content_groups WHERE LOWER(title) LIKE ? AND is_active=1`, [like]);
     const cs = withP.filter((p) => p.c.title.toLowerCase().includes(q)).map((p) => p.c.id);
-    matchIds = new Set([...ls.map((r) => r.course_id), ...ps.map((r) => r.course_id), ...cs]);
+    matchIds = new Set([...ls.map((r) => r.course_id), ...ps.map((r) => r.course_id), ...gs.map((r) => r.course_id), ...cs]);
   }
   let list = withP.filter((p) => {
     if (matchIds && !matchIds.has(p.c.id)) return false;

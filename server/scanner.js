@@ -58,31 +58,61 @@ function slugify(name) {
 function prettyTitle(name) {
   return name.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || name;
 }
+// Display title = original filename without extension. Numeric prefixes
+// ("1.1.1. Whois Enumeration") are meaningful ordering metadata and must be
+// preserved verbatim — only the extension is removed.
 function lessonTitle(fileName) {
-  const t = prettyTitle(path.basename(fileName, path.extname(fileName))).replace(/^\d+\s*[-–_. ]+/, "");
-  return t || fileName;
+  const base = path.basename(String(fileName || ""), path.extname(String(fileName || "")));
+  const t = prettyTitle(base);
+  return t || String(fileName || "");
 }
 
 // ---- phase 1: pure filesystem walk (no DB) ----
 // Every directory level and every file list is naturally ordered.
-async function buildFileTree(absDir) {
+// Traversal is confined to the course root: symlinks resolving outside the
+// root are skipped, as are non-regular files (fifos, sockets, devices).
+// rootReal is the canonical course-root path; recursion threads it through
+// so nested symlink checks share one identity (no per-entry realpath of root).
+async function buildFileTree(absDir, rootReal = null) {
+  if (!rootReal) rootReal = await fsp.realpath(absDir).catch(() => absDir);
   const node = { videos: [], pages: [], resources: [], children: [], icon: null };
   const entries = await fsp.readdir(absDir, { withFileTypes: true }).catch(() => []);
   for (const e of entries) {
-    const cls = e.isDirectory() ? "dir" : classifyFile(e.name);
-    if (cls === "dir") {
-      if (e.name.startsWith(".")) continue;
-      const child = await buildFileTree(path.join(absDir, e.name));
+    if (e.name.startsWith(".")) continue;
+    const full = path.join(absDir, e.name);
+    let lst;
+    try { lst = await fsp.lstat(full); } catch { continue; }
+    let isDir = false, isFile = false, size = 0;
+    if (lst.isSymbolicLink()) {
+      let real;
+      try { real = await fsp.realpath(full); } catch { continue; }
+      if (real !== rootReal && !real.startsWith(rootReal + path.sep)) continue; // escape → skip
+      let rst;
+      try { rst = await fsp.stat(full); } catch { continue; }
+      if (rst.isDirectory()) isDir = true;
+      else if (rst.isFile()) { isFile = true; size = rst.size || 0; }
+      else continue;
+    } else if (lst.isDirectory()) {
+      isDir = true;
+    } else if (lst.isFile()) {
+      isFile = true; size = lst.size || 0;
+    } else {
+      continue; // fifo, socket, device, …
+    }
+    if (isDir) {
+      const child = await buildFileTree(full, rootReal);
       child.name = e.name;
       node.children.push(child);
-    } else if (cls === "icon") {
-      if (!node.icon) node.icon = e.name;
-    } else if (cls === "video" || cls === "html" || cls === "resource") {
-      const st = await fsp.stat(path.join(absDir, e.name)).catch(() => null);
-      const item = { name: e.name, size: st?.size || 0 };
-      if (cls === "video") node.videos.push(item);
-      else if (cls === "html") node.pages.push(item);
-      else node.resources.push(item);
+    } else if (isFile) {
+      const cls = classifyFile(e.name);
+      if (cls === "icon") {
+        if (!node.icon) node.icon = e.name;
+      } else if (cls === "video" || cls === "html" || cls === "resource") {
+        const item = { name: e.name, size };
+        if (cls === "video") node.videos.push(item);
+        else if (cls === "html") node.pages.push(item);
+        else node.resources.push(item);
+      }
     }
   }
   node.videos.sort((a, b) => natSort(a.name, b.name));
@@ -301,6 +331,9 @@ async function upsertResource(courseId, groupId, lessonId, r, now) {
 }
 
 // ---- safe path resolution ----
+// Lexical containment first (blocks ../ traversal even for missing files),
+// then canonical containment: when both sides exist on disk, a symlink chain
+// that resolves outside the course root is rejected too.
 export function courseDir(course) {
   return path.join(config.coursesRoot, course.kind, course.dir_name);
 }
@@ -308,6 +341,14 @@ export function resolveInside(course, relKey) {
   const base = courseDir(course);
   const target = path.normalize(path.join(base, relKey));
   if (target !== base && !target.startsWith(base + path.sep)) throw new Error("path traversal blocked");
+  try {
+    const realBase = fs.realpathSync(base);
+    const realTarget = fs.realpathSync(target);
+    if (realTarget !== realBase && !realTarget.startsWith(realBase + path.sep)) throw new Error("path traversal blocked");
+  } catch (e) {
+    if (/traversal blocked/.test(String(e?.message || ""))) throw e;
+    // target (or base) missing from disk: lexical check above already passed
+  }
   return target;
 }
 
