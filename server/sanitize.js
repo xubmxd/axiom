@@ -23,6 +23,16 @@ function safeUrl(u) {
   return s; // relative — caller rewrites
 }
 
+// Mirrored/authored HTML is messy: backslashes (Windows), pre-encoded %20
+// (HTTrack), fragments/queries. Normalize to a plain relative path before
+// resolving against the page directory — browsers apply the same leniency,
+// which is exactly why a file can work opened directly yet 404 through us.
+function normalizeRel(raw) {
+  let rel = String(raw || "").split("#")[0].split("?")[0].replace(/\\/g, "/");
+  try { rel = decodeURIComponent(rel); } catch { /* keep raw on malformed % */ }
+  return rel.replace(/^\/+/, "");
+}
+
 function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
   let html = String(rawHtml || "");
   html = html.replace(/<script[\s\S]*?<\/script\s*>/gi, "");
@@ -52,7 +62,7 @@ function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
           // internal relative link -> reader page if .html, else drop to #
           const clean = val.split("#")[0].split("?")[0];
           if (/\.html?$/i.test(clean)) {
-            const target = resolveRel(pageDir, clean);
+            const target = resolveRel(pageDir, normalizeRel(val));
             const hash = val.includes("#") ? "#" + val.split("#")[1] : "";
             val = `${linkPrefix}/${encodeURIComponent(target)}${hash}`;
           } else if (!val.startsWith("#")) {
@@ -73,8 +83,10 @@ function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir }) {
           imgSrc = true;
           continue;
         }
-        if (/^https?:/i.test(val)) continue; // remote images need the proxy (see below) — never inline
-        const target = resolveRel(pageDir, val.split("#")[0].split("?")[0]);
+        if (/^https?:/i.test(val)) continue; // remote images are never inlined (privacy)
+        const rel = normalizeRel(val);
+        if (!rel) continue;
+        const target = resolveRel(pageDir, rel);
         out += ` src="${mediaPrefix}/${encodeURIComponent(target)}"`;
         imgSrc = true;
       } else if (name === "id" || name === "alt" || name === "title") {

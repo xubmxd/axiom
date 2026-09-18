@@ -96,4 +96,12 @@ describe("reader sanitizer", () => {
     assert.ok(!html.includes("<img"));
     assert.ok(html.includes("media-missing") && html.includes("Figure 1: Lifecycle"));
   });
+  it("normalizes messy image paths like browsers do (encoded spaces, backslashes)", async () => {
+    const { sanitize } = await import("../server/sanitize.js");
+    const { html } = sanitize(
+      `<img src="images/fig%201.png" alt="a"><img src="images\\plain.png" alt="b"><img src="images/plain.png?v=2" alt="c">`,
+      { mediaPrefix: "/m", linkPrefix: "/r/c", pageDir: "ch1" });
+    const srcs = [...html.matchAll(/src="([^"]*)"/g)].map((m) => m[1]);
+    assert.deepEqual(srcs, ["/m/ch1%2Fimages%2Ffig%201.png", "/m/ch1%2Fimages%2Fplain.png", "/m/ch1%2Fimages%2Fplain.png"]);
+  });
 });
