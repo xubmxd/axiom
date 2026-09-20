@@ -399,7 +399,12 @@ function renderDetailTree(node, lessonById = null) {
     if (child.resources.length) html += `<ol class="llist small">${child.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol>`;
     html += renderDetailTree(child, lessonById) + `</section>`;
   }
-  return html + renderRootItems(node, lessonById);
+  // renderRootItems is ROOT-ONLY: a group node's own lessons/pages/resources
+  // were already rendered by its parent loop above. Appending them here
+  // rendered every grouped item a second time under a duplicate
+  // "Lessons"/"Reading"/"Files" heading. Root items are genuinely
+  // ungrouped, so only they need the fallback section.
+  return html + (node.group ? "" : renderRootItems(node, lessonById));
 }
 // Compact recursive sidebar: group labels nest, lessons + pages link.
 function renderSideTree(node, currentId) {
