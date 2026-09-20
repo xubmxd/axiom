@@ -78,6 +78,26 @@ const ICONS = {
   admin: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5.5v5.6c0 5 3.4 8.6 8 10.4 4.6-1.8 8-5.4 8-10.4V5.5L12 2Z"/><path d="m9 12 2 2 4-4.5"/></svg>`,
 };
 
+// Lucide-style player icons: 24-grid, 2px stroke, round caps. Play/pause
+// are solid for legibility at small sizes; everything else is outline.
+const PI = (inner, size = 18) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${inner}</svg>`;
+export const PLAYER_ICONS = {
+  play: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 4.5v15l13-7.5-13-7.5Z"/></svg>`,
+  pause: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>`,
+  prev: PI(`<polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/>`),
+  next: PI(`<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>`),
+  rw: PI(`<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><text x="12" y="16.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="currentColor" stroke="none">5</text>`),
+  ff: PI(`<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><text x="12" y="16.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="currentColor" stroke="none">5</text>`),
+  vol: PI(`<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`),
+  volx: PI(`<path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>`),
+  cc: PI(`<rect x="2" y="4" width="20" height="16" rx="3"/><path d="M10 10.5a2.3 2.3 0 0 0-3.7 1.5 2.3 2.3 0 0 0 3.7 1.5"/><path d="M17.5 10.5a2.3 2.3 0 0 0-3.7 1.5 2.3 2.3 0 0 0 3.7 1.5"/>`),
+  sliders: PI(`<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>`),
+  pip: PI(`<rect x="2" y="5" width="20" height="14" rx="2.5"/><rect x="12.5" y="11" width="6" height="4.5" rx="1"/>`),
+  max: PI(`<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>`),
+  min: PI(`<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>`),
+  check: PI(`<path d="M20 6 9 17l-5-5"/>`, 14),
+};
+
 export function layout({ title, user, active = "", body, extraHead = "", extraScript = "" }) {
   const isAdmin = user?.role === "admin";
   // Sidebar lists ONLY routes that actually exist — never decorative items.

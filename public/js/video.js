@@ -1,5 +1,6 @@
 // Premium video experience: genuine watch-time only (playing && visible), throttled saves,
 // 90% auto-complete, autoplay countdown, keyboard controls, PiP/fullscreen/speed.
+// Player chrome (timeline, buttons, menus) is an overlay that never takes layout height.
 (() => {
   const root = document.querySelector(".learn[data-lesson]");
   if (!root) return;
@@ -10,26 +11,47 @@
   const tzOffset = new Date().getTimezoneOffset();
   const v = document.getElementById("vid"), player = document.getElementById("player");
   const btnPlay = document.getElementById("btnPlay"), tCur = document.getElementById("tCur"), tDur = document.getElementById("tDur");
-  const seek = document.getElementById("seek"), fill = document.getElementById("seekFill");
+  const seek = document.getElementById("seek"), fill = document.getElementById("seekFill"), buf = document.getElementById("seekBuf"), seekTip = document.getElementById("seekTip");
+  const btnMute = document.getElementById("btnMute"), vol = document.getElementById("vol");
+  const btnFull = document.getElementById("btnFull"), btnPip = document.getElementById("btnPip");
+  const btnMenu = document.getElementById("btnMenu"), menu = document.getElementById("pMenu");
+  const btnCC = document.getElementById("btnCC"), mTheater = document.getElementById("mTheater");
+  const spin = document.getElementById("pSpin");
   const nextId = document.querySelector("[data-next-id]")?.dataset.nextId;
   const prevId = document.querySelector("[data-prev-id]")?.dataset.prevId;
   let restored = parseFloat(root.dataset.pos || "0");
   let watchAccum = 0, lastTick = null, saveTimer = null, ended = false;
-  v.playbackRate = parseFloat(document.getElementById("selSpeed")?.value || "1");
+  // Icon swaps (mirror of PLAYER_ICONS in server/views.js, the source of truth).
+  const IC = {
+    play: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5-13-7.5Z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>',
+    vol: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>',
+    volx: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>',
+    max: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+    min: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
+  };
+  v.playbackRate = parseFloat(root.dataset.speed || "1");
 
   v.addEventListener("loadedmetadata", () => {
     tDur.textContent = fmt(v.duration);
     if (restored > 0 && restored < (v.duration || 1) - 5) { try { v.currentTime = restored; } catch {} }
   });
-  v.addEventListener("play", () => { player.classList.remove("paused"); btnPlay.textContent = "⏸"; lastTick = performance.now(); });
-  v.addEventListener("pause", () => { player.classList.add("paused"); flush(); lastTick = null; });
+  v.addEventListener("play", () => { player.classList.remove("paused"); player.classList.add("playing"); btnPlay.innerHTML = IC.pause; wake(); });
+  v.addEventListener("pause", () => { player.classList.add("paused"); player.classList.remove("playing"); btnPlay.innerHTML = IC.play; wake(); flush(); lastTick = null; });
   player.classList.add("paused");
   v.addEventListener("timeupdate", () => {
     tCur.textContent = fmt(v.currentTime);
-    if (v.duration) fill.style.width = (v.currentTime / v.duration * 100) + "%";
+    const pct = v.duration ? (v.currentTime / v.duration * 100) : 0;
+    if (v.duration) fill.style.width = pct + "%";
+    seek.setAttribute("aria-valuenow", String(Math.round(pct)));
     // auto-complete at threshold of genuine position (once — ended flag
     // stops the POST flood on every subsequent timeupdate)
     if (!ended && v.duration && v.currentTime / v.duration >= threshold) { ended = true; markDone(true); }
+  });
+  v.addEventListener("progress", () => {
+    try {
+      if (v.duration && v.buffered.length) buf.style.width = (v.buffered.end(v.buffered.length - 1) / v.duration * 100) + "%";
+    } catch {}
   });
   // genuine watch-time accumulator: only while playing + visible + focused-ish
   setInterval(() => {
@@ -67,7 +89,12 @@
       if ((await r.json()).completed) { ended = true; showDone(); if (!auto) toast("Marked complete"); }
     } catch { toast("Couldn't save — retry"); }
   }
-  function showDone() { const b = document.getElementById("btnDone"); if (b) { b.classList.add("done"); b.textContent = "✓ Completed"; } }
+  function showDone() {
+    const b = document.getElementById("btnDone");
+    if (b) { b.classList.add("done"); b.textContent = "✓ Completed"; }
+    const badge = document.getElementById("pDone");
+    if (badge) badge.hidden = false;
+  }
   document.getElementById("btnDone").onclick = () => markDone(false);
 
   v.addEventListener("ended", () => {
@@ -82,19 +109,126 @@
     document.getElementById("playNow").onclick = () => { location.href = "/learn/video/" + nextId; };
   });
 
-  // controls
-  btnPlay.onclick = () => v.paused ? v.play() : v.pause();
+  // loading / error states (real media events only)
+  player.classList.add("loading");
+  v.addEventListener("canplay", () => player.classList.remove("loading"));
+  v.addEventListener("waiting", () => player.classList.add("loading"));
+  v.addEventListener("playing", () => player.classList.remove("loading"));
+  v.addEventListener("error", () => {
+    player.classList.remove("loading");
+    const e = document.getElementById("pError");
+    if (e) e.hidden = false;
+  });
+
+  // ---- overlay chrome: control auto-hide ----
+  let idleTimer = null;
+  function wake() {
+    player.classList.remove("idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      // never strand the user: keep chrome while paused, scrubbing, or in menu
+      if (!v.paused && !seek.classList.contains("scrubbing") && menu.hidden) player.classList.add("idle");
+      else wake();
+    }, 2800);
+  }
+  player.addEventListener("pointermove", wake, { passive: true });
+  player.addEventListener("pointerdown", wake, { passive: true });
+  player.addEventListener("keydown", wake);
+  wake();
+
+  // ---- transport controls ----
+  const togglePlay = () => { v.paused ? v.play() : v.pause(); };
+  btnPlay.onclick = togglePlay;
+  document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
+  document.getElementById("btnFf").onclick = () => { if (v.duration) v.currentTime = Math.min(v.duration, v.currentTime + 5); wake(); };
   // Click-to-toggle on the player surface — but never when interacting with
-  // controls, links, the seek bar, or the autoplay prompt.
-  player.onclick = (e) => { if (e.target.closest("button,select,input,a,.nextUp,.pbar-wrap")) return; v.paused ? v.play() : v.pause(); };
-  player.ondblclick = (e) => { if (e.target.closest("button,select,input,a,.nextUp,.pbar-wrap")) return; toggleFS(); };
-  seek.onclick = (e) => { const r = seek.getBoundingClientRect(); if (v.duration) v.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * v.duration; };
+  // controls, menus, links, the seek bar, or the autoplay prompt.
+  player.onclick = (e) => { if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return; togglePlay(); };
+  player.ondblclick = (e) => { if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return; toggleFS(); };
+
+  // ---- timeline: click + drag scrub with hover time preview ----
+  const ratioAt = (clientX) => {
+    const r = seek.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+  };
+  seek.addEventListener("pointerdown", (e) => {
+    if (!v.duration) return;
+    seek.classList.add("scrubbing");
+    try { seek.setPointerCapture(e.pointerId); } catch {}
+    v.currentTime = ratioAt(e.clientX) * v.duration;
+    wake();
+  });
+  seek.addEventListener("pointermove", (e) => {
+    if (!v.duration) return;
+    const r = ratioAt(e.clientX);
+    // hover preview bubble (scrub position while dragging), clamped inside
+    const w = seek.getBoundingClientRect().width;
+    seekTip.textContent = fmt(r * v.duration);
+    seekTip.style.left = Math.min(Math.max(r * w, 26), w - 26) + "px";
+    if (seek.classList.contains("scrubbing")) v.currentTime = r * v.duration;
+  });
+  const endScrub = () => seek.classList.remove("scrubbing");
+  seek.addEventListener("pointerup", endScrub);
+  seek.addEventListener("pointercancel", endScrub);
   document.getElementById("btnPrev").onclick = () => { if (prevId) location.href = "/learn/video/" + prevId; };
   document.getElementById("btnNext").onclick = () => nextId && (location.href = "/learn/video/" + nextId);
-  document.getElementById("btnMute").onclick = () => { v.muted = !v.muted; };
-  document.getElementById("vol").oninput = (e) => { v.volume = +e.target.value; v.muted = false; };
-  document.getElementById("selSpeed").onchange = (e) => { v.playbackRate = +e.target.value; fetch("/api/settings/prefs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ autoplay: autoplayOn ? 1 : 0, playback_speed: +e.target.value }) }); };
-  const btnFull = document.getElementById("btnFull");
+
+  // ---- volume ----
+  const syncMute = () => {
+    btnMute.innerHTML = (v.muted || v.volume === 0) ? IC.volx : IC.vol;
+    btnMute.setAttribute("aria-pressed", String(v.muted));
+  };
+  btnMute.onclick = () => { v.muted = !v.muted; syncMute(); wake(); };
+  vol.oninput = (e) => { v.volume = +e.target.value; v.muted = false; syncMute(); };
+  v.addEventListener("volumechange", syncMute);
+  syncMute();
+
+  // ---- settings menu: speed (persisted), theater, shortcut hints ----
+  document.querySelectorAll("#mSpeed button").forEach((b) => {
+    b.onclick = () => {
+      const s = +b.dataset.speed;
+      v.playbackRate = s;
+      document.querySelectorAll("#mSpeed button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      fetch("/api/settings/prefs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ autoplay: autoplayOn ? 1 : 0, playback_speed: s }) });
+      closeMenu();
+      wake();
+    };
+  });
+  const closeMenu = () => { menu.hidden = true; btnMenu.setAttribute("aria-expanded", "false"); };
+  btnMenu.onclick = (e) => {
+    e.stopPropagation();
+    const open = menu.hidden;
+    menu.hidden = !open;
+    btnMenu.setAttribute("aria-expanded", String(open));
+    if (open) menu.querySelector("button")?.focus();
+    wake();
+  };
+  document.addEventListener("pointerdown", (e) => {
+    if (!menu.hidden && !e.target.closest("#pMenu,#btnMenu")) closeMenu();
+  });
+  mTheater.onclick = () => {
+    const on = root.classList.toggle("theater");
+    mTheater.setAttribute("aria-pressed", String(on));
+    wake();
+  };
+
+  // ---- captions: only rendered when subtitle tracks genuinely exist ----
+  if (btnCC) {
+    const tracks = [...v.textTracks].filter((t) => t.kind === "subtitles" || t.kind === "captions");
+    if (!tracks.length) btnCC.hidden = true;
+    else {
+      const syncCC = () => btnCC.setAttribute("aria-pressed", String(tracks[0].mode === "showing"));
+      btnCC.onclick = () => {
+        const on = tracks[0].mode !== "showing";
+        tracks.forEach((t, i) => { t.mode = on && i === 0 ? "showing" : "disabled"; });
+        syncCC();
+        wake();
+      };
+      syncCC();
+    }
+  }
+
+  // ---- fullscreen (whole stage, not just the video element) ----
   async function toggleFS() {
     try {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -119,19 +253,36 @@
   function syncFS() {
     const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
     player.classList.toggle("fs", on);
-    if (btnFull) { btnFull.textContent = on ? "🗗" : "⛶"; btnFull.setAttribute("aria-label", on ? "Exit fullscreen (f)" : "Fullscreen (f)"); }
+    if (btnFull) { btnFull.innerHTML = on ? IC.min : IC.max; btnFull.setAttribute("aria-label", on ? "Exit fullscreen (f)" : "Fullscreen (f)"); }
+    wake();
   }
   document.addEventListener("fullscreenchange", syncFS);
   document.addEventListener("webkitfullscreenchange", syncFS);
   btnFull.onclick = toggleFS;
-  document.getElementById("btnPip").onclick = async () => { try { document.pictureInPictureElement ? await document.exitPictureInPicture() : await v.requestPictureInPicture(); } catch { toast("PiP not supported"); } };
+
+  // ---- picture-in-picture with feature detection (no broken button) ----
+  const pipOK = !!document.pictureInPictureEnabled && !v.disablePictureInPicture;
+  if (!pipOK) btnPip.hidden = true;
+  async function togglePip() {
+    if (!pipOK) return;
+    try { document.pictureInPictureElement ? await document.exitPictureInPicture() : await v.requestPictureInPicture(); }
+    catch { toast("PiP not supported"); }
+  }
+  btnPip.onclick = togglePip;
+
   document.addEventListener("keydown", (e) => {
     if (/input|select|textarea/i.test(e.target.tagName)) return;
-    if (e.key === " " || e.key.toLowerCase() === "k") { e.preventDefault(); v.paused ? v.play() : v.pause(); }
-    else if (e.key === "ArrowRight") v.currentTime += 10;
-    else if (e.key === "ArrowLeft") v.currentTime -= 10;
+    // Space/Enter on a focused button already activates it natively —
+    // handling it here too would toggle twice.
+    if (e.target.closest?.("button") && (e.key === " " || e.key === "Enter")) return;
+    if (e.key === "Escape" && !menu.hidden) { closeMenu(); return; }
+    if (e.key === " " || e.key.toLowerCase() === "k") { e.preventDefault(); togglePlay(); }
+    else if (e.key === "ArrowRight") v.currentTime += 5;
+    else if (e.key === "ArrowLeft") v.currentTime -= 5;
     else if (e.key.toLowerCase() === "f") toggleFS();
-    else if (e.key.toLowerCase() === "m") v.muted = !v.muted;
+    else if (e.key.toLowerCase() === "m") { v.muted = !v.muted; }
+    else if (e.key.toLowerCase() === "p") togglePip();
+    wake();
   });
   function fmt(s) { s = Math.floor(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; }
 })();

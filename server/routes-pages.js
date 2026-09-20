@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
-import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
+import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, emptyState, iconArt, PLAYER_ICONS } from "./views.js";
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
@@ -446,7 +446,7 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
   const files = attached.filter((a) => a.kind !== "subtitle");
 
   res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script>`, body: `
-  <div class="learn" data-lesson="${l.id}" data-course="${l.course_id}" data-pos="${prog?.position_secs || 0}" data-autoplay="${settings?.autoplay ?? 1}" data-threshold="${config.videoCompletionThreshold}">
+  <div class="learn" data-lesson="${l.id}" data-course="${l.course_id}" data-pos="${prog?.position_secs || 0}" data-autoplay="${settings?.autoplay ?? 1}" data-speed="${+settings?.playback_speed || 1}" data-threshold="${config.videoCompletionThreshold}">
     <aside class="side" id="side"><div class="side-h"><a href="/courses/${l.course_id}">← ${esc(l.course)}</a>
       <button class="iconbtn" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>
       ${renderSideTree(tree, l.id)}
@@ -456,19 +456,33 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
       <h1 class="ltitle">${esc(l.title)}</h1>
       <div class="player" id="player">
         <video id="vid" src="/media/${l.course_id}/video/${l.id}" preload="metadata" playsinline>${subs.map((s, i) => `<track kind="subtitles" src="/media/${l.course_id}/resource/${s.id}" srclang="en" label="${esc(s.title)}${subs.length > 1 ? ` ${i + 1}` : ""}">`).join("")}</video>
-        <div class="pcenter" id="bigPlay" aria-hidden="true">▶</div>
-        <div class="pbar-wrap"><div class="pbar vidbar" id="seek"><i id="seekFill"></i><em id="seekDot"></em></div></div>
-        <div class="controls">
-          <button id="btnPlay" aria-label="Play or pause (k)">▶</button>
-          <button id="btnPrev" ${prev ? "" : "disabled"} aria-label="Previous lesson">⏮</button>
-          <button id="btnNext" ${next ? "" : "disabled"} aria-label="Next lesson">⏭</button>
-          <span class="time mono"><span id="tCur">0:00</span> / <span id="tDur">0:00</span></span>
-          <span class="sp"></span>
-          <select id="selSpeed" aria-label="Playback speed">${[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => `<option value="${s}" ${(+settings?.playback_speed || 1) === s ? "selected" : ""}>${s}×</option>`).join("")}</select>
-          <button id="btnMute" aria-label="Mute (m)">♪</button>
-          <input id="vol" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume">
-          <button id="btnPip" aria-label="Picture in picture">⧉</button>
-          <button id="btnFull" aria-label="Fullscreen (f)">⛶</button>
+        <div class="pspinner" id="pSpin" aria-hidden="true"></div>
+        <div class="pcenter" id="bigPlay" aria-hidden="true">${PLAYER_ICONS.play}</div>
+        <div class="pbadge mono" id="pDone"${prog?.completed ? "" : " hidden"}>Completed</div>
+        <div class="perror" id="pError" hidden><p>This video couldn't be loaded.</p></div>
+        <div class="pchrome">
+          <div class="pbar-wrap"><div class="vidbar" id="seek" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="seekBuf"></i><i id="seekFill"></i><span class="seektip mono" id="seekTip">0:00</span></div></div>
+          <div class="controls">
+            <button id="btnPlay" aria-label="Play or pause (k)">${PLAYER_ICONS.play}</button>
+            <button id="btnRw" aria-label="Back 5 seconds (Left arrow)">${PLAYER_ICONS.rw}</button>
+            <button id="btnFf" aria-label="Forward 5 seconds (Right arrow)">${PLAYER_ICONS.ff}</button>
+            <button id="btnPrev" ${prev ? "" : "disabled"} aria-label="Previous lesson">${PLAYER_ICONS.prev}</button>
+            <button id="btnNext" ${next ? "" : "disabled"} aria-label="Next lesson">${PLAYER_ICONS.next}</button>
+            <span class="time mono"><span id="tCur">0:00</span> / <span id="tDur">0:00</span></span>
+            <span class="sp"></span>
+            <button id="btnMute" aria-label="Mute (m)" aria-pressed="false">${PLAYER_ICONS.vol}</button>
+            <input id="vol" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+            ${subs.length ? `<button id="btnCC" aria-label="Subtitles" aria-pressed="false">${PLAYER_ICONS.cc}</button>` : ""}
+            <button id="btnPip" aria-label="Picture in picture (p)">${PLAYER_ICONS.pip}</button>
+            <button id="btnMenu" aria-label="Player settings" aria-expanded="false" aria-controls="pMenu">${PLAYER_ICONS.sliders}</button>
+            <button id="btnFull" aria-label="Fullscreen (f)">${PLAYER_ICONS.max}</button>
+          </div>
+          <div class="pmenu" id="pMenu" hidden>
+            <p class="mono dim">Speed</p>
+            <div class="mrow" id="mSpeed" role="group" aria-label="Playback speed">${[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => `<button data-speed="${s}" aria-pressed="${(+settings?.playback_speed || 1) === s ? "true" : "false"}">${s}×</button>`).join("")}</div>
+            <div class="mrow"><button id="mTheater" aria-pressed="false">Theater mode</button></div>
+            <p class="mono dim keys">Space play · ←/→ 5s · M mute · F fullscreen · P PiP</p>
+          </div>
         </div>
         <div class="nextUp" id="nextUp" hidden><p class="mono">Next lesson in <b id="cd">5</b>…</p><div><button class="btn primary" id="playNow">Play now</button> <button class="btn" id="cancelAuto">Cancel</button></div></div>
       </div>
@@ -479,7 +493,7 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
         ${next ? `<a class="btn primary" id="nextLink" href="/learn/video/${next.id}">${esc(next.title.slice(0, 28))} →</a>` : `<span></span>`}
       </div>
       ${files.length ? `<div class="attach"><p class="mono dim small">ATTACHED FILES</p><div class="lrow">${files.map((f) => `<a class="btn xs" href="/media/${l.course_id}/resource/${f.id}">⧉ ${esc(f.title)} <span class="dim">· ${esc(f.kind)}</span></a>`).join("")}</div></div>` : ""}
-      <p class="dim small mono" data-next-id="${next?.id || ""}" data-prev-id="${prev?.id || ""}">space/k play · ←/→ seek · f fullscreen · m mute · resume saves automatically</p>
+      <p class="dim small mono" data-next-id="${next?.id || ""}" data-prev-id="${prev?.id || ""}">space/k play · ←/→ 5s · f fullscreen · m mute · p PiP · resume saves automatically</p>
     </div>
   </div>` }));
 });
