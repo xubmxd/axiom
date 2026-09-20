@@ -27,6 +27,33 @@ media.use(async (req, res, next) => {
   next();
 });
 
+// profile pictures — files live under DATA_DIR/avatars/<userId>.<ext> and
+// are written only by the validated avatar upload endpoint, never uploads.
+const AVATAR_SERVE_MIME = {
+  ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif",
+};
+media.get("/avatar/:file", ah(async (req, res) => {
+  const m = /^([A-Za-z0-9_-]{1,64})\.(jpg|jpeg|png|webp|gif)$/.exec(req.params.file || "");
+  if (!m) return res.status(404).end();
+  const mime = AVATAR_SERVE_MIME["." + m[2].toLowerCase()];
+  if (!mime) return res.status(403).end();
+  const base = path.join(config.dataDir, "avatars");
+  const fp = path.normalize(path.join(base, `${m[1]}.${m[2].toLowerCase()}`));
+  if (fp !== base && !fp.startsWith(base + path.sep)) return res.status(403).end();
+  let stat;
+  try { stat = fs.statSync(fp); } catch { return res.status(404).end(); }
+  if (!stat.isFile()) return res.status(404).end();
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Content-Length", stat.size);
+  res.setHeader("Cache-Control", "private, max-age=86400");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  const stream = fs.createReadStream(fp);
+  stream.on("error", () => { try { res.destroy(); } catch {} });
+  res.on("close", () => { try { stream.destroy(); } catch {} });
+  stream.pipe(res);
+}));
+
 // course icon
 media.get("/:cid/icon", ah(async (req, res) => {
   const c = await get(`SELECT * FROM courses WHERE id=?`, [req.params.cid]);

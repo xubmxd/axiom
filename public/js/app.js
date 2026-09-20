@@ -10,20 +10,22 @@ window.toast = toast;
 document.addEventListener("DOMContentLoaded", () => {
   const t = document.getElementById("navToggle"), m = document.getElementById("mobileNav");
   if (t && m) t.onclick = () => { const open = m.classList.toggle("open"); t.setAttribute("aria-expanded", String(open)); };
-  // Desktop sidebar collapse (button in the sidebar) + floating corner
-  // expand button, persisted per browser (no backend needed).
-  const nt = document.getElementById("appnavToggle"), nx = document.getElementById("appnavExpand");
+  // Desktop sidebar collapse. One toggle lives in the sidebar header in both
+  // states, so the Axiom mark stays a visible home anchor even collapsed.
+  // Preference persists per browser (no backend needed).
+  const nt = document.getElementById("appnavToggle");
   if (nt) {
     const apply = (collapsed) => {
       document.body.classList.toggle("nav-collapsed", collapsed);
       nt.setAttribute("aria-expanded", String(!collapsed));
+      nt.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+      nt.textContent = collapsed ? "⟩" : "⟨";
       try { localStorage.setItem("axiom:nav", collapsed ? "0" : "1"); } catch {}
     };
     let init = false;
     try { init = localStorage.getItem("axiom:nav") === "0"; } catch {}
     apply(init);
-    nt.onclick = () => apply(true);
-    if (nx) nx.onclick = () => apply(false);
+    nt.onclick = () => apply(document.body.classList.contains("nav-collapsed") === false);
   }
   // close the account menu on outside click / Escape is native to <details>
   document.addEventListener("click", (e) => {

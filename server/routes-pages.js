@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
-import { layout, esc, fmtDur, fmtClock, fmtDate, fmtRel, initials, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
+import { layout, esc, fmtDur, fmtClock, fmtDate, fmtRel, initials, avatarHtml, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
@@ -198,6 +198,7 @@ pages.get("/", needAuth, async (req, res) => {
   const delta = prevSecs > 0 ? Math.round((weekSecs - prevSecs) / prevSecs * 100) : null;
   const best = weekRows.reduce((a, r) => ((r.video_secs || 0) + (r.reading_secs || 0) > ((a?.video_secs || 0) + (a?.reading_secs || 0)) ? r : a), null);
   const mostActive = best ? new Date(best.day + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short" }) : "—";
+  const bestSecs = best ? ((best.video_secs || 0) + (best.reading_secs || 0)) : 0;
   // Overall progress across every course (real aggregates, no new queries).
   const allDone = prog.reduce((a, p) => a + p.done, 0);
   const allTotal = prog.reduce((a, p) => a + p.total, 0);
@@ -216,74 +217,102 @@ pages.get("/", needAuth, async (req, res) => {
     ...cc.map((c) => ({ icon: "◆", text: `Completed course ${c.title}`, href: `/courses/${c.course_id}`, ts: c.ts })),
   ].sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 5);
   const msg = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
+  const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const firstName = esc(u.display_name.split(" ")[0] || u.username);
+  const contCount = cont.length;
+  const progCount = inProg.length;
+
+  const statDelta = delta === null
+    ? `<small class="mono dim">this week · ${fmtDur(weekVideo)} video · ${fmtDur(weekReading)} reading</small>`
+    : `<small><span class="${delta >= 0 ? "up" : "down"}">↑ ${Math.abs(delta)}%</span><span class="mono dim"> vs last week · ${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</span></small>`;
+
+  const continueRail = cont.length ? `<div class="rail-cont" data-n="${cont.length}">${cont.map((it) => {
+    const pct = it.t === "video" && it.dur ? Math.round((it.pos / it.dur) * 100) : (it.t === "reading" && it.pos !== undefined && !it.fresh ? Math.round(it.pos * 100) : 0);
+    const meta = it.t === "video" && it.dur ? `${fmtClock(it.pos)} / ${fmtClock(it.dur)} · ${pct}%` : (it.t === "reading" && !it.fresh ? `${pct}% through this page` : (it.fresh ? "Not started yet — begin here." : ""));
+    return `
+      <a class="resume-card" href="/learn/${it.t}/${it.content_id}">
+        <div class="resume-top"><span class="mono dim resume-course">${esc((it.course || "").slice(0, 28))}</span><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span></div>
+        <h3>${esc(it.title)}</h3>
+        ${meta ? `<p class="mono dim small resume-meta">${esc(meta)}</p>` : ""}
+        ${!it.fresh ? progressBar(pct, it.title) : ""}
+        <span class="btn primary resume-btn">${it.t === "video" ? "▶ Resume" : "Continue reading"}</span>
+      </a>`;
+  }).join("")}</div>`
+    : emptyState("No recent learning activity.", "Start a lesson to begin building your learning history.", `<a class="btn primary" href="/library">Browse Library</a>`);
+
+  const feedIcons = { "▶": "watch", "▤": "read", "✓": "done", "◆": "course" };
+  const feedHtml = feed.length ? feed.map((e) => `<a class="feed-row" href="${e.href}"><span class="fi ${feedIcons[e.icon] || ""}" aria-hidden="true">${e.icon}</span><span class="feed-tx"><span class="ft">${esc(e.text)}</span><span class="mono dim small" title="${esc(e.ts)}">${fmtRel(e.ts)}</span></span></a>`).join("")
+    : `<p class="dim small feed-empty">No activity yet — start your first lesson.</p>`;
 
   res.send(layout({ title: "Workspace", user: u, active: "home", body: `
-  <div class="wrap">
-    <section class="hero"><div>
-      <p class="eyebrow mono">welcome back,</p>
-      <h1>Good to see you, ${esc(u.display_name.split(" ")[0])}.</h1>
-      <p class="dim">${esc(msg)}</p>
-    </div></section>
-    <div class="statrow">
-      <div class="stat"><span class="mono dim">learning time</span><b>${fmtDur(weekSecs)}</b><small>${delta === null ? "this week" : `<span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> vs last week`} · ${fmtDur(weekVideo)} video · ${fmtDur(weekReading)} reading</small></div>
-      <div class="stat"><span class="mono dim">current streak</span><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small>longest ${st.longest}</small></div>
-      <div class="stat"><span class="mono dim">completed</span><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small>Out of ${courses.length}</small></div>
-      <div class="stat"><span class="mono dim">total progress</span><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small>${allDone}/${allTotal} items</small></div>
-    </div>
+  <div class="wrap ws">
+    <section class="ws-head">
+      <div class="ws-welcome">
+        <p class="eyebrow mono">Welcome back,</p>
+        <h1>Good to see you, <span class="hl">${firstName}</span>.</h1>
+        <p class="dim ws-msg">${esc(msg)}</p>
+      </div>
+      <div class="ws-date"><p class="mono dim"><span aria-hidden="true">◷</span> ${esc(todayLabel)}</p><p class="mono dim small">Keep going.</p></div>
+    </section>
 
-    <section><div class="sech"><h2>Continue learning</h2><a class="link" href="/library">Browse library →</a></div>
-    ${cont.length ? `<div class="contgrid">${cont.map((it) => `
-      <a class="contcard" href="/learn/${it.t}/${it.content_id}">
-        <div class="cont-top"><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span><span class="dim small mono">${esc(it.course)}</span></div>
-        <h3>${esc(it.title)}</h3>
-        ${it.t === "video" && it.dur ? `<p class="dim small mono">${fmtClock(it.pos)} / ${fmtClock(it.dur)}${it.dur ? ` · ${Math.round((it.pos / it.dur) * 100)}%` : ""}</p>${progressBar((it.pos / it.dur) * 100)}` : ""}
-        ${it.t === "reading" && it.pos !== undefined && !it.fresh ? `<p class="dim small mono">${Math.round(it.pos * 100)}% through this page</p>${progressBar(it.pos * 100)}` : ""}
-        ${it.fresh ? `<p class="dim small">Not started yet — begin here.</p>` : ""}
-        <span class="resume">${it.t === "video" ? "Resume →" : "Continue reading →"}</span>
-      </a>`).join("")}</div>`
-    : emptyState("Start your first lesson", "Add courses to the courses/ directory and they'll appear here.", `<a class="btn primary" href="/library">Open library</a>`)}</section>
-
-    <section><div class="sech"><h2>Activity</h2>
-    <form class="range" action="/" method="get"><select name="range" onchange="this.form.submit()" aria-label="Activity range">${[12, 26, 52].map((w) => `<option value="${w}" ${weeks === w ? "selected" : ""}>Last ${w} weeks</option>`).join("")}</select></form></div>
-    <p class="dim small act-sub">Your learning activity over the last ${weeks} weeks.</p>
-    <div class="card act">
-      <div class="act-main">${graphHtml(rows, bands, weeks)}</div>
-      <aside class="act-side" aria-label="This week summary">
-        <p class="eyebrow mono">this week</p>
-        <div class="act-stats">
-          <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(weekSecs)}</b></div>
-          <div class="act-stat"><span class="mono dim">active days</span><b>${weekActive}/7</b></div>
-          <div class="act-stat"><span class="mono dim">most active</span><b>${mostActive}</b></div>
+    <div class="ws-grid" data-cont="${contCount}" data-prog="${progCount}">
+      <div class="ws-main">
+        <div class="statrow" role="list" aria-label="Learning statistics">
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Learning Time</span><span class="stat-glyph" aria-hidden="true">▤</span></div><b>${fmtDur(weekSecs)}${delta !== null ? ` <span class="${delta >= 0 ? "up" : "down"} small">↑ ${Math.abs(delta)}%</span>` : ""}</b>${statDelta}</div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Current Streak</span><span class="stat-glyph" aria-hidden="true">◉</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small class="mono dim">Best: ${st.longest} day${st.longest === 1 ? "" : "s"}</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Completed</span><span class="stat-glyph" aria-hidden="true">◆</span></div><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small class="mono dim">Out of ${courses.length}</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Total Progress</span><span class="stat-glyph" aria-hidden="true">▅</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small class="mono dim">${allDone}/${allTotal} items</small></div>
         </div>
-      </aside>
-    </div></section>
 
-    <section><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
-    ${inProg.length ? `<div class="coursegrid">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? "Something new is waiting in the library." : ""}</div>`}</section>
+  <section class="card act-card" aria-label="Activity">
+          <div class="act-head"><div><h2><span class="h-ic" aria-hidden="true">◐</span> Activity</h2><p class="dim small act-sub">Your learning activity over the last ${weeks} weeks.</p></div>
+          <form class="range" action="/" method="get"><select name="range" onchange="this.form.submit()" aria-label="Activity range">${[12, 26, 52].map((w) => `<option value="${w}" ${weeks === w ? "selected" : ""}>Last ${w} weeks</option>`).join("")}</select></form></div>
+          <div class="act">
+            <div class="act-main">${graphHtml(rows, bands, weeks)}</div>
+            <aside class="act-side" aria-label="This week summary">
+              <p class="eyebrow mono">This week</p>
+              <div class="act-stats">
+                <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">↑ ${Math.abs(delta)}%</em>` : ""}</b></div>
+                <div class="act-stat"><span class="mono dim">active days</span><b>${weekActive} / 7</b></div>
+                <div class="act-stat"><span class="mono dim">most active day</span><b>${mostActive}${bestSecs ? ` <em class="mono dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
+              </div>
+              <p class="mono dim small act-quote">“Progress, not perfection.”</p>
+            </aside>
+          </div>
+        </section>
 
-    <div class="duo">
-    <section aria-label="Quick actions"><div class="sech"><h2>Quick actions</h2></div>
-    <div class="card qal">
-      <a href="/library"><span>Browse Library</span><span aria-hidden="true">→</span></a>
-      ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span>Resume ${esc(cont[0].title.slice(0, 36))}</span><span aria-hidden="true">→</span></a>` : ""}
-      ${u.role === "admin" ? `<a href="/admin"><span>Open Admin Console</span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span>View Profile</span><span aria-hidden="true">→</span></a>`}
-    </div></section>
+        <section aria-label="In progress"><div class="sech"><h2><span class="h-ic" aria-hidden="true">◑</span> In Progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
+        ${inProg.length ? `<div class="coursegrid" data-n="${Math.min(inProg.length, 6)}">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? "Something new is waiting in the library." : ""}</div>`}</section>
 
-    <section aria-label="Recent activity"><div class="sech"><h2>Recent activity</h2></div>
-    <div class="card"><div class="feed">
-      ${feed.length ? feed.map((e) => `<a href="${e.href}"><span class="fi" aria-hidden="true">${e.icon}</span><span class="ft">${esc(e.text)}</span><span class="mono dim small">${fmtRel(e.ts)}</span></a>`).join("") : `<p class="dim">No activity yet — start your first lesson.</p>`}
-    </div></div></section>
+        <section class="mantra" aria-hidden="true"><div><p class="mantra-a">A more capable you.</p><p class="mantra-b">One lesson at a time.</p></div><div class="mantra-r mono"><span>Consistency</span><span>creates excellence</span><i></i></div></section>
+      </div>
+
+      <div class="ws-rail">
+        <section class="card rail-card" aria-label="Continue learning"><div class="sech rail-head"><h2><span class="h-ic" aria-hidden="true">▣</span> Continue Learning</h2><a class="link" href="/library" aria-label="Browse library">→</a></div>
+        ${continueRail}</section>
+
+        <section class="card rail-card" aria-label="Quick actions"><div class="sech rail-head"><h2><span class="h-ic" aria-hidden="true">▤</span> Quick Actions</h2></div>
+        <div class="qal">
+          <a href="/library"><span><b>Browse Library</b><small class="mono dim">${courses.length} courses</small></span><span aria-hidden="true">→</span></a>
+          ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span><b>Resume learning</b><small class="mono dim">${esc(cont[0].title.slice(0, 34))}</small></span><span aria-hidden="true">→</span></a>` : ""}
+          ${u.role === "admin" ? `<a href="/admin"><span><b>Open Admin Console</b><small class="mono dim">system &amp; scanner</small></span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span><b>View Profile</b><small class="mono dim">stats &amp; activity</small></span><span aria-hidden="true">→</span></a>`}
+        </div></section>
+
+        <section class="card rail-card" aria-label="Recent activity"><div class="sech rail-head"><h2><span class="h-ic" aria-hidden="true">◌</span> Recent Activity</h2></div>
+        <div class="feed">${feedHtml}</div></section>
+      </div>
     </div>
   </div>` }));
 });
 
 function courseCard({ c, done, total, pct, lessons, pages }) {
   const kind = lessons > 0 && pages > 0 ? "mixed" : c.kind;
+  const code = esc(String(c.dir_name || c.kind || "").toUpperCase().replace(/[-_]+/g, " ").slice(0, 18) || kind);
   return `<a class="ccard" href="/courses/${c.id}">
-    ${iconArt(c)}
-    <div class="ccard-b"><div class="ccard-t"><h3>${esc(c.title)}</h3><span class="pill ${kind}">${kind}</span></div>
-    <p class="dim small mono">${total} item${total === 1 ? "" : "s"}${c.total_seconds ? ` · ${fmtDur(c.total_seconds)}` : ""}</p>
-    ${progressBar(pct, c.title)}<p class="dim small">${Math.round(pct)}% · ${done}/${total}</p></div></a>`;
+    <div class="ccard-art">${iconArt(c, 56)}</div>
+    <div class="ccard-b"><div class="ccard-t"><span class="mono dim small ccard-code">${code}</span><span class="pill ${kind}">${kind}</span></div>
+    <h3>${esc(c.title)}</h3>
+    ${progressBar(pct, c.title)}<p class="mono dim small ccard-meta"><span>${Math.round(pct)}%</span><span>${done} / ${total} items</span></p></div></a>`;
 }
 
 // ---------- Library ----------
@@ -623,18 +652,38 @@ pages.get("/profile", needAuth, async (req, res) => {
   const monthName = new Date(monthStart + "T12:00:00Z").toLocaleDateString(undefined, { month: "long" });
   const monthRows = rows.filter((r) => r.day >= monthStart);
   const monthSecs = monthRows.reduce((a, r) => a + (r.video_secs || 0) + (r.reading_secs || 0), 0);
+  const monthVideo = monthRows.reduce((a, r) => a + (r.video_secs || 0), 0);
+  const monthReading = monthRows.reduce((a, r) => a + (r.reading_secs || 0), 0);
   const monthActive = monthRows.filter((r) => (r.video_secs || 0) + (r.reading_secs || 0) > 0).length;
+  const monthBest = monthRows.reduce((a, r) => ((r.video_secs || 0) + (r.reading_secs || 0) > ((a?.video_secs || 0) + (a?.reading_secs || 0)) ? r : a), null);
+  const monthBestDay = monthBest ? new Date(monthBest.day + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short" }) : "—";
+  const monthBestSecs = monthBest ? ((monthBest.video_secs || 0) + (monthBest.reading_secs || 0)) : 0;
+  const monthMeta = `${monthName} · ${fmtDur(monthSecs)} learned · ${monthActive} active day${monthActive === 1 ? "" : "s"} · ${fmtDur(monthVideo)} video · ${fmtDur(monthReading)} reading`;
+  const profActivity = rows.length ? `<div class="act">
+      <div class="act-main">${graphHtml(rows, bands, "month")}</div>
+      <aside class="act-side" aria-label="This month summary">
+        <p class="eyebrow mono">This month</p>
+        <div class="act-stats">
+          <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(monthSecs)}</b></div>
+          <div class="act-stat"><span class="mono dim">active days</span><b>${monthActive}</b></div>
+          <div class="act-stat"><span class="mono dim">most active</span><b>${monthBestDay}${monthBestSecs ? ` <em class="mono dim">${fmtDur(monthBestSecs)}</em>` : ""}</b></div>
+        </div>
+      </aside>
+    </div>` : emptyState("No learning activity yet.", "Start a lesson and your history will appear here.", `<a class="btn primary" href="/library">Browse Library</a>`);
   res.send(layout({ title: "Profile", user: u, active: "profile", body: `<div class="wrap narrow">
-  <div class="phead"><div class="avatar big">${esc(initials(u.display_name))}</div>
+  <div class="phead">${avatarHtml(u, true)}
   <div><h1>${esc(u.display_name)}</h1><p class="dim mono small">@${esc(u.username)} · ${esc(u.email)} · ${esc(u.role)}</p></div>
   <a class="btn" href="/settings">Settings</a></div>
   <div class="statrow">
-    <div class="stat"><span class="mono dim">total learned</span><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b></div>
-    <div class="stat"><span class="mono dim">current streak</span><b>${st.current}d</b><small>longest ${st.longest}d</small></div>
-    <div class="stat"><span class="mono dim">courses done</span><b>${tot.coursesCompleted}</b></div>
-    <div class="stat"><span class="mono dim">lessons done</span><b>${tot.completions}</b></div>
+    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Total learned</span><span class="stat-glyph" aria-hidden="true">▤</span></div><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b><small class="mono dim">${fmtDur(tot.videoSecs)} video · ${fmtDur(tot.readingSecs)} reading</small></div>
+    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Current streak</span><span class="stat-glyph" aria-hidden="true">◉</span></div><b>${st.current}d</b><small class="mono dim">longest ${st.longest}d</small></div>
+    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Courses done</span><span class="stat-glyph" aria-hidden="true">◆</span></div><b>${tot.coursesCompleted}</b></div>
+    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Lessons done</span><span class="stat-glyph" aria-hidden="true">✓</span></div><b>${tot.completions}</b></div>
   </div>
-  <h2>Activity</h2><div class="card"><p class="act-meta dim small mono">${monthName} · ${fmtDur(monthSecs)} · ${monthActive} active day${monthActive === 1 ? "" : "s"}</p>${graphHtml(rows, bands, "month")}</div>
+  <section class="card act-card prof-act" aria-label="Activity">
+    <div class="act-head"><div><h2><span class="h-ic" aria-hidden="true">◐</span> Activity</h2><p class="dim small act-sub mono">${monthMeta}</p></div></div>
+    ${profActivity}
+  </section>
   </div>` }));
 });
 
@@ -644,11 +693,26 @@ pages.get("/settings", needAuth, async (req, res) => {
   res.send(layout({ title: "Settings", user: u, active: "settings", body: `<div class="wrap narrow">
   <h1>Settings</h1>
   <div id="saveMsg"></div>
+  <section class="card" aria-labelledby="picH">
+    <h3 id="picH">Profile picture</h3>
+    <div class="pic-row">
+      <div class="pic-prev" id="picPrev" data-initials="${esc(initials(u.display_name))}">${avatarHtml(u, true)}</div>
+      <div class="pic-body">
+        <p class="dim small pic-sub">Square-cropped in your browser and kept small. Shown in the topbar and on your profile.</p>
+        <div class="lrow pic-actions">
+          <button class="btn" type="button" id="picChoose">Choose picture</button>
+          <input type="file" id="picFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <button class="btn danger" type="button" id="picRemove">Remove</button>
+        </div>
+        <p class="mono dim small" id="picMsg" role="status"></p>
+      </div>
+    </div>
+  </section>
   <form class="card form" id="profileForm">
     <h3>Profile</h3>
     <label>Display name<input name="display_name" value="${esc(u.display_name)}" maxlength="80"></label>
     <label>Email<input name="email" type="email" value="${esc(u.email)}"></label>
-    <label>Timezone (IANA, e.g. Europe/Berlin)<input name="timezone" value="${esc(u.timezone)}"></label>
+    <label>Timezone (IANA, e.g. Asia/Kolkata)<input name="timezone" value="${esc(u.timezone)}" maxlength="60" placeholder="Asia/Kolkata"><small class="dim">Formats dates shown to you. Daily activity follows this device's clock.</small></label>
     <button class="btn primary" type="submit">Save profile</button>
   </form>
   <form class="card form" id="passForm"><h3>Password</h3>
@@ -659,8 +723,62 @@ pages.get("/settings", needAuth, async (req, res) => {
     <label class="check"><input type="checkbox" name="autoplay" ${s?.autoplay ? "checked" : ""}> Autoplay countdown after videos</label>
     <label>Default playback speed<select name="playback_speed">${[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((v) => `<option ${(+s?.playback_speed || 1) === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
     <button class="btn primary" type="submit">Save preferences</button></form>
-  <form class="card" method="post" action="/logout"><h3>Session</h3><button class="btn" type="submit">Sign out everywhere</button></form>
+  <section class="card sess" aria-labelledby="sessH">
+    <h3 id="sessH">Session security</h3>
+    <p class="dim small sess-sub">You are currently signed in. Ending the session signs you out of Axiom on this browser.</p>
+    <form method="post" action="/logout" id="signoutForm">
+      <button class="btn danger" type="submit" id="signoutBtn">Sign out</button>
+    </form>
+    <p class="mono dim small sess-note">ends this session · you'll sign in again next visit</p>
+    <dialog class="confirm" id="signoutDialog" aria-labelledby="soT">
+      <h3 id="soT">Sign out?</h3>
+      <p class="dim small">You'll be signed out of Axiom and returned to the sign-in page.</p>
+      <div class="confirm-row">
+        <button class="btn" type="button" id="soCancel">Cancel</button>
+        <button class="btn danger" type="button" id="soConfirm">Sign out</button>
+      </div>
+    </dialog>
+  </section>
   <script>document.getElementById('profileForm').onsubmit=saveJSON('/api/settings/profile','saveMsg');document.getElementById('passForm').onsubmit=saveJSON('/api/settings/password','saveMsg');document.getElementById('prefForm').onsubmit=saveJSON('/api/settings/prefs','saveMsg');</script>
+  <script>
+  // Profile picture: validated client-side, cropped to a 256px square JPEG
+  // in-browser so uploads stay small, then stored via the avatar endpoint.
+  (function(){const file=document.getElementById('picFile'),choose=document.getElementById('picChoose'),remove=document.getElementById('picRemove'),msg=document.getElementById('picMsg'),prev=document.getElementById('picPrev');if(!file||!choose||!prev)return;
+  const say=(t)=>{if(msg)msg.textContent=t;};
+  const paint=(url)=>{const init=prev.dataset.initials||'?';
+    prev.innerHTML=url?'<img class="avatar-img big" src="'+url+'" alt="">':'<div class="avatar big" aria-hidden="true">'+init+'</div>';
+    const cur=document.querySelector('.acct summary > :first-child');
+    if(cur)cur.outerHTML=url?'<img class="avatar-img" src="'+url+'" alt="">':'<span class="avatar" aria-hidden="true">'+init+'</span>';};
+  choose.addEventListener('click',()=>file.click());
+  file.addEventListener('change',()=>{const f=file.files[0];file.value='';if(!f)return;
+    if(!/^image\\/(png|jpeg|jpg|webp|gif)$/.test(f.type)){say('Choose a PNG, JPG, WEBP or GIF file.');return;}
+    if(f.size>8*1024*1024){say('That file is too large (max 8MB).');return;}
+    say('Preparing…');const img=new Image(),obj=URL.createObjectURL(f);
+    img.onload=()=>{URL.revokeObjectURL(obj);
+      try{const S=256,c=document.createElement('canvas');c.width=c.height=S;const ctx=c.getContext('2d');
+      const side=Math.min(img.naturalWidth,img.naturalHeight);
+      ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,S,S);
+      const dataUrl=c.toDataURL('image/jpeg',.85);say('Uploading…');
+      fetch('/api/settings/avatar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataUrl})})
+        .then(async(r)=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Upload failed.');return j;})
+        .then((j)=>{paint(j.url);say('Profile picture updated.');toast('Profile picture updated');})
+        .catch((e)=>say(e.message||'Upload failed.'));}catch(e){say('Could not process that image.');}};
+    img.onerror=()=>{URL.revokeObjectURL(obj);say('Could not read that image.');};
+    img.src=obj;});
+  remove.addEventListener('click',()=>{fetch('/api/settings/avatar',{method:'DELETE'})
+    .then(async(r)=>{if(!r.ok)throw new Error('Remove failed.');paint(null);say('Profile picture removed.');toast('Profile picture removed');})
+    .catch((e)=>say(e.message||'Remove failed.'));});})();
+  </script>
+  <script>
+  // Confirm-then-submit over the existing POST /logout endpoint: without JS
+  // the form signs out directly (unchanged behavior); with JS a native dialog
+  // confirms first (Escape dismisses, focus is managed by the dialog).
+  (function(){const f=document.getElementById('signoutForm'),d=document.getElementById('signoutDialog');if(!f||!d)return;
+  f.addEventListener('submit',(e)=>{if(d.dataset.ok==='1'||typeof d.showModal!=='function')return;e.preventDefault();d.showModal();document.getElementById('soCancel').focus();});
+  document.getElementById('soCancel').addEventListener('click',()=>d.close());
+  document.getElementById('soConfirm').addEventListener('click',()=>{d.dataset.ok='1';f.requestSubmit();});
+  d.addEventListener('close',()=>{if(d.dataset.ok!=='1')document.getElementById('signoutBtn').focus({preventScroll:true});});})();
+  </script>
   </div>` }));
 });
 

@@ -34,9 +34,9 @@ export async function createUser({ username, email, displayName, password, role 
   const color = colors[parseInt(crypto.randomBytes(1).toString("hex"), 16) % colors.length];
   const now = nowIso();
   await run(
-    `INSERT INTO users(id, username, email, display_name, password_hash, role, status, avatar_color, created_at, updated_at)
-     VALUES(?,?,?,?,?,?,?,?,?,?)`,
-    [id, username.toLowerCase().trim(), email.toLowerCase().trim(), displayName?.trim() || username, await hashPassword(password), role, "active", color, now, now]
+    `INSERT INTO users(id, username, email, display_name, password_hash, role, status, avatar_color, timezone, created_at, updated_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, username.toLowerCase().trim(), email.toLowerCase().trim(), displayName?.trim() || username, await hashPassword(password), role, "active", color, "Asia/Kolkata", now, now]
   );
   await run(`INSERT INTO user_settings(user_id, updated_at) VALUES(?,?)`, [id, now]).catch(() => {});
   return get(`SELECT * FROM users WHERE id=?`, [id]);

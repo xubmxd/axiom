@@ -115,9 +115,12 @@ api.post("/settings/profile", ah(async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "auth" });
   const { display_name, email, timezone } = req.body || {};
   if (!String(display_name || "").trim() || !String(email || "").includes("@")) return res.status(400).json({ error: "Invalid name/email" });
+  const tz = String(timezone || "Asia/Kolkata").slice(0, 60);
+  try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); }
+  catch { return res.status(400).json({ error: "Unknown timezone — use an IANA name like Asia/Kolkata." }); }
   try {
     await run(`UPDATE users SET display_name=?, email=?, timezone=?, updated_at=? WHERE id=?`,
-      [String(display_name).slice(0, 80), String(email).toLowerCase().slice(0, 120), String(timezone || "UTC").slice(0, 60), nowIso(), req.user.id]);
+      [String(display_name).slice(0, 80), String(email).toLowerCase().slice(0, 120), tz, nowIso(), req.user.id]);
     res.json({ ok: true });
   } catch { res.status(400).json({ error: "Email or name already in use" }); }
 }));
@@ -136,6 +139,39 @@ api.post("/settings/prefs", ah(async (req, res) => {
   const b = req.body || {};
   await run(`UPDATE user_settings SET autoplay=?, playback_speed=?, updated_at=? WHERE user_id=?`,
     [b.autoplay ? 1 : 0, Math.min(2, Math.max(0.5, Number(b.playback_speed) || 1)), nowIso(), req.user.id]);
+  res.json({ ok: true });
+}));
+
+// ---- profile picture (file-based: DATA_DIR/avatars/<userId>.<ext>) ----
+api.post("/settings/avatar", ah(async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "auth" });
+  const { parseAvatarUpload, avatarFileName, AVATAR_EXTS } = await import("./avatar.js");
+  let parsed;
+  try { parsed = parseAvatarUpload(req.body?.dataUrl); }
+  catch (e) { return res.status(400).json({ error: e.message || "Invalid image." }); }
+  const { default: fs } = await import("node:fs");
+  const { default: path } = await import("node:path");
+  const dir = path.join(config.dataDir, "avatars");
+  fs.mkdirSync(dir, { recursive: true });
+  // drop any previous extension variant so exactly one avatar file exists
+  for (const ext of AVATAR_EXTS) {
+    try { fs.rmSync(path.join(dir, avatarFileName(req.user.id, ext)), { force: true }); } catch {}
+  }
+  const file = avatarFileName(req.user.id, parsed.ext);
+  fs.writeFileSync(path.join(dir, file), parsed.buffer);
+  log("user.avatar", { user: req.user.id, ext: parsed.ext });
+  res.json({ ok: true, url: `/media/avatar/${req.user.id}.${parsed.ext}?v=${Date.now()}` });
+}));
+api.delete("/settings/avatar", ah(async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "auth" });
+  const { avatarFileName, AVATAR_EXTS } = await import("./avatar.js");
+  const { default: fs } = await import("node:fs");
+  const { default: path } = await import("node:path");
+  const dir = path.join(config.dataDir, "avatars");
+  for (const ext of AVATAR_EXTS) {
+    try { fs.rmSync(path.join(dir, avatarFileName(req.user.id, ext)), { force: true }); } catch {}
+  }
+  log("user.avatar.remove", { user: req.user.id });
   res.json({ ok: true });
 }));
 

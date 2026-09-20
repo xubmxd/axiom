@@ -44,7 +44,7 @@ export async function migrate() {
       display_name TEXT NOT NULL DEFAULT '', password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user', status TEXT NOT NULL DEFAULT 'active',
       avatar_color TEXT NOT NULL DEFAULT '#5b7cff',
-      timezone TEXT NOT NULL DEFAULT 'UTC',
+      timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
       last_seen_at TEXT
     )`,
@@ -175,6 +175,9 @@ export async function migrate() {
   ];
   for (const s of idx) { try { await execRaw(s); } catch {} }
   await migrateLegacyModules();
+  // App default timezone is Asia/Kolkata: fresh rows pick it up from the
+  // column default; installs created before the switch still say UTC.
+  try { await run(`UPDATE users SET timezone='Asia/Kolkata' WHERE timezone='UTC'`); } catch {}
   // backfill settings for users missing rows
   try {
     if (usePg) await pgPool.query(`INSERT INTO user_settings(user_id, updated_at) SELECT id, NOW()::text FROM users ON CONFLICT DO NOTHING`);
