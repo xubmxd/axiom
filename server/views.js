@@ -40,7 +40,7 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <meta property="og:title" content="${esc(title)} · Axiom">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/app.css">${extraHead}</head>
 <body data-user-tz="${esc(user?.timezone || "UTC")}">
 <a class="skip" href="#main">Skip to content</a>

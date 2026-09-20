@@ -4,17 +4,22 @@
   --text:#f2f4f7; --text2:#9aa1aa; --muted:#626a75;
   --accent:#5b7cff; --accent2:#22c1a3; --violet:#a78bfa;
   --danger:#f26d6d; --warn:#f5a524;
-  --radius:14px; --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --radius:14px; --font:'Geist','Inter',system-ui,sans-serif; --mono:'IBM Plex Mono','JetBrains Mono',ui-monospace,monospace;
+  /* Shared horizontal layout system: one content boundary for nav,
+     workspace, library, admin and lesson views. Text-heavy pages keep
+     their own local narrow measure (.wrap.narrow, .prose). */
+  --content-max:1440px; --content-px:clamp(1rem,4vw,2rem);
 }
 *{box-sizing:border-box}html{scroll-behavior:smooth}
-/* Slim dark scrollbars app-wide (Firefox + WebKit/Chromium).
-   One shared look everywhere: sidebar, tables, code blocks, graph, page. */
-*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
-*::-webkit-scrollbar{width:10px;height:10px}
-*::-webkit-scrollbar-track{background:transparent}
-*::-webkit-scrollbar-corner{background:transparent}
-*::-webkit-scrollbar-thumb{background-color:var(--border2);border-radius:99px;border:3px solid transparent;background-clip:content-box}
-*::-webkit-scrollbar-thumb:hover{background-color:var(--muted);border:3px solid transparent;background-clip:content-box}
+/* Scrollbars: styled per actual scroll container only (page, sidebar,
+   tables, code blocks, table scroll). Thin, dark, low-contrast thumb that
+   brightens on hover — consistent with Axiom. */
+html,.side,.tablewrap,.prose pre,.tscroll{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+html::-webkit-scrollbar,.side::-webkit-scrollbar,.tablewrap::-webkit-scrollbar,.prose pre::-webkit-scrollbar,.tscroll::-webkit-scrollbar{width:10px;height:10px}
+html::-webkit-scrollbar-track,.side::-webkit-scrollbar-track,.tablewrap::-webkit-scrollbar-track,.prose pre::-webkit-scrollbar-track,.tscroll::-webkit-scrollbar-track{background:transparent}
+html::-webkit-scrollbar-corner,.side::-webkit-scrollbar-corner,.tablewrap::-webkit-scrollbar-corner,.prose pre::-webkit-scrollbar-corner,.tscroll::-webkit-scrollbar-corner{background:transparent}
+html::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb,.prose pre::-webkit-scrollbar-thumb,.tscroll::-webkit-scrollbar-thumb{background-color:var(--border2);border-radius:99px;border:3px solid transparent;background-clip:content-box}
+html::-webkit-scrollbar-thumb:hover,.side::-webkit-scrollbar-thumb:hover,.tablewrap::-webkit-scrollbar-thumb:hover,.prose pre::-webkit-scrollbar-thumb:hover,.tscroll::-webkit-scrollbar-thumb:hover{background-color:var(--muted);border:3px solid transparent;background-clip:content-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.6;
   background-image:radial-gradient(1200px 500px at 80% -10%,rgba(91,124,255,.07),transparent),linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);background-size:auto,44px 44px,44px 44px}
 .mono{font-family:var(--mono);font-size:.82em;letter-spacing:.02em}.dim{color:var(--text2)}.small{font-size:.85em}
@@ -23,7 +28,7 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 .skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;z-index:99}
 .shell{min-height:100vh;display:flex;flex-direction:column}
 .topbar{position:sticky;top:0;z-index:20;background:rgba(8,9,11,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
-.topbar-in{max-width:1180px;margin:0 auto;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1.2rem}
+.topbar-in{max-width:var(--content-max);margin:0 auto;padding:.7rem var(--content-px);display:flex;align-items:center;gap:1.2rem}
 .brand{display:flex;align-items:center;gap:.45rem;text-decoration:none;font-weight:800;letter-spacing:-.02em}
 .brand-mark{color:var(--accent);font-size:1.2rem}.brand-sub{color:var(--muted);font-weight:500}.brand.big{font-size:1.4rem}
 .mainnav{display:flex;gap:.3rem}.mainnav a{padding:.4rem .8rem;border-radius:9px;text-decoration:none;color:var(--text2);font-weight:500}
@@ -46,25 +51,28 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 .mobilenav.open{display:flex;gap:.8rem;padding:.5rem 1.2rem;border-top:1px solid var(--border);flex-wrap:wrap}
 .mobilenav.open a,.mobilenav.open button{color:var(--text2);text-decoration:none;background:none;border:0;font:inherit;cursor:pointer}
 .only-mobile{display:none}
-.main{flex:1}.wrap{max-width:1180px;margin:0 auto;padding:1.6rem 1.2rem 3rem}.wrap.narrow{max-width:760px}.wrap.wide{max-width:1280px}
+.main{flex:1}.wrap{max-width:var(--content-max);margin:0 auto;padding:1.6rem var(--content-px) 3rem}.wrap.narrow{max-width:760px}.wrap.wide{max-width:var(--content-max)}
 .foot{text-align:center;padding:1.4rem;color:var(--muted);border-top:1px solid var(--border)}
 /* hero: content-driven greeting block, stats in their own full-width row */
 .hero{margin:0 0 .5rem}
 .hero h1{margin:.25rem 0 .3rem}
 .hero p.dim{margin:.2rem 0}
-/* graph: tracks sized BY the 13px cells (content-driven). fr tracks without a
-   definite container height stretch unpredictably — explicit sizing keeps the
-   card wrapped around graph + legend + padding. */
-.graph{overflow-x:auto;overflow-y:hidden;padding-bottom:.25rem}
-.graph-grid{display:grid;grid-template-rows:repeat(7,13px);grid-auto-flow:column;grid-auto-columns:13px;gap:4px;width:max-content;justify-content:start;align-content:start}
+/* graph: a visualization, not a scrollable panel — the card expands to
+   contain it. Fluid cells (1fr tracks) keep all 52 weeks visible at any
+   viewport width with zero scrolling and zero clipping. */
+.graph{overflow:visible;padding-bottom:.25rem}
+.graph-grid{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;width:100%;justify-content:start;align-content:start}
+@media (max-width:640px){.graph-grid{gap:2px}}
 .eyebrow{text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0}
 .statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin:.8rem 0}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.8rem 1rem}
 .stat b{display:block;font-size:1.35rem;letter-spacing:-.02em}.stat small{color:var(--muted)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.2rem;margin-bottom:1.2rem}
 .sech{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin:1.5rem 0 .75rem;flex-wrap:wrap}
+.sech h2{margin:0;font-size:1rem;font-weight:700;letter-spacing:-.01em}
 /* continue cards */
-.contgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.8rem}
+.contgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:.8rem}
+.contgrid>*,.coursegrid>*,.statrow>*{min-width:0}
 .contcard{background:linear-gradient(180deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;text-decoration:none;display:block;transition:transform .15s,border-color .15s}
 .contcard:hover{transform:translateY(-2px);border-color:var(--border2)}
 .cont-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.3rem}
@@ -79,7 +87,7 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 .ccard-b{flex:1;min-width:0}.ccard-t{display:flex;justify-content:space-between;gap:.5rem;align-items:start}.ccard h3{margin:0;font-size:.98rem}
 .art{border-radius:12px;object-fit:cover;flex-shrink:0}
 .art-fallback{background:linear-gradient(135deg,hsl(var(--h),45%,22%),hsl(calc(var(--h) + 40),50%,14%));display:grid;place-items:center;color:#fff;font-weight:800;border:1px solid var(--border2)}
-.pill{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:.15rem .55rem;border-radius:99px;border:1px solid var(--border2);color:var(--text2)}
+.pill{font-family:var(--mono);font-size:.68rem;font-weight:500;text-transform:uppercase;letter-spacing:.08em;padding:.15rem .55rem;border-radius:99px;border:1px solid var(--border2);color:var(--text2)}
 .pill.video{color:#9db4ff;border-color:#33406e;background:rgba(91,124,255,.1)}
 .pill.reading{color:#7fe3cb;border-color:#1f4d44;background:rgba(34,193,163,.1)}
 .pill.mixed{color:#c4b5fd;border-color:#4c3f78;background:rgba(167,139,250,.12)}
@@ -98,7 +106,7 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 .mod{margin-bottom:1.2rem}.mod h2{background:var(--bg2);border:1px solid var(--border);padding:.6rem .9rem;border-radius:10px;font-size:.92rem}
 .llist{list-style:none;margin:.4rem 0;padding:0}.llist a{display:flex;gap:.7rem;align-items:center;padding:.55rem .7rem;border-radius:10px;text-decoration:none;border:1px solid transparent}
 .llist a:hover,.llist a.on{background:var(--surface);border-color:var(--border)}
-.llist .n{color:var(--muted);min-width:2ch}.llist .t{flex:1}.done{color:var(--accent2);font-weight:700}.pct{font-size:.78rem}
+.llist .n{color:var(--muted);min-width:2ch}.llist .t{flex:1}.done{color:var(--accent2);font-weight:700}.pct{font-family:var(--mono);font-size:.78rem}
 .llist.small a{padding:.4rem .6rem;font-size:.88rem}.ghost a{color:var(--text2)}
 /* recursive tree */
 .tnode{margin:.15rem 0;border-left:2px solid var(--border);padding-left:.55rem}
@@ -113,7 +121,7 @@ li.res a{gap:.5rem}.attach{margin-top:.4rem}
 .complete{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,rgba(34,193,163,.12),transparent);border:1px solid #1f4d44;border-radius:var(--radius);padding:.9rem 1.2rem;margin-bottom:1.2rem}
 .seal{font-family:var(--mono);color:var(--accent2);font-weight:700}
 /* learn layout */
-.learn{display:grid;grid-template-columns:300px 1fr;gap:0;max-width:1400px;margin:0 auto;min-height:calc(100vh - 130px)}
+.learn{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0;max-width:var(--content-max);margin:0 auto;min-height:calc(100vh - 130px)}
 .side{border-right:1px solid var(--border);padding:1rem;overflow-x:hidden;overflow-y:auto;max-height:calc(100vh - 60px);position:sticky;top:57px;background:var(--bg2);min-width:0}
 /* long lesson titles ellipsis inside the fixed sidebar instead of pushing it wider */
 .side .llist .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -142,7 +150,7 @@ li.res a{gap:.5rem}.attach{margin-top:.4rem}
 .pbar-wrap{padding:.6rem .9rem 0}.vidbar{cursor:pointer;height:8px}.vidbar em{position:absolute}
 .controls{display:flex;gap:.4rem;align-items:center;padding:.5rem .8rem .8rem;flex-wrap:wrap}
 .controls button,.controls select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:.35rem .6rem;cursor:pointer;font:inherit;font-size:.85rem}
-.controls button:disabled{opacity:.35}.controls .time{font-size:.82rem;color:var(--text2)}
+.controls button:disabled{opacity:.35}.controls .time{font-family:var(--mono);font-size:.82rem;color:var(--text2)}
 .controls .sp{flex:1}#vol{width:80px;accent-color:var(--accent)}
 .nextUp{position:absolute;inset:auto .8rem .8rem auto;background:rgba(13,15,18,.94);border:1px solid var(--border2);border-radius:12px;padding:.8rem 1rem}
 .lrow{display:flex;gap:.6rem;margin:1rem 0;flex-wrap:wrap;align-items:center}
@@ -179,11 +187,12 @@ li.res a{gap:.5rem}.attach{margin-top:.4rem}
 .check{display:flex!important;flex-direction:row!important;gap:.6rem!important;align-items:center}
 .alert{background:rgba(242,109,109,.1);border:1px solid #5a2b2b;color:#f5a3a3;border-radius:10px;padding:.6rem .9rem;margin:.8rem 0}
 /* graph */
-.cell{width:13px;height:13px;border-radius:4px;background:#1a2029;display:inline-block;position:relative;cursor:pointer}
+.cell{width:100%;height:auto;aspect-ratio:1/1;border-radius:4px;background:#1a2029;display:block;position:relative;cursor:pointer;min-width:0}
 .cell.lv1{background:#2b3a5e}.cell.lv2{background:#3d55ad}.cell.lv3{background:#5b7cff}.cell.lv4{background:#a78bfa;box-shadow:0 0 8px rgba(167,139,250,.5)}
 .cell.empty{background:transparent;cursor:default}
 .cell[data-tip]:hover::after,.cell[data-tip]:focus::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);background:#0d0f12;border:1px solid var(--border2);padding:.4rem .6rem;border-radius:8px;font-size:.72rem;white-space:nowrap;z-index:9;color:var(--text)}
 .graph-legend{display:flex;gap:.35rem;align-items:center;margin-top:.7rem;color:var(--muted);font-size:.78rem}
+.graph-legend .cell{width:13px;height:13px;aspect-ratio:auto;flex:none}
 /* tables/admin */
 .tablewrap{overflow:auto}.tablewrap table{width:100%;border-collapse:collapse;font-size:.88rem}.tablewrap th{text-align:left;color:var(--muted);font-weight:600;padding:.4rem .6rem;border-bottom:1px solid var(--border)}.tablewrap td{padding:.5rem .6rem;border-bottom:1px solid var(--border)}
 .admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
