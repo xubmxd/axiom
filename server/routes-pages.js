@@ -76,16 +76,26 @@ export function crumbs(course, chain, leaf) {
 }
 
 async function continueItems(userId) {
-  // most recently touched unfinished content across courses
+  // most recently touched unfinished content — one card per course (the
+  // last-touched item in that course). Without dedupe, watching several
+  // videos in one course floods all 4 slots with the same course.
   const vids = await all(
     `SELECT l.id content_id, l.title, l.course_id, c.title course, c.kind, vp.position_secs pos, vp.duration_secs dur, vp.updated_at ts, 'video' t
      FROM video_progress vp JOIN lessons l ON l.id=vp.lesson_id JOIN courses c ON c.id=l.course_id
-     WHERE vp.user_id=? AND COALESCE(vp.completed,0)=0 AND l.is_active=1 ORDER BY vp.updated_at DESC LIMIT 6`, [userId]);
+     WHERE vp.user_id=? AND COALESCE(vp.completed,0)=0 AND l.is_active=1 ORDER BY vp.updated_at DESC LIMIT 20`, [userId]);
   const rds = await all(
     `SELECT p.id content_id, p.title, p.course_id, c.title course, c.kind, rp.scroll_pct pos, rp.updated_at ts, 'reading' t
      FROM reading_progress rp JOIN reading_pages p ON p.id=rp.page_id JOIN courses c ON c.id=p.course_id
-     WHERE rp.user_id=? AND COALESCE(rp.completed,0)=0 AND p.is_active=1 ORDER BY rp.updated_at DESC LIMIT 6`, [userId]);
-  const items = [...vids.map((v) => ({ ...v })), ...rds.map((r) => ({ ...r }))].sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 4);
+     WHERE rp.user_id=? AND COALESCE(rp.completed,0)=0 AND p.is_active=1 ORDER BY rp.updated_at DESC LIMIT 20`, [userId]);
+  const ranked = [...vids.map((v) => ({ ...v })), ...rds.map((r) => ({ ...r }))].sort((a, b) => (a.ts < b.ts ? 1 : -1));
+  const seen = new Set();
+  const items = [];
+  for (const it of ranked) {
+    if (seen.has(it.course_id)) continue;
+    seen.add(it.course_id);
+    items.push(it);
+    if (items.length >= 4) break;
+  }
   // if nothing in progress, suggest untouched first items of courses with 0 progress
   if (!items.length) {
     const { natSort } = await import("./scanner.js");
