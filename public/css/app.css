@@ -201,6 +201,13 @@ a{color:inherit}
 .cell.lv1{background:#2b3a5e}.cell.lv2{background:#3d55ad}.cell.lv3{background:#7d8dff}.cell.lv4{background:#a78bfa;box-shadow:0 0 8px rgba(167,139,250,.5)}
 .cell.empty{background:transparent;border:0;cursor:default}
 .cell[data-tip]:hover::after,.cell[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);background:#0c0f14;border:1px solid var(--border2);padding:.55rem .7rem;border-radius:10px;font-size:.7rem;font-family:var(--mono);line-height:1.65;white-space:pre-line;text-align:left;z-index:30;color:var(--text);box-shadow:var(--shadow);min-width:170px}
+/* Floating portal tooltip (tip.js): lives on <body> with position:fixed so
+   it escapes the heatmap's overflow:hidden ancestors. Same visual design as
+   the ::after fallback, which stays for no-JS and is suppressed once the
+   portal takes over. */
+.heatip{position:fixed;top:0;left:0;z-index:60;max-width:min(280px,calc(100vw - 20px));background:#0c0f14;border:1px solid var(--border2);padding:.55rem .7rem;border-radius:10px;font-size:.7rem;font-family:var(--mono);line-height:1.65;white-space:pre-line;text-align:left;color:var(--text);box-shadow:var(--shadow);pointer-events:none;opacity:0;transition:opacity .12s}
+.heatip.on{opacity:1}
+.has-heatip .cell[data-tip]:hover::after,.has-heatip .cell[data-tip]:focus-visible::after,.has-heatip .cell[data-tip]:focus::after{display:none}
 .graph-legend{display:flex;gap:.35rem;align-items:center;margin-top:.75rem;color:var(--muted);font-size:.72rem}
 .graph-legend .cell{width:11px;height:11px;flex:none;cursor:default}
 

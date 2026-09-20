@@ -147,7 +147,7 @@ ${user ? `<nav class="mobilenav" id="mobileNav" aria-label="Mobile">${allNav.map
 </div>
 </div>
 <div id="toasts" aria-live="polite"></div>
-<script src="/js/app.js" defer></script>${extraScript}</body></html>`;
+<script src="/js/app.js" defer></script><script type="module" src="/js/tip.js"></script>${extraScript}</body></html>`;
 }
 
 export function progressBar(pct, label = "") {
