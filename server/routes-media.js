@@ -4,6 +4,7 @@ import path from "node:path";
 import { get } from "./db.js";
 import { config } from "./config.js";
 import { resolveInside } from "./scanner.js";
+import { ah } from "./wrap.js";
 export const media = Router();
 
 // Pure helper (unit-tested): returns {start,end} or null if unsatisfiable/invalid.
@@ -27,7 +28,7 @@ media.use(async (req, res, next) => {
 });
 
 // course icon
-media.get("/:cid/icon", async (req, res) => {
+media.get("/:cid/icon", ah(async (req, res) => {
   const c = await get(`SELECT * FROM courses WHERE id=?`, [req.params.cid]);
   if (!c) return res.status(404).end();
   let base;
@@ -38,14 +39,14 @@ media.get("/:cid/icon", async (req, res) => {
   const fp = resolveInside(c, files[0]);
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.sendFile(fp);
-});
+}));
 
 // video stream with range support — never loads whole file into memory
-media.get("/:cid/video/:lid", async (req, res) => {
+media.get("/:cid/video/:lid", ah(async (req, res) => {
   const l = await get(`SELECT l.*, c.dir_name, c.kind FROM lessons l JOIN courses c ON c.id=l.course_id WHERE l.id=?`, [req.params.lid]);
   if (!l || l.course_id !== req.params.cid) return res.status(404).end();
   let fp;
-  try { fp = resolveInside({ kind: "video", dir_name: l.dir_name }, l.path_key); }
+  try { fp = resolveInside({ kind: l.kind || "video", dir_name: l.dir_name }, l.path_key); }
   catch { return res.status(403).end(); }
   let stat;
   try { stat = fs.statSync(fp); } catch { return res.status(404).send("file missing — rescan library"); }
@@ -64,15 +65,18 @@ media.get("/:cid/video/:lid", async (req, res) => {
       "Cache-Control": "private, max-age=3600",
     });
     const stream = fs.createReadStream(fp, { start, end });
-    stream.on("error", () => res.destroy());
+    stream.on("error", () => { try { res.destroy(); } catch {} });
+    // Client navigating to another video aborts the stream: free the fd.
+    res.on("close", () => { try { stream.destroy(); } catch {} });
     stream.pipe(res);
   } else {
     res.writeHead(200, { "Content-Length": stat.size, "Content-Type": mime, "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600" });
     const stream = fs.createReadStream(fp);
-    stream.on("error", () => res.destroy());
+    stream.on("error", () => { try { res.destroy(); } catch {} });
+    res.on("close", () => { try { stream.destroy(); } catch {} });
     stream.pipe(res);
   }
-});
+}));
 
 // supplementary resource download/view — never executes content.
 // HTML is never a resource (it becomes a reading page); refuse it defensively.
@@ -95,7 +99,7 @@ const RESOURCE_MIME = {
   ".bmp": "image/bmp", ".jfif": "image/jpeg", ".ico": "image/x-icon",
   ".tif": "image/tiff", ".tiff": "image/tiff",
 };
-media.get("/:cid/resource/:rid", async (req, res) => {
+media.get("/:cid/resource/:rid", ah(async (req, res) => {
   const r = await get(`SELECT r.*, c.dir_name, c.kind AS course_kind FROM resources r JOIN courses c ON c.id=r.course_id WHERE r.id=? AND r.is_active=1`, [req.params.rid]);
   if (!r || r.course_id !== req.params.cid) return res.status(404).end();
   const ext = path.extname(r.file_name).toLowerCase();
@@ -119,9 +123,10 @@ media.get("/:cid/resource/:rid", async (req, res) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
   }
   const stream = fs.createReadStream(fp);
-  stream.on("error", () => res.destroy());
+  stream.on("error", () => { try { res.destroy(); } catch {} });
+  res.on("close", () => { try { stream.destroy(); } catch {} });
   stream.pipe(res);
-});
+}));
 
 // extracted embedded data: images (see reader). Files live under
 // DATA_DIR/embedded/<courseId>/<pageId>/img-N.<ext> — never inside courses/.
@@ -131,7 +136,7 @@ const EMBEDDED_MIME = {
   ".bmp": "image/bmp", ".ico": "image/x-icon", ".tif": "image/tiff",
   ".tiff": "image/tiff", ".svg": "image/svg+xml",
 };
-media.get("/:cid/embedded/:pid/:file", async (req, res) => {
+media.get("/:cid/embedded/:pid/:file", ah(async (req, res) => {
   const { cid, pid, file } = req.params;
   if (!/^img-\d+\.[a-z0-9]+$/i.test(file || "")) return res.status(404).end();
   const ext = path.extname(file).toLowerCase();
@@ -150,13 +155,14 @@ media.get("/:cid/embedded/:pid/:file", async (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.setHeader("X-Content-Type-Options", "nosniff");
   const stream = fs.createReadStream(fp);
-  stream.on("error", () => res.destroy());
+  stream.on("error", () => { try { res.destroy(); } catch {} });
+  res.on("close", () => { try { stream.destroy(); } catch {} });
   stream.pipe(res);
-});
+}));
 
 // reading assets (images) — only safe image extensions, inside course root.
 // NOTE: express 4 wildcards are anonymous — the match lands in req.params[0].
-media.get("/:cid/asset/*", async (req, res) => {
+media.get("/:cid/asset/*", ah(async (req, res) => {
   const c = await get(`SELECT * FROM courses WHERE id=?`, [req.params.cid]);
   if (!c) return res.status(404).end();
   const rel = req.params[0] || "";
@@ -166,4 +172,4 @@ media.get("/:cid/asset/*", async (req, res) => {
   if (!fs.existsSync(fp)) return res.status(404).end();
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.sendFile(fp);
-});
+}));

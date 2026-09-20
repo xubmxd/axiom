@@ -1,7 +1,7 @@
 {
-  "name": "lumen-learn",
+  "name": "axiom-learn",
   "version": "1.0.0",
-  "description": "Lumen — premium self-hosted learning platform",
+  "description": "Axiom — premium self-hosted learning platform",
   "type": "module",
   "main": "server/index.js",
   "scripts": {

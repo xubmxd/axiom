@@ -13,9 +13,13 @@ export async function recordHeartbeat({ userId, courseId, contentType, contentId
   const now = nowIso();
   const secs = Math.max(0, Math.min(120, Number(activeSecs) || 0));
   // close stale sessions for this tab/content, open or update current
+  // Portable recency check: last_heartbeat_at stores ISO UTC strings, so a
+  // lexicographic comparison works on both SQLite and Postgres
+  // (SQLite-only datetime('now','-5 minutes') crashes on Postgres).
+  const cutoff = new Date(Date.now() - 5 * 60e3).toISOString();
   const open = await get(
-    `SELECT * FROM learning_sessions WHERE user_id=? AND tab_id=? AND content_id=? AND datetime(last_heartbeat_at) > datetime('now','-5 minutes') ORDER BY last_heartbeat_at DESC LIMIT 1`,
-    [userId, tabId || "", contentId || ""]
+    `SELECT * FROM learning_sessions WHERE user_id=? AND tab_id=? AND content_id=? AND last_heartbeat_at > ? ORDER BY last_heartbeat_at DESC LIMIT 1`,
+    [userId, tabId || "", contentId || "", cutoff]
   ).catch(() => null);
   let sid = open?.id;
   if (open) {

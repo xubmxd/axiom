@@ -31,8 +31,8 @@ export async function initDb() {
 
 export function isPg() { return usePg; }
 
-function execRaw(sql) {
-  if (usePg) return pgPool.query(toPg(sql)).then(() => {});
+async function execRaw(sql) {
+  if (usePg) { await pgPool.query(toPg(sql)); return; }
   sqliteDb.exec(sql);
 }
 
@@ -152,8 +152,8 @@ export async function migrate() {
       last_error TEXT NOT NULL DEFAULT '', course_count INTEGER NOT NULL DEFAULT 0
     )`,
   ];
-  for (const s of stmts) execRaw(s);
-  execRaw(`INSERT INTO scan_state(id) VALUES(1) ON CONFLICT DO NOTHING`);
+  for (const s of stmts) await execRaw(s);
+  try { await execRaw(`INSERT INTO scan_state(id) VALUES(1) ON CONFLICT DO NOTHING`); } catch {}
   // sqlite doesn't support ON CONFLICT DO NOTHING without target on some builds — fallback:
   try {
     await get("SELECT id FROM scan_state WHERE id=1");
@@ -173,7 +173,7 @@ export async function migrate() {
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_group_key ON content_groups(course_id, path_key)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_resource_key ON resources(course_id, path_key)`,
   ];
-  for (const s of idx) { try { execRaw(s); } catch {} }
+  for (const s of idx) { try { await execRaw(s); } catch {} }
   await migrateLegacyModules();
   // backfill settings for users missing rows
   try {
@@ -205,12 +205,12 @@ async function migrateLegacyModules() {
     if (!(await tableExists("modules"))) return;
     const legacy = await all(`SELECT * FROM modules`);
     if (!legacy.length) {
-      try { execRaw(`DROP TABLE modules`); } catch {}
+      try { await execRaw(`DROP TABLE modules`); } catch {}
       return;
     }
-    if (!(await columnExists("lessons", "group_id"))) execRaw(`ALTER TABLE lessons ADD COLUMN group_id TEXT`);
-    if (!(await columnExists("reading_pages", "group_id"))) execRaw(`ALTER TABLE reading_pages ADD COLUMN group_id TEXT`);
-    if (!(await columnExists("reading_pages", "file_size"))) execRaw(`ALTER TABLE reading_pages ADD COLUMN file_size INTEGER NOT NULL DEFAULT 0`);
+    if (!(await columnExists("lessons", "group_id"))) await execRaw(`ALTER TABLE lessons ADD COLUMN group_id TEXT`);
+    if (!(await columnExists("reading_pages", "group_id"))) await execRaw(`ALTER TABLE reading_pages ADD COLUMN group_id TEXT`);
+    if (!(await columnExists("reading_pages", "file_size"))) await execRaw(`ALTER TABLE reading_pages ADD COLUMN file_size INTEGER NOT NULL DEFAULT 0`);
     for (const m of legacy) {
       const exists = await get(`SELECT id FROM content_groups WHERE id=?`, [m.id]);
       if (!exists) {
@@ -220,13 +220,13 @@ async function migrateLegacyModules() {
     }
     if (await columnExists("lessons", "module_id")) {
       await run(`UPDATE lessons SET group_id=module_id WHERE module_id IS NOT NULL AND group_id IS NULL`);
-      try { execRaw(`ALTER TABLE lessons DROP COLUMN module_id`); } catch {}
+      try { await execRaw(`ALTER TABLE lessons DROP COLUMN module_id`); } catch {}
     }
     // verify no lesson still depends on the old table before dropping it
     const dangling = (await columnExists("lessons", "module_id"))
       ? await get(`SELECT COUNT(*) n FROM lessons WHERE module_id IS NOT NULL`) : { n: 0 };
     if (!(dangling?.n > 0)) {
-      try { execRaw(`DROP TABLE modules`); } catch {}
+      try { await execRaw(`DROP TABLE modules`); } catch {}
     }
   } catch { /* never block boot on migration */ }
 }

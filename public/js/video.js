@@ -12,7 +12,7 @@
   const btnPlay = document.getElementById("btnPlay"), tCur = document.getElementById("tCur"), tDur = document.getElementById("tDur");
   const seek = document.getElementById("seek"), fill = document.getElementById("seekFill");
   const nextId = document.querySelector("[data-next-id]")?.dataset.nextId;
-  const prevId = document.querySelector("[data-next-id]")?.dataset.prevId;
+  const prevId = document.querySelector("[data-prev-id]")?.dataset.prevId;
   let restored = parseFloat(root.dataset.pos || "0");
   let watchAccum = 0, lastTick = null, saveTimer = null, ended = false;
   v.playbackRate = parseFloat(document.getElementById("selSpeed")?.value || "1");
@@ -27,8 +27,9 @@
   v.addEventListener("timeupdate", () => {
     tCur.textContent = fmt(v.currentTime);
     if (v.duration) fill.style.width = (v.currentTime / v.duration * 100) + "%";
-    // auto-complete at threshold of genuine position
-    if (!ended && v.duration && v.currentTime / v.duration >= threshold) markDone(true);
+    // auto-complete at threshold of genuine position (once — ended flag
+    // stops the POST flood on every subsequent timeupdate)
+    if (!ended && v.duration && v.currentTime / v.duration >= threshold) { ended = true; markDone(true); }
   });
   // genuine watch-time accumulator: only while playing + visible + focused-ish
   setInterval(() => {
@@ -44,31 +45,33 @@
   window.addEventListener("beforeunload", () => flush(true));
 
   async function flush(sync = false) {
-    const payload = JSON.stringify({ lessonId, position: v.currentTime || 0, duration: v.duration || 0, watchDelta: watchAccum, tabId, tzOffset, "x-tz-offset": tzOffset });
-    watchAccum = 0;
+    const delta = watchAccum; watchAccum = 0;
+    const payload = JSON.stringify({ lessonId, position: v.currentTime || 0, duration: v.duration || 0, watchDelta: delta, tabId, tzOffset, "x-tz-offset": tzOffset });
     if (sync && navigator.sendBeacon) {
       // sendBeacon can't set headers; tz falls back to server default — acceptable for final flush
       const b = new Blob([payload], { type: "application/json" });
-      navigator.sendBeacon("/api/progress/video", b);
+      const ok = navigator.sendBeacon("/api/progress/video", b);
+      if (!ok) watchAccum += delta; // re-queue watch time if the beacon was rejected
       return;
     }
     try {
       const r = await fetch("/api/progress/video", { method: "POST", headers: { "Content-Type": "application/json", "x-tz-offset": tzOffset }, body: payload });
       const j = await r.json();
-      if (j.completed) showDone();
-    } catch {}
+      if (j.completed) { ended = true; showDone(); }
+    } catch { watchAccum += delta; }
   }
 
   async function markDone(auto) {
     try {
       const r = await fetch("/api/progress/video", { method: "POST", headers: { "Content-Type": "application/json", "x-tz-offset": tzOffset }, body: JSON.stringify({ lessonId, position: v.currentTime, duration: v.duration, watchDelta: 0, completed: true, tabId, tzOffset }) });
-      if ((await r.json()).completed) { showDone(); if (!auto) toast("Marked complete"); }
+      if ((await r.json()).completed) { ended = true; showDone(); if (!auto) toast("Marked complete"); }
     } catch { toast("Couldn't save — retry"); }
   }
   function showDone() { const b = document.getElementById("btnDone"); if (b) { b.classList.add("done"); b.textContent = "✓ Completed"; } }
   document.getElementById("btnDone").onclick = () => markDone(false);
 
   v.addEventListener("ended", () => {
+    ended = true;
     flush();
     markDone(true);
     if (!nextId || !autoplayOn) return;

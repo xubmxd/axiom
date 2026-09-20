@@ -1,4 +1,4 @@
-# Lumen — Self-Hosted Learning Platform
+# Axiom — Self-Hosted Learning Platform
 
 A calm, premium, self-hosted learning workspace for your downloaded video & reading courses.
 Dark-first original design, custom video player, platform-native HTML reader, real learning

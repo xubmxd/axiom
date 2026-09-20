@@ -35,9 +35,9 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
   const isAdmin = user?.role === "admin";
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Lumen</title>
-<meta name="description" content="Lumen — your calm, self-hosted learning workspace.">
-<meta property="og:title" content="${esc(title)} · Lumen">
+<title>${esc(title)} · Axiom</title>
+<meta name="description" content="Axiom — your calm, self-hosted learning workspace.">
+<meta property="og:title" content="${esc(title)} · Axiom">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -46,7 +46,7 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <a class="skip" href="#main">Skip to content</a>
 <div class="shell">
 <header class="topbar"><div class="topbar-in">
-<a class="brand" href="/" aria-label="Lumen home"><span class="brand-mark" aria-hidden="true">◈</span><span class="brand-name">Lumen</span><span class="brand-sub">learn</span></a>
+<a class="brand" href="/" aria-label="Axiom home"><span class="brand-mark" aria-hidden="true">◈</span><span class="brand-name">Axiom</span><span class="brand-sub">learn</span></a>
 ${user ? `<nav class="mainnav" aria-label="Primary">
 <a href="/" class="${active === "home" ? "on" : ""}">Workspace</a>
 <a href="/library" class="${active === "library" ? "on" : ""}">Library</a>
@@ -67,7 +67,7 @@ ${isAdmin ? `<a href="/admin" class="${active === "admin" ? "on" : ""}">Admin</a
 ${user ? `<nav class="mobilenav" id="mobileNav" aria-label="Mobile"><a href="/">Workspace</a><a href="/library">Library</a>${isAdmin ? `<a href="/admin">Admin</a>` : ""}<a href="/profile">Profile</a><a href="/settings">Settings</a><form method="post" action="/logout"><button>Sign out</button></form></nav>` : ""}
 </header>
 <main id="main" class="main">${body}</main>
-<footer class="foot"><span class="mono dim">lumen · self-hosted · v1.0</span></footer>
+<footer class="foot"><span class="mono dim">axiom · self-hosted · v1.0</span></footer>
 </div>
 <div id="toasts" aria-live="polite"></div>
 <script src="/js/app.js" defer></script>${extraScript}</body></html>`;

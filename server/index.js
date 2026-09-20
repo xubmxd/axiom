@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import path from "node:path";
 import fs from "node:fs";
 import { config } from "./config.js";
+import "./wrap.js"; // must load first: patches Express to forward async errors
 import { initDb, get, run, nowIso } from "./db.js";
 import { log } from "./log.js";
 import { findLogin, verifyPassword, createSession, sessionCookie, getSessionUser, destroySession, createUser, rateLimit, sha256 } from "./auth.js";
@@ -73,7 +74,7 @@ app.use("/media", media);
 app.use("/", pages);
 
 app.use((req, res) => {
-  res.status(404).send("<!doctype html><title>Not found · Lumen</title><h1>Not found</h1><p>The page you requested doesn't exist.</p><a href='/'>Back home</a>");
+  res.status(404).send("<!doctype html><title>Not found · Axiom</title><h1>Not found</h1><p>The page you requested doesn't exist.</p><a href='/'>Back home</a>");
 });
 
 // error handler — never leak stacks
