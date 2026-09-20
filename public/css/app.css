@@ -57,13 +57,32 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 .hero{margin:0 0 .5rem}
 .hero h1{margin:.25rem 0 .3rem}
 .hero p.dim{margin:.2rem 0}
-/* graph: a visualization, not a scrollable panel — GitHub-compact fixed
-   cells, so the card wraps the full year in ~100px with zero scrolling and
-   zero clipping on desktop. Only on narrow screens (grid physically wider
-   than the card) may it swipe horizontally — never vertically. */
+/* activity dashboard: heatmap (main) + compact week summary (side).
+   Cell size scales with the heatmap region via container queries so the grid
+   fills its area with square cells at any desktop width; fixed-size fallback
+   for older engines. Card never scrolls on desktop. */
+.act{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:1.4rem;align-items:center}
+.act-main{min-width:0;container-type:inline-size}
+.act-side{border-left:1px solid var(--border);padding-left:1.4rem;display:grid;gap:.8rem;align-content:center;min-width:0}
+.act-side .eyebrow{font-size:.72rem}
+.act-stats{display:grid;gap:.7rem}
+.act-stat{display:grid;gap:.1rem}
+.act-stat span{font-size:.72rem}
+.act-stat b{font-size:1.05rem;font-weight:700;letter-spacing:-.01em}
+@media (max-width:760px){
+  .act{grid-template-columns:minmax(0,1fr)}
+  .act-side{border-left:0;border-top:1px solid var(--border);padding-left:0;padding-top:1rem}
+  .act-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}
+}
+/* graph: a visualization, not a scrollable panel. Fixed compact cells by
+   default; inside the workspace dashboard the cells scale with their region
+   (container query) to fill the available width while staying square. */
 .graph{overflow:visible;padding-bottom:.25rem}
 .graph-grid{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:11px;gap:3px;width:max-content;justify-content:start;align-content:start}
 .graph-grid .cell{border-radius:3px}
+@supports (width:1cqw){
+  .act-main .graph-grid{--cell:clamp(9px,(100cqw - 58*4px)/59,17px);grid-template-rows:repeat(7,var(--cell));grid-auto-columns:var(--cell);gap:4px}
+}
 @media (max-width:900px){.graph{overflow-x:auto;overflow-y:clip;padding-bottom:.5rem}}
 .eyebrow{text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0}
 .statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin:.8rem 0}
@@ -192,7 +211,7 @@ li.res a{gap:.5rem}.attach{margin-top:.4rem}
 .cell{width:11px;height:11px;border-radius:4px;background:#1a2029;display:block;position:relative;cursor:pointer;min-width:0}
 .cell.lv1{background:#2b3a5e}.cell.lv2{background:#3d55ad}.cell.lv3{background:#5b7cff}.cell.lv4{background:#a78bfa;box-shadow:0 0 8px rgba(167,139,250,.5)}
 .cell.empty{background:transparent;cursor:default}
-.cell[data-tip]:hover::after,.cell[data-tip]:focus::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);background:#0d0f12;border:1px solid var(--border2);padding:.4rem .6rem;border-radius:8px;font-size:.72rem;white-space:nowrap;z-index:9;color:var(--text)}
+.cell[data-tip]:hover::after,.cell[data-tip]:focus::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);background:#0d0f12;border:1px solid var(--border2);padding:.5rem .7rem;border-radius:8px;font-size:.72rem;font-family:var(--mono);line-height:1.6;white-space:pre-line;text-align:left;z-index:9;color:var(--text)}
 .graph-legend{display:flex;gap:.35rem;align-items:center;margin-top:.7rem;color:var(--muted);font-size:.78rem}
 .graph-legend .cell{width:11px;height:11px;aspect-ratio:auto;flex:none}
 /* tables/admin */

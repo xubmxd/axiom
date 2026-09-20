@@ -4,7 +4,7 @@ import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
 import { layout, esc, fmtDur, fmtClock, fmtDate, initials, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
-import { yearActivity, intensityLevels, streaks, totals } from "./stats.js";
+import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
 export const pages = Router();
@@ -168,6 +168,16 @@ pages.get("/", needAuth, async (req, res) => {
   const st = await streaks(u.id, req.tzOffset);
   const tot = await totals(u.id);
   const recent = rows.slice(-7).reduce((a, r) => a + r.video_secs + r.reading_secs, 0);
+  // True last-7-calendar-days slice for the Activity summary (rows are sparse —
+  // last-7-records is not the same as this week). Pure presentation slice; no
+  // tracking change.
+  const todayStr = dayFor(req.tzOffset);
+  const weekCut = new Date(new Date(todayStr + "T12:00:00Z").getTime() - 6 * 864e5).toISOString().slice(0, 10);
+  const weekRows = rows.filter((r) => r.day >= weekCut && r.day <= todayStr);
+  const weekSecs = weekRows.reduce((a, r) => a + (r.video_secs || 0) + (r.reading_secs || 0), 0);
+  const weekVideo = weekRows.reduce((a, r) => a + (r.video_secs || 0), 0);
+  const weekReading = weekRows.reduce((a, r) => a + (r.reading_secs || 0), 0);
+  const weekActive = weekRows.filter((r) => (r.video_secs || 0) + (r.reading_secs || 0) > 0).length;
 
   res.send(layout({ title: "Workspace", user: u, active: "home", body: `
   <div class="wrap">
@@ -194,8 +204,18 @@ pages.get("/", needAuth, async (req, res) => {
       </a>`).join("")}</div>`
     : emptyState("Start your first lesson", "Add courses to the courses/ directory and they'll appear here.", `<a class="btn primary" href="/library">Open library</a>`)}</section>
 
-    <section><div class="sech"><h2>Activity</h2><span class="dim small mono">${fmtDur(rows.reduce((a, r) => a + r.video_secs + r.reading_secs, 0))} total</span></div>
-    <div class="card">${graphHtml(rows, bands)}</div></section>
+    <section><div class="sech"><h2>Activity</h2><span class="dim small mono">${fmtDur(weekSecs)} this week</span></div>
+    <div class="card act">
+      <div class="act-main">${graphHtml(rows, bands)}</div>
+      <aside class="act-side" aria-label="This week summary">
+        <p class="eyebrow mono">this week</p>
+        <div class="act-stats">
+          <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(weekSecs)}</b></div>
+          <div class="act-stat"><span class="mono dim">active days</span><b>${weekActive}/7</b></div>
+          <div class="act-stat"><span class="mono dim">video · reading</span><b>${fmtDur(weekVideo)} · ${fmtDur(weekReading)}</b></div>
+        </div>
+      </aside>
+    </div></section>
 
     <section><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
     ${inProg.length ? `<div class="coursegrid">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? "Something new is waiting in the library." : ""}</div>`}</section>

@@ -102,7 +102,9 @@ export function graphHtml(rows, bands) {
     const tot = byDay.get(d) || 0;
     const lv = levelFor(tot, bands);
     const dt = new Date(d + "T12:00:00Z").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-    const tip = `${dt} — ${fmtDur(tot)} learned (${fmtDur(vids.get(d) || 0)} video · ${fmtDur(reads.get(d) || 0)} reading)${comp.get(d) ? ` · ${comp.get(d)} completed` : ""}`;
+    const tipLines = [`${fmtDur(tot)} learned`, `${fmtDur(vids.get(d) || 0)} video · ${fmtDur(reads.get(d) || 0)} reading`];
+    if (comp.get(d)) tipLines.push(`${comp.get(d)} completed`);
+    const tip = `${dt}\n${tipLines.join("\n")}`;
     html += `<span class="cell lv${lv}" data-tip="${esc(tip)}" tabindex="0"></span>`;
   }
   html += `</div><div class="graph-legend"><span>Less</span><span class="cell lv0"></span><span class="cell lv1"></span><span class="cell lv2"></span><span class="cell lv3"></span><span class="cell lv4"></span><span>More</span></div></div>`;
