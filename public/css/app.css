@@ -217,6 +217,9 @@ a{color:inherit}
 .rail-cont[data-n="1"]{grid-template-columns:minmax(0,1fr)}
 .resume-card{display:block;text-decoration:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:.9rem .95rem;transition:border-color var(--tr),transform var(--tr)}
 .resume-card:hover{border-color:var(--accent-line);transform:translateY(-1px)}
+/* single resume point: featured card with a quiet accent edge */
+.resume-featured{display:grid;gap:.15rem;background:var(--surface2);border:1px solid var(--accent-line);border-radius:12px;padding:1rem 1.05rem}
+.resume-featured h3{margin:.3rem 0 .2rem;font-size:1.02rem;line-height:1.4;letter-spacing:-.01em}
 .resume-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.15rem}
 .resume-course{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .resume-card h3{margin:.25rem 0 .2rem;font-size:.96rem;line-height:1.4}

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
-import { layout, esc, fmtDur, fmtClock, fmtDate, fmtRel, initials, avatarHtml, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
+import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
@@ -91,43 +91,22 @@ export function crumbs(course, chain, leaf) {
 }
 
 async function continueItems(userId) {
-  // most recently touched unfinished content — one card per course (the
-  // last-touched item in that course). Without dedupe, watching several
-  // videos in one course floods all 4 slots with the same course.
-  const vids = await all(
-    `SELECT l.id content_id, l.title, l.course_id, c.title course, c.kind, vp.position_secs pos, vp.duration_secs dur, vp.updated_at ts, 'video' t
+  // ONE resume point: the single most-recently touched content item across
+  // video + reading, completed or not. updated_at is bumped on every
+  // position save and every completion toggle, so it is the access clock —
+  // no inference from progress, ordering, or insertion order. The item's
+  // course is trivially the last-accessed course, and the item is trivially
+  // the last-accessed content within it. Returns [] when nothing was ever
+  // touched (the caller renders the empty state).
+  const v = await get(
+    `SELECT l.id content_id, l.title, l.course_id, c.title course, c.kind, vp.position_secs pos, vp.duration_secs dur, vp.completed done, vp.updated_at ts, 'video' t
      FROM video_progress vp JOIN lessons l ON l.id=vp.lesson_id JOIN courses c ON c.id=l.course_id
-     WHERE vp.user_id=? AND COALESCE(vp.completed,0)=0 AND l.is_active=1 ORDER BY vp.updated_at DESC LIMIT 20`, [userId]);
-  const rds = await all(
-    `SELECT p.id content_id, p.title, p.course_id, c.title course, c.kind, rp.scroll_pct pos, rp.updated_at ts, 'reading' t
+     WHERE vp.user_id=? AND l.is_active=1 ORDER BY vp.updated_at DESC LIMIT 1`, [userId]);
+  const r = await get(
+    `SELECT p.id content_id, p.title, p.course_id, c.title course, c.kind, rp.scroll_pct pos, rp.completed done, rp.updated_at ts, 'reading' t
      FROM reading_progress rp JOIN reading_pages p ON p.id=rp.page_id JOIN courses c ON c.id=p.course_id
-     WHERE rp.user_id=? AND COALESCE(rp.completed,0)=0 AND p.is_active=1 ORDER BY rp.updated_at DESC LIMIT 20`, [userId]);
-  const ranked = [...vids.map((v) => ({ ...v })), ...rds.map((r) => ({ ...r }))].sort((a, b) => (a.ts < b.ts ? 1 : -1));
-  const seen = new Set();
-  const items = [];
-  for (const it of ranked) {
-    if (seen.has(it.course_id)) continue;
-    seen.add(it.course_id);
-    items.push(it);
-    if (items.length >= 4) break;
-  }
-  // if nothing in progress, suggest untouched first items of courses with 0 progress
-  if (!items.length) {
-    const { natSort } = await import("./scanner.js");
-    const courses = await all(`SELECT * FROM courses ORDER BY updated_at DESC LIMIT 4`);
-    for (const c of courses) {
-      const ls = await all(`SELECT id, title, path_key FROM lessons WHERE course_id=? AND is_active=1`, [c.id]);
-      ls.sort((a, b) => natSort(a.path_key, b.path_key));
-      if (ls.length) {
-        items.push({ t: "video", content_id: ls[0].id, title: ls[0].title, course: c.title, course_id: c.id, kind: c.kind, fresh: true });
-        continue;
-      }
-      const ps = await all(`SELECT id, title, path_key FROM reading_pages WHERE course_id=? AND is_active=1`, [c.id]);
-      ps.sort((a, b) => natSort(a.path_key, b.path_key));
-      if (ps.length) items.push({ t: "reading", content_id: ps[0].id, title: ps[0].title, course: c.title, course_id: c.id, kind: c.kind, fresh: true });
-    }
-  }
-  return items;
+     WHERE rp.user_id=? AND p.is_active=1 ORDER BY rp.updated_at DESC LIMIT 1`, [userId]);
+  return [v, r].filter(Boolean).sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 1);
 }
 
 // ---------- Auth pages ----------
@@ -205,17 +184,6 @@ pages.get("/", needAuth, async (req, res) => {
   const allPct = allTotal ? Math.round(allDone / allTotal * 100) : 0;
   // Activity range selector (real re-render, default 12 weeks).
   const weeks = [12, 26, 52].includes(parseInt(req.query.range)) ? parseInt(req.query.range) : 12;
-  // Recent activity feed from real progress/completion timestamps.
-  const wv = await all(`SELECT l.title, l.id content_id, l.course_id, c.title course, vp.updated_at ts, vp.completed done, vp.completed_at FROM video_progress vp JOIN lessons l ON l.id=vp.lesson_id JOIN courses c ON c.id=l.course_id WHERE vp.user_id=? ORDER BY vp.updated_at DESC LIMIT 5`, [u.id]);
-  const wr = await all(`SELECT p.title, p.id content_id, p.course_id, c.title course, rp.updated_at ts, rp.completed done, rp.completed_at FROM reading_progress rp JOIN reading_pages p ON p.id=rp.page_id JOIN courses c ON c.id=p.course_id WHERE rp.user_id=? ORDER BY rp.updated_at DESC LIMIT 5`, [u.id]);
-  const cc = await all(`SELECT c.title, c.id course_id, cc.completed_at ts FROM course_completions cc JOIN courses c ON c.id=cc.course_id WHERE cc.user_id=? ORDER BY cc.completed_at DESC LIMIT 3`, [u.id]);
-  const feed = [
-    ...wv.map((v) => ({ icon: "▶", text: `Watched ${v.title}`, href: `/learn/video/${v.content_id}`, ts: v.ts })),
-    ...wv.filter((v) => v.done && v.completed_at).map((v) => ({ icon: "✓", text: `Completed ${v.title}`, href: `/learn/video/${v.content_id}`, ts: v.completed_at })),
-    ...wr.map((r) => ({ icon: "▤", text: `Read ${r.title}`, href: `/learn/reading/${r.content_id}`, ts: r.ts })),
-    ...wr.filter((r) => r.done && r.completed_at).map((r) => ({ icon: "✓", text: `Completed ${r.title}`, href: `/learn/reading/${r.content_id}`, ts: r.completed_at })),
-    ...cc.map((c) => ({ icon: "◆", text: `Completed course ${c.title}`, href: `/courses/${c.course_id}`, ts: c.ts })),
-  ].sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 5);
   const msg = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const firstName = esc(u.display_name.split(" ")[0] || u.username);
@@ -226,23 +194,26 @@ pages.get("/", needAuth, async (req, res) => {
     ? `<small class="mono dim">this week · ${fmtDur(weekVideo)} video · ${fmtDur(weekReading)} reading</small>`
     : `<small><span class="${delta >= 0 ? "up" : "down"}">↑ ${Math.abs(delta)}%</span><span class="mono dim"> vs last week · ${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</span></small>`;
 
-  const continueRail = cont.length ? `<div class="rail-cont" data-n="${cont.length}">${cont.map((it) => {
-    const pct = it.t === "video" && it.dur ? Math.round((it.pos / it.dur) * 100) : (it.t === "reading" && it.pos !== undefined && !it.fresh ? Math.round(it.pos * 100) : 0);
-    const meta = it.t === "video" && it.dur ? `${fmtClock(it.pos)} / ${fmtClock(it.dur)} · ${pct}%` : (it.t === "reading" && !it.fresh ? `${pct}% through this page` : (it.fresh ? "Not started yet — begin here." : ""));
-    return `
-      <a class="resume-card" href="/learn/${it.t}/${it.content_id}">
-        <div class="resume-top"><span class="mono dim resume-course">${esc((it.course || "").slice(0, 28))}</span><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span></div>
-        <h3>${esc(it.title)}</h3>
-        ${meta ? `<p class="mono dim small resume-meta">${esc(meta)}</p>` : ""}
-        ${!it.fresh ? progressBar(pct, it.title) : ""}
-        <span class="btn primary resume-btn">${it.t === "video" ? "▶ Resume" : "Continue reading"}</span>
-      </a>`;
-  }).join("")}</div>`
-    : emptyState("No recent learning activity.", "Start a lesson to begin building your learning history.", `<a class="btn primary" href="/library">Browse Library</a>`);
-
-  const feedIcons = { "▶": "watch", "▤": "read", "✓": "done", "◆": "course" };
-  const feedHtml = feed.length ? feed.map((e) => `<a class="feed-row" href="${e.href}"><span class="fi ${feedIcons[e.icon] || ""}" aria-hidden="true">${e.icon}</span><span class="feed-tx"><span class="ft">${esc(e.text)}</span><span class="mono dim small" title="${esc(e.ts)}">${fmtRel(e.ts)}</span></span></a>`).join("")
-    : `<p class="dim small feed-empty">No activity yet — start your first lesson.</p>`;
+  // ONE resume point: the single last-accessed item (or the empty state).
+  // Completed items are never substituted — the action becomes "Revisit",
+  // reopening the same existing lesson route.
+  const continueRail = (() => {
+    const it = cont[0];
+    if (!it) return emptyState("Nothing to resume yet.", "Start a lesson from your Library and it will appear here.", `<a class="btn primary" href="/library">Browse Library →</a>`);
+    const done = !!it.done;
+    const pct = it.t === "video" && it.dur ? Math.round((it.pos / it.dur) * 100)
+      : (it.t === "reading" && it.pos !== undefined && it.pos !== null ? Math.round(Number(it.pos) * 100) : null);
+    const meta = it.t === "video" && it.dur ? `${fmtClock(it.pos)} / ${fmtClock(it.dur)} · ${pct}%`
+      : (pct !== null ? `${pct}% through this page` : "");
+    const action = done ? "Revisit →" : (it.t === "video" ? "▶ Resume" : "Continue reading →");
+    return `<div class="resume-featured">
+      <div class="resume-top"><span class="mono dim resume-course">${esc(it.course)}</span><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span></div>
+      <h3>${esc(it.title)}</h3>
+      ${meta ? `<p class="mono dim small resume-meta">${esc(meta)}</p>` : ""}
+      ${pct !== null ? progressBar(pct, it.title) : ""}
+      <a class="btn primary resume-btn" href="/learn/${it.t}/${it.content_id}">${action}</a>
+    </div>`;
+  })();
 
   res.send(layout({ title: "Workspace", user: u, active: "home", body: `
   <div class="wrap ws">
@@ -297,9 +268,6 @@ pages.get("/", needAuth, async (req, res) => {
           ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span><b>Resume learning</b><small class="mono dim">${esc(cont[0].title.slice(0, 34))}</small></span><span aria-hidden="true">→</span></a>` : ""}
           ${u.role === "admin" ? `<a href="/admin"><span><b>Open Admin Console</b><small class="mono dim">system &amp; scanner</small></span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span><b>View Profile</b><small class="mono dim">stats &amp; activity</small></span><span aria-hidden="true">→</span></a>`}
         </div></section>
-
-        <section class="card rail-card" aria-label="Recent activity"><div class="sech rail-head"><h2><span class="h-ic" aria-hidden="true">◌</span> Recent Activity</h2></div>
-        <div class="feed">${feedHtml}</div></section>
       </div>
     </div>
   </div>` }));
