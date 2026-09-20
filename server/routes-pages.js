@@ -3,9 +3,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
-import { layout, esc, fmtDur, fmtClock, fmtDate, initials, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
+import { layout, esc, fmtDur, fmtClock, fmtDate, fmtRel, initials, progressBar, graphHtml, emptyState, iconArt } from "./views.js";
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
+
+// Rotating workspace line — server-rendered once per page load, stable for
+// the session. No backend needed; edit this list freely.
+const MOTIVATION = [
+  "Small steps every day compound into expertise.",
+  "Progress is built one difficult lesson at a time.",
+  "Consistency beats intensity when the goal is mastery.",
+  "Learn deeply. Build deliberately.",
+  "Every concept you master makes the next one easier.",
+  "Discipline turns curiosity into skill.",
+  "Stay curious. Keep digging.",
+  "Mastery is just deliberate practice repeated.",
+  "Understand the system, not just the answer.",
+  "One lesson closer to knowing how it works.",
+];
 
 export const pages = Router();
 
@@ -161,13 +176,11 @@ pages.get("/", needAuth, async (req, res) => {
   for (const c of courses) prog.push({ c, ...(await courseProgress(u.id, c)) });
   const inProg = prog.filter((p) => p.done > 0 && p.pct < 100).sort((a, b) => b.pct - a.pct);
   const notStarted = prog.filter((p) => p.done === 0);
-  const done = prog.filter((p) => p.pct >= 100 && p.total > 0);
   const cont = await continueItems(u.id);
   const rows = await yearActivity(u.id);
   const bands = intensityLevels(rows);
   const st = await streaks(u.id, req.tzOffset);
   const tot = await totals(u.id);
-  const recent = rows.slice(-7).reduce((a, r) => a + r.video_secs + r.reading_secs, 0);
   // True last-7-calendar-days slice for the Activity summary (rows are sparse —
   // last-7-records is not the same as this week). Pure presentation slice; no
   // tracking change.
@@ -178,18 +191,44 @@ pages.get("/", needAuth, async (req, res) => {
   const weekVideo = weekRows.reduce((a, r) => a + (r.video_secs || 0), 0);
   const weekReading = weekRows.reduce((a, r) => a + (r.reading_secs || 0), 0);
   const weekActive = weekRows.filter((r) => (r.video_secs || 0) + (r.reading_secs || 0) > 0).length;
+  // Previous 7 calendar days, for the week-over-week delta (real data only).
+  const prevCut = new Date(new Date(weekCut + "T12:00:00Z").getTime() - 7 * 864e5).toISOString().slice(0, 10);
+  const prevSecs = rows.filter((r) => r.day >= prevCut && r.day < weekCut)
+    .reduce((a, r) => a + (r.video_secs || 0) + (r.reading_secs || 0), 0);
+  const delta = prevSecs > 0 ? Math.round((weekSecs - prevSecs) / prevSecs * 100) : null;
+  const best = weekRows.reduce((a, r) => ((r.video_secs || 0) + (r.reading_secs || 0) > ((a?.video_secs || 0) + (a?.reading_secs || 0)) ? r : a), null);
+  const mostActive = best ? new Date(best.day + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short" }) : "—";
+  // Overall progress across every course (real aggregates, no new queries).
+  const allDone = prog.reduce((a, p) => a + p.done, 0);
+  const allTotal = prog.reduce((a, p) => a + p.total, 0);
+  const allPct = allTotal ? Math.round(allDone / allTotal * 100) : 0;
+  // Activity range selector (real re-render, default 12 weeks).
+  const weeks = [12, 26, 52].includes(parseInt(req.query.range)) ? parseInt(req.query.range) : 12;
+  // Recent activity feed from real progress/completion timestamps.
+  const wv = await all(`SELECT l.title, l.id content_id, l.course_id, c.title course, vp.updated_at ts, vp.completed done, vp.completed_at FROM video_progress vp JOIN lessons l ON l.id=vp.lesson_id JOIN courses c ON c.id=l.course_id WHERE vp.user_id=? ORDER BY vp.updated_at DESC LIMIT 5`, [u.id]);
+  const wr = await all(`SELECT p.title, p.id content_id, p.course_id, c.title course, rp.updated_at ts, rp.completed done, rp.completed_at FROM reading_progress rp JOIN reading_pages p ON p.id=rp.page_id JOIN courses c ON c.id=p.course_id WHERE rp.user_id=? ORDER BY rp.updated_at DESC LIMIT 5`, [u.id]);
+  const cc = await all(`SELECT c.title, c.id course_id, cc.completed_at ts FROM course_completions cc JOIN courses c ON c.id=cc.course_id WHERE cc.user_id=? ORDER BY cc.completed_at DESC LIMIT 3`, [u.id]);
+  const feed = [
+    ...wv.map((v) => ({ icon: "▶", text: `Watched ${v.title}`, href: `/learn/video/${v.content_id}`, ts: v.ts })),
+    ...wv.filter((v) => v.done && v.completed_at).map((v) => ({ icon: "✓", text: `Completed ${v.title}`, href: `/learn/video/${v.content_id}`, ts: v.completed_at })),
+    ...wr.map((r) => ({ icon: "▤", text: `Read ${r.title}`, href: `/learn/reading/${r.content_id}`, ts: r.ts })),
+    ...wr.filter((r) => r.done && r.completed_at).map((r) => ({ icon: "✓", text: `Completed ${r.title}`, href: `/learn/reading/${r.content_id}`, ts: r.completed_at })),
+    ...cc.map((c) => ({ icon: "◆", text: `Completed course ${c.title}`, href: `/courses/${c.course_id}`, ts: c.ts })),
+  ].sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 5);
+  const msg = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
 
   res.send(layout({ title: "Workspace", user: u, active: "home", body: `
   <div class="wrap">
     <section class="hero"><div>
-      <p class="eyebrow mono">workspace · ${esc(new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}</p>
+      <p class="eyebrow mono">welcome back,</p>
       <h1>Good to see you, ${esc(u.display_name.split(" ")[0])}.</h1>
-      <p class="dim">${recent > 0 ? `You've learned <b>${fmtDur(recent)}</b> in the last 7 days.` : "Pick up where you left off — progress saves itself."}</p>
+      <p class="dim">${esc(msg)}</p>
     </div></section>
     <div class="statrow">
-      <div class="stat"><span class="mono dim">streak</span><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small>longest ${st.longest}</small></div>
-      <div class="stat"><span class="mono dim">learned</span><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b><small>${fmtDur(tot.videoSecs)} video · ${fmtDur(tot.readingSecs)} reading</small></div>
-      <div class="stat"><span class="mono dim">completed</span><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small>${done.length} at 100%</small></div>
+      <div class="stat"><span class="mono dim">learning time</span><b>${fmtDur(weekSecs)}</b><small>${delta === null ? "this week" : `<span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> vs last week`} · ${fmtDur(weekVideo)} video · ${fmtDur(weekReading)} reading</small></div>
+      <div class="stat"><span class="mono dim">current streak</span><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small>longest ${st.longest}</small></div>
+      <div class="stat"><span class="mono dim">completed</span><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small>Out of ${courses.length}</small></div>
+      <div class="stat"><span class="mono dim">total progress</span><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small>${allDone}/${allTotal} items</small></div>
     </div>
 
     <section><div class="sech"><h2>Continue learning</h2><a class="link" href="/library">Browse library →</a></div>
@@ -204,21 +243,37 @@ pages.get("/", needAuth, async (req, res) => {
       </a>`).join("")}</div>`
     : emptyState("Start your first lesson", "Add courses to the courses/ directory and they'll appear here.", `<a class="btn primary" href="/library">Open library</a>`)}</section>
 
-    <section><div class="sech"><h2>Activity</h2><span class="dim small mono">${fmtDur(weekSecs)} this week</span></div>
+    <section><div class="sech"><h2>Activity</h2>
+    <form class="range" action="/" method="get"><select name="range" onchange="this.form.submit()" aria-label="Activity range">${[12, 26, 52].map((w) => `<option value="${w}" ${weeks === w ? "selected" : ""}>Last ${w} weeks</option>`).join("")}</select></form></div>
+    <p class="dim small act-sub">Your learning activity over the last ${weeks} weeks.</p>
     <div class="card act">
-      <div class="act-main">${graphHtml(rows, bands)}</div>
+      <div class="act-main">${graphHtml(rows, bands, weeks)}</div>
       <aside class="act-side" aria-label="This week summary">
         <p class="eyebrow mono">this week</p>
         <div class="act-stats">
           <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(weekSecs)}</b></div>
           <div class="act-stat"><span class="mono dim">active days</span><b>${weekActive}/7</b></div>
-          <div class="act-stat"><span class="mono dim">video · reading</span><b>${fmtDur(weekVideo)} · ${fmtDur(weekReading)}</b></div>
+          <div class="act-stat"><span class="mono dim">most active</span><b>${mostActive}</b></div>
         </div>
       </aside>
     </div></section>
 
     <section><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
     ${inProg.length ? `<div class="coursegrid">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? "Something new is waiting in the library." : ""}</div>`}</section>
+
+    <div class="duo">
+    <section aria-label="Quick actions"><div class="sech"><h2>Quick actions</h2></div>
+    <div class="card qal">
+      <a href="/library"><span>Browse Library</span><span aria-hidden="true">→</span></a>
+      ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span>Resume ${esc(cont[0].title.slice(0, 36))}</span><span aria-hidden="true">→</span></a>` : ""}
+      ${u.role === "admin" ? `<a href="/admin"><span>Open Admin Console</span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span>View Profile</span><span aria-hidden="true">→</span></a>`}
+    </div></section>
+
+    <section aria-label="Recent activity"><div class="sech"><h2>Recent activity</h2></div>
+    <div class="card"><div class="feed">
+      ${feed.length ? feed.map((e) => `<a href="${e.href}"><span class="fi" aria-hidden="true">${e.icon}</span><span class="ft">${esc(e.text)}</span><span class="mono dim small">${fmtRel(e.ts)}</span></a>`).join("") : `<p class="dim">No activity yet — start your first lesson.</p>`}
+    </div></div></section>
+    </div>
   </div>` }));
 });
 
@@ -563,7 +618,13 @@ pages.get("/profile", needAuth, async (req, res) => {
   const st = await streaks(u.id, req.tzOffset);
   const rows = await yearActivity(u.id);
   const bands = intensityLevels(rows);
-  res.send(layout({ title: "Profile", user: u, body: `<div class="wrap narrow">
+  // Profile activity is scoped to the current month (user timezone).
+  const monthStart = dayFor(req.tzOffset).slice(0, 7) + "-01";
+  const monthName = new Date(monthStart + "T12:00:00Z").toLocaleDateString(undefined, { month: "long" });
+  const monthRows = rows.filter((r) => r.day >= monthStart);
+  const monthSecs = monthRows.reduce((a, r) => a + (r.video_secs || 0) + (r.reading_secs || 0), 0);
+  const monthActive = monthRows.filter((r) => (r.video_secs || 0) + (r.reading_secs || 0) > 0).length;
+  res.send(layout({ title: "Profile", user: u, active: "profile", body: `<div class="wrap narrow">
   <div class="phead"><div class="avatar big">${esc(initials(u.display_name))}</div>
   <div><h1>${esc(u.display_name)}</h1><p class="dim mono small">@${esc(u.username)} · ${esc(u.email)} · ${esc(u.role)}</p></div>
   <a class="btn" href="/settings">Settings</a></div>
@@ -573,14 +634,14 @@ pages.get("/profile", needAuth, async (req, res) => {
     <div class="stat"><span class="mono dim">courses done</span><b>${tot.coursesCompleted}</b></div>
     <div class="stat"><span class="mono dim">lessons done</span><b>${tot.completions}</b></div>
   </div>
-  <h2>Activity</h2><div class="card">${graphHtml(rows, bands)}</div>
+  <h2>Activity</h2><div class="card"><p class="act-meta dim small mono">${monthName} · ${fmtDur(monthSecs)} · ${monthActive} active day${monthActive === 1 ? "" : "s"}</p>${graphHtml(rows, bands, "month")}</div>
   </div>` }));
 });
 
 pages.get("/settings", needAuth, async (req, res) => {
   const u = req.user;
   const s = await get(`SELECT * FROM user_settings WHERE user_id=?`, [u.id]);
-  res.send(layout({ title: "Settings", user: u, body: `<div class="wrap narrow">
+  res.send(layout({ title: "Settings", user: u, active: "settings", body: `<div class="wrap narrow">
   <h1>Settings</h1>
   <div id="saveMsg"></div>
   <form class="card form" id="profileForm">

@@ -21,6 +21,20 @@ export function fmtDate(iso, tz = "UTC") {
     return new Date(iso).toLocaleDateString(undefined, { timeZone: tz, month: "short", day: "numeric", year: "numeric" });
   } catch { return iso?.slice(0, 10) || ""; }
 }
+export function fmtRel(iso) {
+  const t = new Date(iso).getTime();
+  if (!t) return "";
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "Yesterday";
+  if (d < 7) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 export function initials(name) {
   return String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
 }
@@ -33,6 +47,14 @@ function iconArt(course, size = 56) {
 
 export function layout({ title, user, active = "", body, extraHead = "", extraScript = "" }) {
   const isAdmin = user?.role === "admin";
+  // Sidebar lists ONLY routes that actually exist — never decorative items.
+  const nav = [
+    { id: "home", href: "/", icon: "◈", label: "Workspace" },
+    { id: "library", href: "/library", icon: "▤", label: "Library" },
+    { id: "profile", href: "/profile", icon: "◉", label: "Profile" },
+    { id: "settings", href: "/settings", icon: "⚙", label: "Settings" },
+    ...(isAdmin ? [{ id: "admin", href: "/admin", icon: "✦", label: "Admin" }] : []),
+  ];
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · Axiom</title>
@@ -44,16 +66,26 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <link rel="stylesheet" href="/css/app.css">${extraHead}</head>
 <body data-user-tz="${esc(user?.timezone || "UTC")}">
 <a class="skip" href="#main">Skip to content</a>
-<div class="shell">
-<header class="topbar"><div class="topbar-in">
+<div class="app">
+${user ? `<aside class="appnav" id="appnav" aria-label="Primary">
+<div class="appnav-h">
 <a class="brand" href="/" aria-label="Axiom home"><span class="brand-mark" aria-hidden="true">◈</span><span class="brand-name">Axiom</span><span class="brand-sub">learn</span></a>
-${user ? `<nav class="mainnav" aria-label="Primary">
-<a href="/" class="${active === "home" ? "on" : ""}">Workspace</a>
-<a href="/library" class="${active === "library" ? "on" : ""}">Library</a>
-${isAdmin ? `<a href="/admin" class="${active === "admin" ? "on" : ""}">Admin</a>` : ""}
-</nav>
+<button class="iconbtn" id="appnavToggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="appnav">⟨</button>
+</div>
+<nav aria-label="Sections"><ul>
+${nav.map((n) => `<li><a href="${n.href}" class="${active === n.id ? "on" : ""}"${active === n.id ? ` aria-current="page"` : ""}><span class="ni" aria-hidden="true">${n.icon}</span>${n.label}</a></li>`).join("")}
+</ul></nav>
+<div class="appnav-foot mono dim" aria-hidden="true">axiom · self-hosted · v1.0</div>
+</aside>` : ""}
+<div class="appmain">
+<header class="topbar"><div class="topbar-in">
+${user ? `<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button><button class="iconbtn appnav-expand" id="appnavExpand" aria-label="Expand sidebar" aria-controls="appnav">⟩</button></div>
+<form class="tsearch" action="/library" method="get" role="search">
+<span class="ts-ic" aria-hidden="true">⌕</span>
+<input name="q" placeholder="Search courses, lessons, pages…" aria-label="Search courses, lessons, pages" autocomplete="off">
+<kbd title="Focus search">Ctrl K</kbd>
+</form>
 <div class="top-actions">
-<button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button>
 <details class="acct">
 <summary aria-label="Account menu"><span class="avatar" aria-hidden="true">${esc(initials(user.display_name))}</span></summary>
 <div class="acct-menu">
@@ -62,12 +94,13 @@ ${isAdmin ? `<a href="/admin" class="${active === "admin" ? "on" : ""}">Admin</a
 <form method="post" action="/logout"><button type="submit">Sign out</button></form>
 </div>
 </details>
-</div>` : ""}
+</div>` : `<a class="brand" href="/" aria-label="Axiom home"><span class="brand-mark" aria-hidden="true">◈</span><span class="brand-name">Axiom</span><span class="brand-sub">learn</span></a>`}
 </div>
-${user ? `<nav class="mobilenav" id="mobileNav" aria-label="Mobile"><a href="/">Workspace</a><a href="/library">Library</a>${isAdmin ? `<a href="/admin">Admin</a>` : ""}<a href="/profile">Profile</a><a href="/settings">Settings</a><form method="post" action="/logout"><button>Sign out</button></form></nav>` : ""}
+${user ? `<nav class="mobilenav" id="mobileNav" aria-label="Mobile">${nav.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<form method="post" action="/logout"><button>Sign out</button></form></nav>` : ""}
 </header>
 <main id="main" class="main">${body}</main>
 <footer class="foot"><span class="mono dim">axiom · self-hosted · v1.0</span></footer>
+</div>
 </div>
 <div id="toasts" aria-live="polite"></div>
 <script src="/js/app.js" defer></script>${extraScript}</body></html>`;
@@ -78,15 +111,28 @@ export function progressBar(pct, label = "") {
   return `<div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(label || "progress")}"><i style="width:${p}%"></i></div>`;
 }
 
-export function graphHtml(rows, bands) {
-  // last 364 days grid (52 weeks x 7), GitHub-style but own identity (rounded diamonds)
+export function graphHtml(rows, bands, range = 52) {
+  // Heatmap window: last N weeks, or "month" for days from the 1st of the
+  // current month through today. Weekday + month labels are part of the same
+  // grid so columns stay aligned at any size.
+  const today = new Date();
+  let totalDays, rangeLabel, monthMode = false;
+  if (range === "month") {
+    const first = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1);
+    totalDays = Math.max(7, Math.round((today.getTime() - first) / 864e5) + 1);
+    rangeLabel = "this month";
+    monthMode = true;
+  } else {
+    const weeks = parseInt(range) || 52;
+    totalDays = Math.max(7, weeks * 7);
+    rangeLabel = `last ${weeks} weeks`;
+  }
   const byDay = new Map(rows.map((r) => [r.day, (r.video_secs || 0) + (r.reading_secs || 0)]));
   const comp = new Map(rows.map((r) => [r.day, r.completions || 0]));
   const vids = new Map(rows.map((r) => [r.day, r.video_secs || 0]));
   const reads = new Map(rows.map((r) => [r.day, r.reading_secs || 0]));
-  const today = new Date();
   const days = [];
-  for (let i = 363; i >= 0; i--) {
+  for (let i = totalDays - 1; i >= 0; i--) {
     const d = new Date(today.getTime() - i * 864e5);
     days.push(d.toISOString().slice(0, 10));
   }
@@ -96,7 +142,21 @@ export function graphHtml(rows, bands) {
   for (let i = 0; i < startPad; i++) cells.push(null);
   for (const d of days) cells.push(d);
   while (cells.length % 7) cells.push(null);
-  let html = `<div class="graph" role="img" aria-label="Learning activity graph"><div class="graph-grid">`;
+  const cols = Math.ceil(cells.length / 7);
+  const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Month labels: only when at least 5 week-columns apart. Short month names
+  // are ~40px wide, so anything closer ("Sep Oct") collides into one blob —
+  // especially at small cell sizes where 3 columns ≈ 40px is borderline.
+  let months = "";
+  let prevM = "";
+  let prevC = -99;
+  for (let c = 0; c < cols; c++) {
+    const first = cells.slice(c * 7, c * 7 + 7).find(Boolean);
+    const m = first ? new Date(first + "T12:00:00Z").toLocaleDateString(undefined, { month: "short" }) : "";
+    if (m && m !== prevM && c - prevC >= 5) { months += `<span style="grid-column:${c + 2}">${esc(m)}</span>`; prevM = m; prevC = c; }
+  }
+  let html = `<div class="graph${monthMode ? " graph-month" : ""}" role="img" aria-label="Learning activity graph, ${rangeLabel}"><div class="graph-months" aria-hidden="true">${months}</div><div class="graph-grid">`;
+  WD.forEach((w, i) => { html += `<span class="gday" style="grid-row:${i + 1}">${w}</span>`; });
   for (const d of cells) {
     if (!d) { html += `<span class="cell empty"></span>`; continue; }
     const tot = byDay.get(d) || 0;

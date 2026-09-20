@@ -14,26 +14,48 @@
 /* Scrollbars: styled per actual scroll container only (page, sidebar,
    tables, code blocks, table scroll). Thin, dark, low-contrast thumb that
    brightens on hover — consistent with Axiom. */
-html,.side,.tablewrap,.prose pre,.tscroll{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
-html::-webkit-scrollbar,.side::-webkit-scrollbar,.tablewrap::-webkit-scrollbar,.prose pre::-webkit-scrollbar,.tscroll::-webkit-scrollbar{width:10px;height:10px}
-html::-webkit-scrollbar-track,.side::-webkit-scrollbar-track,.tablewrap::-webkit-scrollbar-track,.prose pre::-webkit-scrollbar-track,.tscroll::-webkit-scrollbar-track{background:transparent}
-html::-webkit-scrollbar-corner,.side::-webkit-scrollbar-corner,.tablewrap::-webkit-scrollbar-corner,.prose pre::-webkit-scrollbar-corner,.tscroll::-webkit-scrollbar-corner{background:transparent}
-html::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb,.prose pre::-webkit-scrollbar-thumb,.tscroll::-webkit-scrollbar-thumb{background-color:var(--border2);border-radius:99px;border:3px solid transparent;background-clip:content-box}
-html::-webkit-scrollbar-thumb:hover,.side::-webkit-scrollbar-thumb:hover,.tablewrap::-webkit-scrollbar-thumb:hover,.prose pre::-webkit-scrollbar-thumb:hover,.tscroll::-webkit-scrollbar-thumb:hover{background-color:var(--muted);border:3px solid transparent;background-clip:content-box}
+html,.appnav,.side,.tablewrap,.prose pre,.tscroll{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+html::-webkit-scrollbar,.appnav::-webkit-scrollbar,.side::-webkit-scrollbar,.tablewrap::-webkit-scrollbar,.prose pre::-webkit-scrollbar,.tscroll::-webkit-scrollbar{width:10px;height:10px}
+html::-webkit-scrollbar-track,.appnav::-webkit-scrollbar-track,.side::-webkit-scrollbar-track,.tablewrap::-webkit-scrollbar-track,.prose pre::-webkit-scrollbar-track,.tscroll::-webkit-scrollbar-track{background:transparent}
+html::-webkit-scrollbar-corner,.appnav::-webkit-scrollbar-corner,.side::-webkit-scrollbar-corner,.tablewrap::-webkit-scrollbar-corner,.prose pre::-webkit-scrollbar-corner,.tscroll::-webkit-scrollbar-corner{background:transparent}
+html::-webkit-scrollbar-thumb,.appnav::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb,.prose pre::-webkit-scrollbar-thumb,.tscroll::-webkit-scrollbar-thumb{background-color:var(--border2);border-radius:99px;border:3px solid transparent;background-clip:content-box}
+html::-webkit-scrollbar-thumb:hover,.appnav::-webkit-scrollbar-thumb:hover,.side::-webkit-scrollbar-thumb:hover,.tablewrap::-webkit-scrollbar-thumb:hover,.prose pre::-webkit-scrollbar-thumb:hover,.tscroll::-webkit-scrollbar-thumb:hover{background-color:var(--muted);border:3px solid transparent;background-clip:content-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.6;
-  background-image:radial-gradient(1200px 500px at 80% -10%,rgba(91,124,255,.07),transparent),linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);background-size:auto,44px 44px,44px 44px}
+  background-image:radial-gradient(1200px 500px at 80% -10%,rgba(91,124,255,.06),transparent),linear-gradient(rgba(255,255,255,.01) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.01) 1px,transparent 1px);background-size:auto,44px 44px,44px 44px}
 .mono{font-family:var(--mono);font-size:.82em;letter-spacing:.02em}.dim{color:var(--text2)}.small{font-size:.85em}
 h1{font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:-.02em;margin:.2em 0}h2{font-size:1.05rem;letter-spacing:-.01em}h3{font-size:.95rem}
 a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 .skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;z-index:99}
-.shell{min-height:100vh;display:flex;flex-direction:column}
+/* app shell: primary sidebar + content column */
+.app{display:flex;align-items:stretch;min-height:100vh}
+.appnav{width:248px;flex:none;position:sticky;top:0;height:100vh;overflow-x:hidden;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:1.1rem .9rem;display:flex;flex-direction:column;gap:1.2rem}
+.appnav nav ul{list-style:none;margin:0;padding:0;display:grid;gap:.15rem}
+.appnav nav a{display:flex;gap:.7rem;align-items:center;padding:.5rem .7rem;border-radius:10px;color:var(--text2);text-decoration:none;font-weight:500;font-size:.92rem}
+.appnav nav a:hover{background:var(--surface);color:var(--text)}
+.appnav nav a.on{background:rgba(91,124,255,.12);color:var(--text);box-shadow:inset 2px 0 0 var(--accent)}
+.appnav .ni{width:1.4em;text-align:center;color:var(--muted);font-size:.95rem}
+.appnav a.on .ni{color:var(--accent)}
+.appnav-foot{margin-top:auto;font-size:.72rem}
+.appnav-h{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+/* collapsed app sidebar (desktop toggle) + floating corner expand button */
+body.nav-collapsed .appnav{display:none}
+.appmain{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{position:sticky;top:0;z-index:20;background:rgba(8,9,11,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
-.topbar-in{max-width:var(--content-max);margin:0 auto;padding:.7rem var(--content-px);display:flex;align-items:center;gap:1.2rem}
+.topbar-in{max-width:var(--content-max);margin:0 auto;padding:.6rem var(--content-px);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.8rem}
+.topbar-left{display:flex;align-items:center;gap:.5rem;justify-self:start;min-width:0}
+/* sidebar expand lives in the header-left zone, only when collapsed */
+.appnav-expand{display:none}
+body.nav-collapsed .appnav-expand{display:inline-block}
+/* command-style search surface (real GET search on the library) */
+.tsearch{width:min(560px,100%);justify-self:center;margin:0;display:flex;align-items:center;gap:.55rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.42rem .7rem}
+.tsearch:focus-within{border-color:var(--accent)}
+.ts-ic{color:var(--muted)}
+.tsearch input{flex:1;min-width:0;background:none;border:0;color:var(--text);font:inherit;font-size:.88rem;outline:none}
+.tsearch input::placeholder{color:var(--muted)}
+.tsearch kbd{font-family:var(--mono);font-size:.68rem;color:var(--muted);border:1px solid var(--border2);border-radius:6px;padding:.1rem .4rem;white-space:nowrap}
 .brand{display:flex;align-items:center;gap:.45rem;text-decoration:none;font-weight:800;letter-spacing:-.02em}
 .brand-mark{color:var(--accent);font-size:1.2rem}.brand-sub{color:var(--muted);font-weight:500}.brand.big{font-size:1.4rem}
-.mainnav{display:flex;gap:.3rem}.mainnav a{padding:.4rem .8rem;border-radius:9px;text-decoration:none;color:var(--text2);font-weight:500}
-.mainnav a.on,.mainnav a:hover{background:var(--surface);color:var(--text)}
-.top-actions{margin-left:auto;display:flex;align-items:center;gap:.6rem}
+.top-actions{justify-self:end;display:flex;align-items:center;gap:.6rem}
 .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--violet));display:grid;place-items:center;font-weight:700;font-size:.8rem;text-decoration:none}
 .avatar.big{width:64px;height:64px;font-size:1.2rem}
 .acct{position:relative}
@@ -62,13 +84,14 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
    fills its area with square cells at any desktop width; fixed-size fallback
    for older engines. Card never scrolls on desktop. */
 .act{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:1.4rem;align-items:center}
-.act-main{min-width:0;container-type:inline-size}
+.act-main{min-width:0}
 .act-side{border-left:1px solid var(--border);padding-left:1.4rem;display:grid;gap:.8rem;align-content:center;min-width:0}
 .act-side .eyebrow{font-size:.72rem}
 .act-stats{display:grid;gap:.7rem}
 .act-stat{display:grid;gap:.1rem}
 .act-stat span{font-size:.72rem}
 .act-stat b{font-size:1.05rem;font-weight:700;letter-spacing:-.01em}
+.act-meta{margin:0 0 .7rem}
 @media (max-width:760px){
   .act{grid-template-columns:minmax(0,1fr)}
   .act-side{border-left:0;border-top:1px solid var(--border);padding-left:0;padding-top:1rem}
@@ -77,13 +100,41 @@ a{color:inherit}.link{color:var(--accent);text-decoration:none;font-size:.9rem}
 /* graph: a visualization, not a scrollable panel. Fixed compact cells by
    default; inside the workspace dashboard the cells scale with their region
    (container query) to fill the available width while staying square. */
-.graph{overflow:visible;padding-bottom:.25rem}
-.graph-grid{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:11px;gap:3px;width:max-content;justify-content:start;align-content:start}
+/* graph: a visualization, not a scrollable panel. The graph is its own
+   size container, so cells scale to fit wherever it renders (wide workspace
+   card, narrow profile card) while staying square; fixed-size fallback for
+   older engines. */
+.graph{overflow:visible;padding-bottom:.25rem;container-type:inline-size}
+.graph-grid{display:grid;grid-template-columns:auto;grid-template-rows:repeat(7,var(--cell,11px));grid-auto-flow:column;grid-auto-columns:var(--cell,11px);gap:5px;width:max-content;justify-content:start;align-content:start}
 .graph-grid .cell{border-radius:3px}
+/* month view (profile): few columns, so fixed comfortable cells instead of
+   the fill-width formula — compact mini-month, card wraps it tightly */
+.graph.graph-month{--cell:14px}
 @supports (width:1cqw){
-  .act-main .graph-grid{--cell:clamp(9px,(100cqw - 58*4px)/59,17px);grid-template-rows:repeat(7,var(--cell));grid-auto-columns:var(--cell);gap:4px}
+  .graph{--cell:clamp(7px,(100cqw - 58*5px)/59,17px)}
 }
 @media (max-width:900px){.graph{overflow-x:auto;overflow-y:clip;padding-bottom:.5rem}}
+/* activity range selector (real navigation, not decoration) */
+.range{margin:0}
+.range select{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:.35rem .6rem;font:inherit;font-size:.82rem;cursor:pointer}
+.act-sub{margin:-.25rem 0 .75rem}
+/* heatmap weekday + month labels share the cell sizing so columns align */
+.gday{grid-column:1;align-self:center;width:2.4em;padding-right:.5rem;overflow:hidden;text-overflow:clip;white-space:nowrap;font-family:var(--mono);font-size:.66rem;color:var(--muted)}
+.graph-months{display:grid;grid-auto-flow:column;grid-auto-columns:var(--cell,11px);gap:5px;padding-left:calc(2.4em + .5rem + 5px);margin-bottom:.35rem;min-width:0}
+.graph-months span{font-family:var(--mono);font-size:.66rem;color:var(--muted);white-space:nowrap}
+/* workspace bottom row: quick actions + recent activity */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.qal{display:grid}
+.qal a{display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.6rem .2rem;color:var(--text);text-decoration:none;font-weight:500;font-size:.9rem;border-bottom:1px solid var(--border)}
+.qal a:last-child{border-bottom:0}
+.qal a:hover{color:var(--accent)}
+.feed{display:grid}
+.feed a{display:flex;gap:.6rem;align-items:baseline;padding:.5rem .2rem;text-decoration:none;border-bottom:1px solid var(--border);min-width:0}
+.feed a:last-child{border-bottom:0}
+.feed a:hover .ft{color:var(--accent)}
+.fi{color:var(--muted);font-size:.8rem}
+.ft{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.88rem}
+.up{color:var(--accent2)}.down{color:var(--danger)}
 .eyebrow{text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0}
 .statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin:.8rem 0}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.8rem 1rem}
@@ -224,4 +275,5 @@ li.res a{gap:.5rem}.attach{margin-top:.4rem}
 @keyframes tin{from{opacity:0;transform:translateY(8px)}}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-@media (max-width:900px){.learn{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--border)}.mainnav{display:none}.only-mobile{display:inline-block}.chead{flex-direction:column}}
+@media (max-width:900px){.learn{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--border)}.only-mobile{display:inline-block}.chead{flex-direction:column}.appnav{display:none}.appnav-expand{display:none!important}.duo{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.tsearch kbd{display:none}.tsearch{max-width:none}}
