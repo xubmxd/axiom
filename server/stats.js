@@ -67,7 +67,8 @@ export function intensityLevels(rows) {
   return { q1, q2, q3 };
 }
 export function levelFor(totalSecs, { q1, q2, q3 }) {
-  if (!totalSecs || totalSecs < 60) return 0;
+  if (!totalSecs) return 0;
+  if (totalSecs < 60) return 1; // any genuine activity must be visible (GitHub colors any contribution)
   if (totalSecs < q1) return 1;
   if (totalSecs < q2) return 2;
   if (totalSecs < q3) return 3;
