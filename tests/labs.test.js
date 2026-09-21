@@ -268,3 +268,35 @@ describe("image build automation", () => {
     assert.equal(r.built, 0);
   });
 });
+
+describe("docker provider failure hygiene", () => {
+  it("fails fast with a clear error and no orphans when the app cannot join the lab net", async () => {
+    const orch = await import("../server/labs/orchestrator.js");
+    if (!await orch.dockerAvailable()) {
+      console.log("  (skip: no Docker daemon)");
+      return;
+    }
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const run = promisify(execFile);
+    const names = async (args) => (await run("docker", args).catch(() => ({ stdout: "" }))).stdout;
+    const beforeNets = await names(["network", "ls", "--format", "{{.Name}}"]);
+    const beforePs = await names(["ps", "-a", "--format", "{{.Names}}"]);
+    process.env.AXIOM_SELF_CONTAINER = "axiom-no-such-container-xyz";
+    try {
+      const svc = await import("../server/labs/service.js");
+      const lab = await svc.getLab("slug", "m6-6-2-1-whois-vm1");
+      await assert.rejects(
+        orch.providerFor("docker").provision(lab, { id: `li_testjoin_${Date.now().toString(36)}` }),
+        /could not join lab network/
+      );
+    } finally {
+      delete process.env.AXIOM_SELF_CONTAINER;
+    }
+    const afterNets = await names(["network", "ls", "--format", "{{.Name}}"]);
+    const afterPs = await names(["ps", "-a", "--format", "{{.Names}}"]);
+    const leaked = (afterNets + afterPs).split("\n").filter((n) => n.includes("axiom-lab-") || n.includes("axiom-li"));
+    const preexisting = (beforeNets + beforePs).split("\n");
+    assert.deepEqual(leaked.filter((n) => !preexisting.includes(n)), [], "orphaned lab container/network left behind");
+  });
+});

@@ -217,22 +217,32 @@ const dockerProvider = {
       throw new Error("Target started but its service port was not mapped.");
     }
     const hostPort = parseInt(m[1], 10);
-    // When Axiom itself runs in a container, join this lab network so the
-    // terminal gateway and health checks can reach the target directly.
-    // (On the Docker host this step is skipped — bridge IPs are routable.)
+    // Readiness depends on where Axiom itself runs:
+    // - inside a container (AXIOM_SELF_CONTAINER set): join the lab network
+    //   and poll the target's DIRECT address. The published 127.0.0.1 port
+    //   is bound on the Docker host, not inside this container, so polling
+    //   it from here would fail forever.
+    // - on the Docker host: the loopback mapping is reachable; poll it.
     // The lab target itself stays on its isolated network either way.
     const selfContainer = process.env.AXIOM_SELF_CONTAINER || "";
-    let directOk = false;
-    if (selfContainer) {
-      try {
-        await docker(["network", "connect", networkName, selfContainer], 15000);
-        await whoisQuery(targetIp, 43, LAB_DOMAIN, 5000);
-        directOk = true;
-      } catch (e) {
-        log("lab.docker.connect", { net: networkName, error: String(e?.message || e).slice(0, 200) });
+    try {
+      if (selfContainer) {
+        try {
+          await docker(["network", "connect", networkName, selfContainer], 15000);
+        } catch (e) {
+          throw new Error(`Axiom could not join lab network as ${selfContainer} — check AXIOM_SELF_CONTAINER. ${String(e?.message || e).slice(0, 160)}`);
+        }
+        await waitForWhois(targetIp, 43);
+      } else {
+        await waitForWhois("127.0.0.1", hostPort);
       }
+    } catch (e) {
+      // Never leave orphans behind a failed start.
+      if (selfContainer) await docker(["network", "disconnect", "-f", networkName, selfContainer], 15000).catch(() => {});
+      await docker(["rm", "-f", cname], 30000).catch(() => {});
+      await docker(["network", "rm", networkName], 30000).catch(() => {});
+      throw e;
     }
-    if (!directOk) await waitForWhois("127.0.0.1", hostPort);
     return {
       networkName, networkCidr: cidr, targetIp, targetPort: 43,
       hostEndpoint: `127.0.0.1:${hostPort}`, providerReference: cname,
@@ -462,6 +472,11 @@ export async function reconcileOnBoot() {
         if (!alive) {
           await destroyInstance(inst).catch(() => {});
           await forceInstanceState(inst.id, { status: "failed", error: "Target did not survive restart." });
+        } else if (process.env.AXIOM_SELF_CONTAINER && inst.network_name) {
+          // A recreated app container loses its lab-network attachments;
+          // re-join so the terminal gateway keeps reaching the target.
+          await docker(["network", "connect", inst.network_name, process.env.AXIOM_SELF_CONTAINER], 15000).catch((e) =>
+            log("lab.reconcile.connect", { instance: inst.id, error: String(e?.message || e).slice(0, 200) }));
         }
       } else if (inst.provider !== "docker") {
         await forceInstanceState(inst.id, { status: "failed", error: "Host restarted; start the lab again." });
