@@ -305,10 +305,13 @@ describe("training-path icons", () => {
   const ONE_PX_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   let dir, oldEnv;
   before(async () => {
-    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
     dir = mkdtempSync(path.join(os.tmpdir(), "axiom-icons-"));
-    writeFileSync(path.join(dir, "core.png"), ONE_PX_PNG);
-    writeFileSync(path.join(dir, "extra.svg"), "<svg></svg>");
+    mkdirSync(path.join(dir, "core"));
+    mkdirSync(path.join(dir, "extra"));
+    writeFileSync(path.join(dir, "core", "icon.png"), ONE_PX_PNG);
+    writeFileSync(path.join(dir, "extra", "icon.logo.svg"), "<svg></svg>");
+    writeFileSync(path.join(dir, "extra", "notes.txt"), "not an image");
     oldEnv = process.env.LAB_ICONS_DIR;
     process.env.LAB_ICONS_DIR = dir;
   });
