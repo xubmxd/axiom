@@ -29,13 +29,33 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ---------- copy buttons ----------
-  wrap.addEventListener("click", (e) => {
+  // Async clipboard needs a secure context (HTTPS/localhost); plain-HTTP
+  // LAN access falls back to the legacy execCommand path.
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      throw new Error("async clipboard unavailable");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
+      ta.remove();
+      return ok;
+    }
+  }
+  wrap.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-copy]");
     if (!b) return;
-    const text = b.dataset.copy || "";
-    (navigator.clipboard?.writeText(text) || Promise.reject())
-      .then(() => toast("Copied"))
-      .catch(() => toast("Copy failed"));
+    toast(await copyText(b.dataset.copy || "") ? "Copied" : "Copy failed — select and copy manually");
   });
 
   const msgEl = wrap.querySelector("[data-action-msg]");

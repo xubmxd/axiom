@@ -431,9 +431,25 @@ function ownOrAdmin(req, inst) {
   return inst && (inst.user_id === req.user.id || req.user.role === "admin");
 }
 
+// Serialize lifecycle ops per user+lab. Docker calls take tens of seconds
+// and concurrent start/stop/reset on one instance interleaved into
+// Illegal-transition 500s ("fails once, works on retry"). Queued ops run
+// one at a time instead; single-process scope is sufficient for Axiom.
+const labLocks = new Map();
+export async function withLabLock(key, fn) {
+  const prev = labLocks.get(key) || Promise.resolve();
+  let release;
+  const cur = new Promise((r) => (release = r));
+  labLocks.set(key, cur);
+  try { await prev; } catch {}
+  try { return await fn(); }
+  finally { release(); if (labLocks.get(key) === cur) labLocks.delete(key); }
+}
+
 labApi.post("/labs/:id/start", ah(async (req, res) => {
   const lab = await resolveLab(req.params.id);
   if (!lab || lab.status !== "active") return res.status(404).json({ error: "Lab not found." });
+  return withLabLock(`${req.user.id}:${lab.id}`, async () => {
   const existing = await svc.activeInstance(req.user.id, lab.id);
   if (existing) return res.json({ ok: true, reused: true, instance: pubInstance(existing), progress: await svc.labProgress(req.user.id, lab.id) });
   let provider;
@@ -454,28 +470,35 @@ labApi.post("/labs/:id/start", ah(async (req, res) => {
     return res.status(500).json({ error: "Could not start the lab target. Please retry.", instance: pubInstance(inst) });
   }
   res.json({ ok: true, instance: pubInstance(inst), progress: await svc.labProgress(req.user.id, lab.id) });
+  });
 }));
 
 labApi.post("/labs/:id/stop", ah(async (req, res) => {
   const lab = await resolveLab(req.params.id);
   if (!lab) return res.status(404).json({ error: "Lab not found." });
+  return withLabLock(`${req.user.id}:${lab.id}`, async () => {
   const inst = await svc.activeInstance(req.user.id, lab.id) || await svc.latestInstance(req.user.id, lab.id);
   if (!inst || !ownOrAdmin(req, inst)) return res.status(404).json({ error: "No lab session to stop." });
-  if (!["provisioning", "running", "resetting", "failed"].includes(inst.status)) {
+  if (inst.status === "stopped") {
     return res.json({ ok: true, instance: pubInstance(inst) });
   }
   let cur = inst;
-  try { cur = await svc.setInstanceStatus(cur, "stopping"); } catch { /* already terminal */ }
+  if (cur.status !== "stopping") {
+    try { cur = await svc.setInstanceStatus(cur, "stopping"); }
+    catch { cur = await svc.getInstance(cur.id) || cur; } // raced transition: work with fresh state
+  }
   await destroyInstance(cur);
-  cur = await svc.setInstanceStatus(cur, "stopped").catch(() => cur);
+  try { cur = await svc.setInstanceStatus(cur, "stopped"); } catch { /* force below covers it */ }
   cur = await svc.forceInstanceState(cur.id, { status: "stopped", provider_reference: "", network_name: "", target_ip: "", host_endpoint: "", stopped_at: new Date().toISOString() });
   log("lab.stop", { user: req.user.id, lab: lab.id });
   res.json({ ok: true, instance: pubInstance(cur), progress: await svc.labProgress(req.user.id, lab.id) });
+  });
 }));
 
 labApi.post("/labs/:id/reset", ah(async (req, res) => {
   const lab = await resolveLab(req.params.id);
   if (!lab) return res.status(404).json({ error: "Lab not found." });
+  return withLabLock(`${req.user.id}:${lab.id}`, async () => {
   const inst = await svc.activeInstance(req.user.id, lab.id);
   if (!inst || !ownOrAdmin(req, inst)) return res.status(404).json({ error: "Start the lab before resetting it." });
   if (inst.status !== "running") return res.status(409).json({ error: `Cannot reset while ${inst.status}.` });
@@ -495,6 +518,7 @@ labApi.post("/labs/:id/reset", ah(async (req, res) => {
     return res.status(500).json({ error: "Reset failed. The previous environment was destroyed — try starting again.", instance: pubInstance(cur) });
   }
   res.json({ ok: true, instance: pubInstance(cur), progress: await svc.labProgress(req.user.id, lab.id) });
+  });
 }));
 
 labApi.post("/labs/:id/submit", ah(async (req, res) => {

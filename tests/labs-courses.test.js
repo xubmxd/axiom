@@ -277,3 +277,81 @@ describe("course routes (http)", () => {
     assert.equal((await r.json()).instance.status, "stopped");
   }, { timeout: 60000 });
 });
+
+describe("lifecycle concurrency + stop recovery (http)", () => {
+  const PORT = 3458;
+  const BASE = `http://127.0.0.1:${PORT}`;
+  let child, cookie, labId;
+  before(async () => {
+    const { spawn } = await import("node:child_process");
+    child = spawn("node", ["server/index.js"], {
+      cwd: REPO, env: { ...process.env, PORT: String(PORT), DATA_DIR: TMP, LAB_PROVIDER: "local" },
+      stdio: "ignore",
+    });
+    const deadline = Date.now() + 20000;
+    for (;;) {
+      try { const r = await fetch(`${BASE}/login`); if (r.ok) break; } catch {}
+      if (Date.now() > deadline) throw new Error("test server did not boot");
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    const db = await import("../server/db.js");
+    try { await db.initDb(); } catch {}
+    const { createUser } = await import("../server/auth.js");
+    let user;
+    try {
+      user = await createUser({ username: "racetester", email: "race@test.local", displayName: "R", password: "password12345" });
+    } catch {
+      user = await db.get(`SELECT * FROM users WHERE username=?`, ["racetester"]);
+    }
+    const r = await fetch(`${BASE}/login`, {
+      method: "POST", redirect: "manual",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ identifier: "racetester", password: "password12345" }),
+    });
+    assert.equal(r.status, 302);
+    cookie = (r.headers.get("set-cookie") || "").split(";")[0];
+    const labsRes = await fetch(`${BASE}/api/labs`, { headers: { Cookie: cookie } });
+    labId = (await labsRes.json()).labs[0].id;
+  });
+  after(() => { try { child.kill(); } catch {} });
+
+  const post = (p, body) => fetch(`${BASE}${p}`, {
+    method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  it("concurrent double-stop both succeed and leave one stopped instance", async () => {
+    let r = await post(`/api/labs/${labId}/start`);
+    assert.equal(r.status, 200);
+    const [a, b] = await Promise.all([
+      post(`/api/labs/${labId}/stop`).then((x) => x.json()),
+      post(`/api/labs/${labId}/stop`).then((x) => x.json()),
+    ]);
+    assert.ok(a.ok && b.ok);
+    r = await post(`/api/labs/${labId}/stop`);
+    assert.equal((await r.json()).instance.status, "stopped");
+  });
+
+  it("recovers an instance stuck in stopping", async () => {
+    const svc = await import("../server/labs/service.js");
+    let r = await post(`/api/labs/${labId}/start`);
+    const inst = (await r.json()).instance;
+    await svc.forceInstanceState(inst.id, { status: "stopping" });
+    r = await post(`/api/labs/${labId}/stop`);
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).instance.status, "stopped");
+  });
+
+  it("withLabLock serializes concurrent work per key", async () => {
+    const { withLabLock } = await import("../server/routes-labs.js");
+    const order = [];
+    const slow = new Promise((res) => setTimeout(() => { order.push("slow"); res("s"); }, 60));
+    const first = withLabLock("k1", () => slow);
+    const second = withLabLock("k1", async () => { order.push("fast"); return "f"; });
+    assert.deepEqual(await Promise.all([first, second]), ["s", "f"]);
+    assert.deepEqual(order, ["slow", "fast"]);
+    // different keys run independently
+    const both = await Promise.all([withLabLock("a", async () => 1), withLabLock("b", async () => 2)]);
+    assert.deepEqual(both, [1, 2]);
+  });
+});
