@@ -505,7 +505,13 @@ labApi.post("/labs/:id/reset", ah(async (req, res) => {
   if (!lab) return res.status(404).json({ error: "Lab not found." });
   return withLabLock(`${req.user.id}:${lab.id}`, async () => {
   const inst = await svc.activeInstance(req.user.id, lab.id);
-  if (!inst || !ownOrAdmin(req, inst)) return res.status(404).json({ error: "Start the lab before resetting it." });
+  if (!inst || !ownOrAdmin(req, inst)) {
+    const latest = await svc.latestInstance(req.user.id, lab.id);
+    if (latest && ownOrAdmin(req, latest)) {
+      return res.status(409).json({ error: "Lab is stopped. Start it before resetting." });
+    }
+    return res.status(404).json({ error: "Start the lab before resetting it." });
+  }
   if (inst.status !== "running") return res.status(409).json({ error: `Cannot reset while ${inst.status}.` });
   let cur = await svc.setInstanceStatus(inst, "resetting");
   await destroyInstance(cur);

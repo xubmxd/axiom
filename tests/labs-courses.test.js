@@ -342,6 +342,14 @@ describe("lifecycle concurrency + stop recovery (http)", () => {
     assert.equal((await r.json()).instance.status, "stopped");
   });
 
+  it("reset on a stopped lab explains stopped (not a generic 404)", async () => {
+    let r = await post(`/api/labs/${labId}/stop`); // ensure stopped
+    assert.equal((await r.json()).instance.status, "stopped");
+    r = await post(`/api/labs/${labId}/reset`);
+    assert.equal(r.status, 409);
+    assert.match((await r.json()).error, /stopped/i);
+  });
+
   it("withLabLock serializes concurrent work per key", async () => {
     const { withLabLock } = await import("../server/routes-labs.js");
     const order = [];

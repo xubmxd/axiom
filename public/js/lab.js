@@ -61,6 +61,37 @@ document.addEventListener("DOMContentLoaded", () => {
   const msgEl = wrap.querySelector("[data-action-msg]");
   const say = (t) => { if (msgEl) msgEl.textContent = t; };
 
+  // ---------- stale-page guard ----------
+  // The page is server-rendered: if the lab changed state elsewhere (other
+  // tab, back-forward cache restore, a request lost to a reload), the
+  // buttons no longer match reality — e.g. a stale Reset hits a stopped lab.
+  // Reload on bfcache restore, and poll the true status in the background:
+  // on mismatch offer a reload (never force it — notes/terminal hold state).
+  window.addEventListener("pageshow", (e) => { if (e.persisted) location.reload(); });
+  let stalePrompted = false;
+  setInterval(async () => {
+    if (stalePrompted || document.hidden) return;
+    try {
+      const r = await fetch(`/api/labs/${encodeURIComponent(labId)}/status`);
+      const j = await r.json().catch(() => ({}));
+      const serverStatus = j.instance ? j.instance.status : "stopped";
+      if (serverStatus !== wrap.dataset.status) {
+        stalePrompted = true;
+        toast("Lab status changed — reload for the current state");
+        if (msgEl) {
+          msgEl.innerHTML = "";
+          const span = document.createElement("span");
+          span.textContent = "Lab status changed elsewhere. ";
+          const btn = document.createElement("button");
+          btn.className = "btn xs";
+          btn.textContent = "Reload";
+          btn.onclick = () => location.reload();
+          msgEl.append(span, btn);
+        }
+      }
+    } catch { /* next poll */ }
+  }, 30000);
+
   // ---------- lifecycle (authoritative reload after state change) ----------
   // Docker teardown can take a minute on a slow daemon, and the request may
   // be queued behind another op — so a timed-out request does NOT mean the
