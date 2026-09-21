@@ -62,7 +62,9 @@ export async function seedFromDefinitions(root) {
       seenTargets.add(t.name);
       const ex = await get(`SELECT * FROM lab_targets WHERE lab_id=? AND name=?`, [lab.id, t.name]);
       const ports = JSON.stringify(t.ports || (t.type === "whois-server" ? [43] : []));
-      const meta = JSON.stringify(t.metadata || {});
+      // Optional `build` on a target names its docker build context relative
+      // to lab-images/ (used by boot-time image warmup + on-demand builds).
+      const meta = JSON.stringify({ ...(t.metadata || {}), ...(t.build ? { build: t.build } : {}) });
       if (!ex) {
         await run(`INSERT INTO lab_targets(id, lab_id, name, hostname, target_type, os, image_reference, network_role, service_ports, metadata_json, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
           [uid("lt"), lab.id, t.name, t.hostname || "", t.type || "generic", t.os || "Linux",

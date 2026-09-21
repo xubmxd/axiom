@@ -105,6 +105,71 @@ async function docker(args, timeout = 60_000) {
   return execFileAsync("docker", args, { timeout });
 }
 
+// Build contexts for images that predate the `build` target field.
+// (Kept so existing definitions keep working unchanged.)
+const LEGACY_BUILD_CONTEXTS = {
+  "axiom-lab-whois-vm1:latest": "lab-images/m6/whois-vm1",
+};
+
+// Resolve where `docker build` should run for an image. Pure + exported for tests.
+export function resolveBuildContext(image, metadataJson) {
+  try {
+    const meta = JSON.parse(metadataJson || "{}");
+    if (meta && typeof meta.build === "string" && meta.build) {
+      const rel = meta.build.replace(/^\//, "");
+      return path.resolve("lab-images", rel);
+    }
+  } catch { /* fall through to legacy map */ }
+  const legacy = LEGACY_BUILD_CONTEXTS[image];
+  return legacy ? path.resolve(legacy) : null;
+}
+
+async function imageExists(image) {
+  try { await docker(["image", "inspect", image], 15000); return true; }
+  catch { return false; }
+}
+
+async function ensureImage(image, metadataJson) {
+  if (await imageExists(image)) return { built: false };
+  const ctx = resolveBuildContext(image, metadataJson);
+  if (!ctx) throw new Error(`Image ${image} is missing and no build context is known. Pre-build it into the daemon.`);
+  log("lab.image.build", { image });
+  await docker(["build", "-t", image, ctx], 180_000);
+  return { built: true };
+}
+
+// Boot-time warmup: pre-build every missing lab image in the background so
+// the first lab start never waits on a build. Never throws, never blocks
+// boot; a no-daemon host simply skips (local provider needs no images).
+export async function warmupLabImages() {
+  const summary = { checked: 0, built: 0, skipped: 0 };
+  try {
+    if (!await dockerAvailable()) return { ...summary, daemon: false };
+    const { all } = await import("../db.js");
+    const rows = await all(`SELECT DISTINCT image_reference, metadata_json FROM lab_targets WHERE image_reference<>''`);
+    for (const row of rows) {
+      summary.checked++;
+      try {
+        if (await imageExists(row.image_reference)) continue;
+        const ctx = resolveBuildContext(row.image_reference, row.metadata_json);
+        if (!ctx) { summary.skipped++; continue; }
+        try { await import("node:fs").then((m) => m.default.statSync(ctx)); }
+        catch { summary.skipped++; continue; }
+        log("lab.image.build", { image: row.image_reference, warmup: true });
+        await docker(["build", "-t", row.image_reference, ctx], 180_000);
+        summary.built++;
+      } catch (e) {
+        summary.skipped++;
+        log("lab.warmup.fail", { image: row.image_reference, error: String(e?.message || e).slice(0, 200) });
+      }
+    }
+    return { ...summary, daemon: true };
+  } catch (e) {
+    log("lab.warmup.error", { error: String(e?.message || e).slice(0, 200) });
+    return { ...summary, daemon: false };
+  }
+}
+
 async function pickDockerSubnet() {
   const used = new Set();
   try {
@@ -119,23 +184,13 @@ async function pickDockerSubnet() {
   throw new Error("Could not allocate an isolated lab subnet.");
 }
 
-async function ensureWhoisImage(image) {
-  try {
-    await docker(["image", "inspect", image], 15000);
-    return;
-  } catch {}
-  log("lab.image.build", { image });
-  const ctx = path.resolve("lab-images/m6/whois-vm1");
-  await docker(["build", "-t", image, ctx], 180_000);
-}
-
 const dockerProvider = {
   name: "docker",
   async provision(lab, instance) {
     const metas = await getLabTargetsMeta(lab.id);
     const target = metas.find((t) => t.target_type === "whois-server") || metas[0] || {};
     const image = target.image_reference || "axiom-lab-whois-vm1:latest";
-    await ensureWhoisImage(image);
+    await ensureImage(image, target.metadata_json);
     const { name: networkName, cidr, targetIp } = await pickDockerSubnet();
     await docker(["network", "create", "--driver", "bridge", `--subnet=${cidr}`, "--internal=false", networkName], 30000);
     const cname = safeName("axiom", instance.id);

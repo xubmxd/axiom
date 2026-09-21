@@ -239,3 +239,32 @@ describe("orchestrator local-provider smoke test", () => {
     }
   });
 });
+
+describe("image build automation", () => {
+  it("resolves build contexts from metadata, legacy map, or nothing", async () => {
+    const { resolveBuildContext } = await import("../server/labs/orchestrator.js");
+    assert.equal(resolveBuildContext("img:x", JSON.stringify({ build: "m6/whois-vm1" })), path.resolve(REPO, "lab-images/m6/whois-vm1"));
+    assert.equal(resolveBuildContext("axiom-lab-whois-vm1:latest", "{}"), path.resolve(REPO, "lab-images/m6/whois-vm1"));
+    assert.equal(resolveBuildContext("unknown:latest", "{}"), null);
+    assert.equal(resolveBuildContext("unknown:latest", "not-json"), null);
+  });
+  it("seed stores the target build context in metadata", async () => {
+    const db = await import("../server/db.js");
+    try { await db.initDb(); } catch {}
+    const svc = await import("../server/labs/service.js");
+    await svc.seedFromDefinitions(path.join(REPO, "labs"));
+    const targets = await svc.labTargets((await svc.getLab("slug", "m6-6-2-1-whois-vm1")).id);
+    assert.ok(targets.length >= 1);
+    assert.equal(JSON.parse(targets[0].metadata_json).build, "m6/whois-vm1");
+  });
+  it("warmup never throws and skips cleanly without a daemon", async () => {
+    const orch = await import("../server/labs/orchestrator.js");
+    if (await orch.dockerAvailable()) {
+      console.log("  (skip: daemon present — warmup would build images here)");
+      return;
+    }
+    const r = await orch.warmupLabImages();
+    assert.equal(r.daemon, false);
+    assert.equal(r.built, 0);
+  });
+});

@@ -25,8 +25,12 @@ try {
   log("labs.seed.error", { error: String(e?.message || e).slice(0, 300) });
 }
 try {
-  const { reconcileOnBoot } = await import("./labs/orchestrator.js");
+  const { reconcileOnBoot, warmupLabImages } = await import("./labs/orchestrator.js");
   await reconcileOnBoot();
+  // Pre-build missing lab images in the background so the first lab start
+  // never waits on a build. Fire-and-forget: warmup never throws and hosts
+  // without a daemon simply skip it.
+  warmupLabImages().then((r) => log("labs.warmup", r)).catch(() => {});
 } catch (e) {
   log("labs.reconcile.error", { error: String(e?.message || e).slice(0, 300) });
 }
