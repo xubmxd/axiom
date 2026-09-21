@@ -15,6 +15,15 @@ courses/video/*
 courses/reading/*
 !courses/reading/.gitkeep
 
+# Lab content (definitions + target images) stays local — never push.
+# It contains answer hashes and challenge data for private practice.
+/labs/
+/lab-images/
+
+# supplied exercise source material — never commit
+Labs.pdf
+*Exercise*.pdf
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

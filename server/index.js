@@ -11,8 +11,25 @@ import { scanAll, startWatcher } from "./scanner.js";
 import { pages } from "./routes-pages.js";
 import { api } from "./routes-api.js";
 import { media } from "./routes-media.js";
+import { labPages, labApi } from "./routes-labs.js";
 
 await initDb();
+
+// Cyber Range: seed declarative lab definitions (idempotent), then
+// reconcile any instances left active across a restart.
+try {
+  const { seedFromDefinitions } = await import("./labs/service.js");
+  const r = await seedFromDefinitions();
+  log("labs.seed", r);
+} catch (e) {
+  log("labs.seed.error", { error: String(e?.message || e).slice(0, 300) });
+}
+try {
+  const { reconcileOnBoot } = await import("./labs/orchestrator.js");
+  await reconcileOnBoot();
+} catch (e) {
+  log("labs.reconcile.error", { error: String(e?.message || e).slice(0, 300) });
+}
 
 const app = express();
 app.set("trust proxy", 1);
@@ -70,7 +87,9 @@ app.post("/invite/:token", async (req, res) => {
 });
 
 app.use("/api", api);
+app.use("/api", labApi);
 app.use("/media", media);
+app.use("/", labPages);
 app.use("/", pages);
 
 app.use((req, res) => {

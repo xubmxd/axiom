@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    container_name: axiom-app
     ports: ["3100:3100"]
     env_file: .env
     environment:
@@ -8,9 +9,15 @@ services:
       COURSES_ROOT: /courses
       DATA_DIR: /data
       APP_URL: ${APP_URL:-http://localhost:3100}
+      # Cyber Range: orchestrator drives the host Docker daemon through the
+      # socket to create per-instance isolated lab networks + targets.
+      # The socket mount is for orchestration only — lab targets never get it.
+      LAB_PROVIDER: ${LAB_PROVIDER:-docker}
+      AXIOM_SELF_CONTAINER: axiom-app
     volumes:
       - ./courses:/courses:ro
       - appdata:/data
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on: [db]
     restart: unless-stopped
   db:
@@ -21,6 +28,12 @@ services:
       POSTGRES_DB: lumen
     volumes: [pgdata:/var/lib/postgresql/data]
     restart: unless-stopped
+  # Pre-builds the first lab target image into the shared daemon so lab
+  # startup never waits on a build. Never started as a service.
+  whois-vm1:
+    build: ./lab-images/m6/whois-vm1
+    image: axiom-lab-whois-vm1:latest
+    profiles: [lab-images]
 volumes:
   pgdata:
   appdata:

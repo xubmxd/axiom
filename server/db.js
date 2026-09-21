@@ -151,6 +151,110 @@ export async function migrate() {
       id INTEGER PRIMARY KEY CHECK(id=1), last_ok_at TEXT, last_status TEXT NOT NULL DEFAULT 'never',
       last_error TEXT NOT NULL DEFAULT '', course_count INTEGER NOT NULL DEFAULT 0
     )`,
+    // ---- Cyber Range ----
+    // Dual-engine compatible: TEXT keys, no sequences, no PG-only features.
+    // lab_courses are training paths (Core, Extra, …). They are deliberately
+    // separate from the scanner-owned `courses` table: a filesystem rescan
+    // must never cascade-delete lab runtime state and progress.
+    `CREATE TABLE IF NOT EXISTS lab_courses(
+      id TEXT PRIMARY KEY, slug TEXT NOT NULL, title TEXT NOT NULL,
+      subtitle TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS labs(
+      id TEXT PRIMARY KEY, slug TEXT NOT NULL, title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      course_id TEXT REFERENCES lab_courses(id) ON DELETE SET NULL,
+      module_number INTEGER NOT NULL DEFAULT 0,
+      module_name TEXT NOT NULL DEFAULT '',
+      section_number TEXT NOT NULL DEFAULT '',
+      section_name TEXT NOT NULL DEFAULT '',
+      lab_number INTEGER NOT NULL DEFAULT 0,
+      difficulty TEXT NOT NULL DEFAULT 'Easy',
+      environment_type TEXT NOT NULL DEFAULT 'single-target',
+      status TEXT NOT NULL DEFAULT 'active',
+      tags TEXT NOT NULL DEFAULT '[]',
+      definition_path TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_targets(
+      id TEXT PRIMARY KEY, lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT '', hostname TEXT NOT NULL DEFAULT '',
+      target_type TEXT NOT NULL DEFAULT 'generic',
+      os TEXT NOT NULL DEFAULT 'Linux',
+      image_reference TEXT NOT NULL DEFAULT '',
+      network_role TEXT NOT NULL DEFAULT 'target',
+      service_ports TEXT NOT NULL DEFAULT '[]',
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_objectives(
+      id TEXT PRIMARY KEY, lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      objective_key TEXT NOT NULL DEFAULT '',
+      title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '',
+      objective_type TEXT NOT NULL DEFAULT 'question',
+      validation_type TEXT NOT NULL DEFAULT 'case-insensitive-exact',
+      expected_value_hash TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_hints(
+      id TEXT PRIMARY KEY, lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      title TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '',
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_instances(
+      id TEXT PRIMARY KEY, lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'stopped',
+      provider TEXT NOT NULL DEFAULT 'local',
+      provider_reference TEXT NOT NULL DEFAULT '',
+      network_name TEXT NOT NULL DEFAULT '',
+      network_cidr TEXT NOT NULL DEFAULT '',
+      target_ip TEXT NOT NULL DEFAULT '',
+      target_port INTEGER NOT NULL DEFAULT 0,
+      host_endpoint TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      started_at TEXT, stopped_at TEXT, expires_at TEXT,
+      reset_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_objective_progress(
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      instance_id TEXT NOT NULL DEFAULT '',
+      objective_id TEXT NOT NULL REFERENCES lab_objectives(id) ON DELETE CASCADE,
+      completed INTEGER NOT NULL DEFAULT 0,
+      completed_at TEXT, updated_at TEXT NOT NULL,
+      PRIMARY KEY(user_id, lab_id, objective_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_submissions(
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      instance_id TEXT NOT NULL DEFAULT '',
+      objective_id TEXT NOT NULL DEFAULT '',
+      answer_hash TEXT NOT NULL DEFAULT '',
+      is_correct INTEGER NOT NULL DEFAULT 0,
+      attempted_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_notes(
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      instance_id TEXT NOT NULL DEFAULT '',
+      body TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_hint_views(
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+      hint_id TEXT NOT NULL REFERENCES lab_hints(id) ON DELETE CASCADE,
+      revealed_at TEXT NOT NULL,
+      PRIMARY KEY(user_id, lab_id, hint_id)
+    )`,
   ];
   for (const s of stmts) await execRaw(s);
   try { await execRaw(`INSERT INTO scan_state(id) VALUES(1) ON CONFLICT DO NOTHING`); } catch {}
@@ -172,9 +276,21 @@ export async function migrate() {
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_page_key ON reading_pages(course_id, path_key)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_group_key ON content_groups(course_id, path_key)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS uq_resource_key ON resources(course_id, path_key)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_lab_slug ON labs(slug)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_lab_course_slug ON lab_courses(slug)`,
+    `CREATE INDEX IF NOT EXISTS idx_labs_course ON labs(course_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_labs_course_module ON labs(course_id, module_number)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_targets_lab ON lab_targets(lab_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_objectives_lab ON lab_objectives(lab_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_hints_lab ON lab_hints(lab_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_instances_user ON lab_instances(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_instances_lab_user ON lab_instances(lab_id, user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_submissions_user_lab ON lab_submissions(user_id, lab_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_lab_notes_user_lab ON lab_notes(user_id, lab_id)`,
   ];
   for (const s of idx) { try { await execRaw(s); } catch {} }
   await migrateLegacyModules();
+  await migrateLabCourses();
   // App default timezone is Asia/Kolkata: fresh rows pick it up from the
   // column default; installs created before the switch still say UTC.
   try { await run(`UPDATE users SET timezone='Asia/Kolkata' WHERE timezone='UTC'`); } catch {}
@@ -200,6 +316,21 @@ async function columnExists(table, col) {
   return rows.some((r) => r.name === col);
 }
 
+// Course organization for the Cyber Range landed after the first labs:
+// backfill course_id / module_name on installs that already have a labs
+// table. Idempotent; safe to run on every boot.
+async function migrateLabCourses() {
+  try {
+    if (!(await tableExists("labs"))) return;
+    if (!(await columnExists("labs", "course_id"))) await execRaw(`ALTER TABLE labs ADD COLUMN course_id TEXT REFERENCES lab_courses(id) ON DELETE SET NULL`);
+  } catch { /* never block boot on migration */ }
+  try {
+    if (await tableExists("labs") && !(await columnExists("labs", "module_name"))) await execRaw(`ALTER TABLE labs ADD COLUMN module_name TEXT NOT NULL DEFAULT ''`);
+  } catch { /* never block boot on migration */ }
+  try {
+    if (await tableExists("labs") && !(await columnExists("labs", "section_name"))) await execRaw(`ALTER TABLE labs ADD COLUMN section_name TEXT NOT NULL DEFAULT ''`);
+  } catch { /* never block boot on migration */ }
+}
 // One-way, idempotent port from the legacy flat `modules` model to recursive
 // `content_groups`. Group row IDs are preserved (same ids as old modules) and
 // lessons keep their own IDs, so all video/reading progress survives untouched.

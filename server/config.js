@@ -14,4 +14,9 @@ export const config = {
   heartbeatSecs: parseInt(process.env.LEARNING_SESSION_HEARTBEAT || "15", 10),
   streakMinutes: parseInt(process.env.STREAK_MINUTES || "15", 10),
   appVersion: "1.0.0",
+  // ---- Cyber Range ----
+  labProvider: process.env.LAB_PROVIDER || "auto", // docker | local | auto
+  labDockerSubnetBase: process.env.LAB_DOCKER_SUBNET_BASE || "10.210",
+  labLocalSubnetBase: process.env.LAB_LOCAL_SUBNET_BASE || "10.200",
+  axiomSelfContainer: process.env.AXIOM_SELF_CONTAINER || "",
 };
