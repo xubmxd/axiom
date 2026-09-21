@@ -12,7 +12,7 @@
 import { Router } from "express";
 import fs from "node:fs";
 import { get } from "./db.js";
-import { layout, esc, emptyState } from "./views.js";
+import { layout, esc, emptyState, labCourseArt } from "./views.js";
 import { ah } from "./wrap.js";
 import { log } from "./log.js";
 import * as svc from "./labs/service.js";
@@ -113,7 +113,7 @@ labPages.get("/labs", needAuthPage, ah(async (req, res) => {
       <p class="dim" style="max-width:70ch">Choose a training path. Isolated hands-on labs — start a target, interrogate it like a real engagement, submit what you find.</p>
       ${enriched.length ? `<div class="courselist">${enriched.map(({ course, moduleCount, progress }) => `
         <a class="ccard coursecard" href="/labs/${esc(course.slug)}">
-          <div class="ccard-art"><div class="art art-fallback lab-art" aria-hidden="true"><span>◈</span></div></div>
+          <div class="ccard-art">${labCourseArt(course, 56)}</div>
           <div class="ccard-b">
             <div class="ccard-t"><span class="mono dim small ccard-code">training path</span><span class="mono dim small">${progress.completed}/${progress.total} completed</span></div>
             <h3>${esc(course.title)}</h3>

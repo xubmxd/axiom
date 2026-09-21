@@ -1,4 +1,4 @@
-import { describe, it, before } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -298,5 +298,37 @@ describe("docker provider failure hygiene", () => {
     const leaked = (afterNets + afterPs).split("\n").filter((n) => n.includes("axiom-lab-") || n.includes("axiom-li"));
     const preexisting = (beforeNets + beforePs).split("\n");
     assert.deepEqual(leaked.filter((n) => !preexisting.includes(n)), [], "orphaned lab container/network left behind");
+  });
+});
+
+describe("training-path icons", () => {
+  const ONE_PX_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  let dir, oldEnv;
+  before(async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    dir = mkdtempSync(path.join(os.tmpdir(), "axiom-icons-"));
+    writeFileSync(path.join(dir, "core.png"), ONE_PX_PNG);
+    writeFileSync(path.join(dir, "extra.svg"), "<svg></svg>");
+    oldEnv = process.env.LAB_ICONS_DIR;
+    process.env.LAB_ICONS_DIR = dir;
+  });
+  after(() => {
+    if (oldEnv === undefined) delete process.env.LAB_ICONS_DIR;
+    else process.env.LAB_ICONS_DIR = oldEnv;
+  });
+
+  it("finds icons by slug with correct mime, rejects junk", async () => {
+    const { findLabCourseIcon } = await import("../server/labs/icons.js");
+    assert.equal(findLabCourseIcon("core").mime, "image/png");
+    assert.equal(findLabCourseIcon("extra").mime, "image/svg+xml");
+    assert.equal(findLabCourseIcon("nosuch"), null);
+    assert.equal(findLabCourseIcon("../secret"), null);
+    assert.equal(findLabCourseIcon(""), null);
+    assert.equal(findLabCourseIcon("Core"), null); // slugs are lowercase
+  });
+  it("card art uses the icon when present, glyph otherwise", async () => {
+    const { labCourseArt } = await import("../server/views.js");
+    assert.ok(labCourseArt({ slug: "core", title: "Core" }).includes("/media/lab-course/core"));
+    assert.ok(labCourseArt({ slug: "nosuch", title: "X" }).includes("◈"));
   });
 });

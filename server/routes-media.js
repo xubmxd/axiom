@@ -68,6 +68,25 @@ media.get("/:cid/icon", ah(async (req, res) => {
   res.sendFile(fp);
 }));
 
+// training-path icon — labs/icons/<slug>.<ext>, alongside the git-ignored
+// lab content. Auth is enforced by the router middleware above.
+media.get("/lab-course/:slug", ah(async (req, res) => {
+  const { findLabCourseIcon } = await import("./labs/icons.js");
+  const hit = findLabCourseIcon(req.params.slug);
+  if (!hit) return res.status(404).end();
+  let stat;
+  try { stat = fs.statSync(hit.file); } catch { return res.status(404).end(); }
+  if (!stat.isFile()) return res.status(404).end();
+  res.setHeader("Content-Type", hit.mime);
+  res.setHeader("Content-Length", stat.size);
+  res.setHeader("Cache-Control", "private, max-age=86400");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  const stream = fs.createReadStream(hit.file);
+  stream.on("error", () => { try { res.destroy(); } catch {} });
+  res.on("close", () => { try { stream.destroy(); } catch {} });
+  stream.pipe(res);
+}));
+
 // video stream with range support — never loads whole file into memory
 media.get("/:cid/video/:lid", ah(async (req, res) => {
   const l = await get(`SELECT l.*, c.dir_name, c.kind FROM lessons l JOIN courses c ON c.id=l.course_id WHERE l.id=?`, [req.params.lid]);

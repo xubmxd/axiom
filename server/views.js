@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
 import { levelFor } from "./stats.js";
+import { findLabCourseIcon } from "./labs/icons.js";
 
 export function esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -68,6 +69,13 @@ function iconArt(course, size = 56) {
   if (course.has_icon) return `<img class="art" src="/media/${course.id}/icon" alt="" width="${size}" height="${size}" loading="lazy">`;
   const hue = [...course.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
   return `<div class="art art-fallback" style="--h:${hue};width:${size}px;height:${size}px" aria-hidden="true"><span>${esc(initials(course.title))}</span></div>`;
+}
+
+export function labCourseArt(course, size = 56) {
+  let hit = null;
+  try { hit = course?.slug ? findLabCourseIcon(course.slug) : null; } catch { hit = null; }
+  if (hit) return `<img class="art" src="/media/lab-course/${esc(course.slug)}" alt="" width="${size}" height="${size}" loading="lazy">`;
+  return `<div class="art art-fallback lab-art" aria-hidden="true"><span>◈</span></div>`;
 }
 
 const ICONS = {

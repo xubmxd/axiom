@@ -241,6 +241,12 @@ describe("course routes (http)", () => {
     assert.equal(r.status, 401);
   });
 
+  it("course icon route 404s unknown slugs and needs auth", async () => {
+    assert.equal((await fetch(`${BASE}/media/lab-course/nosuch`)).status, 401);
+    assert.equal((await get("/media/lab-course/nosuch")).status, 404);
+    assert.equal((await get("/media/lab-course/..%2Fsecret")).status, 404);
+  });
+
   it("WHOIS lab lifecycle still works end-to-end (regression)", async () => {
     const labsRes = await get("/api/labs", { headers: { Cookie: cookie, Accept: "application/json" } });
     const labId = (await labsRes.json()).labs[0].id;
