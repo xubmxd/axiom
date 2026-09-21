@@ -249,6 +249,7 @@ const dockerProvider = {
     };
   },
   async destroy(instance) {
+    const t0 = Date.now();
     const cname = instance.provider_reference;
     const selfContainer = process.env.AXIOM_SELF_CONTAINER || "";
     if (selfContainer && instance.network_name) {
@@ -256,6 +257,8 @@ const dockerProvider = {
     }
     if (cname) await docker(["rm", "-f", cname], 30000).catch((e) => log("lab.docker.rm", { ref: cname, error: String(e?.message || e).slice(0, 200) }));
     if (instance.network_name) await docker(["network", "rm", instance.network_name], 30000).catch(() => {});
+    const ms = Date.now() - t0;
+    if (ms > 10000) log("lab.docker.destroy.slow", { ref: cname || "?", ms });
   },
   endpointOf(instance) {
     const [host, port] = String(instance.host_endpoint || "").split(":");

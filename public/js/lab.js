@@ -62,19 +62,58 @@ document.addEventListener("DOMContentLoaded", () => {
   const say = (t) => { if (msgEl) msgEl.textContent = t; };
 
   // ---------- lifecycle (authoritative reload after state change) ----------
+  // Docker teardown can take a minute on a slow daemon, and the request may
+  // be queued behind another op — so a timed-out request does NOT mean the
+  // op failed. On timeout we poll the true server-side status and reload as
+  // soon as it reaches the expected state (self-healing "stuck" UI).
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function reconcileStatus(action, btn) {
+    const want = action === "start" || action === "reset" ? "running" : "stopped";
+    say(`${action === "stop" ? "Tearing down" : action === "reset" ? "Rebuilding" : "Provisioning"} is taking longer than expected — checking actual status…`);
+    const deadline = Date.now() + 120000;
+    for (;;) {
+      await sleep(3000);
+      let st = null;
+      try {
+        const r = await fetch(`/api/labs/${encodeURIComponent(labId)}/status`);
+        const j = await r.json().catch(() => ({}));
+        st = j.instance ? j.instance.status : "stopped";
+      } catch { /* retry until deadline */ }
+      if (st === want || (!st && want === "stopped")) {
+        toast(action === "start" ? "Lab running" : action === "reset" ? "Lab reset complete" : "Lab stopped");
+        location.reload();
+        return;
+      }
+      if (st === "failed") {
+        say("The operation failed server-side. Reload to see the current status, then retry.");
+        btn.disabled = false;
+        return;
+      }
+      if (Date.now() > deadline) {
+        say("Still no response — the server may still be working. Reload the page to see the current status.");
+        btn.disabled = false;
+        return;
+      }
+    }
+  }
   wrap.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-lab-action]");
     if (!b) return;
     const action = b.dataset.labAction;
     b.disabled = true;
-    say(action === "start" ? "Provisioning isolated target…" : action === "reset" ? "Rebuilding environment…" : "Tearing down…");
+    say(action === "start" ? "Provisioning isolated target…" : action === "reset" ? "Rebuilding environment…" : "Tearing down… (usually under a minute)");
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 100000);
     try {
-      const r = await fetch(`/api/labs/${encodeURIComponent(labId)}/${action}`, { method: "POST" });
+      const r = await fetch(`/api/labs/${encodeURIComponent(labId)}/${action}`, { method: "POST", signal: ctrl.signal });
+      clearTimeout(timer);
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || `${action} failed`);
       toast(action === "start" ? "Lab running" : action === "reset" ? "Lab reset complete" : "Lab stopped");
       location.reload();
     } catch (err) {
+      clearTimeout(timer);
+      if (err && err.name === "AbortError") { reconcileStatus(action, b); return; }
       say(err.message || "Action failed.");
       toast(err.message || "Action failed.");
       b.disabled = false;

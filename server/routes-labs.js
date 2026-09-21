@@ -476,7 +476,11 @@ labApi.post("/labs/:id/start", ah(async (req, res) => {
 labApi.post("/labs/:id/stop", ah(async (req, res) => {
   const lab = await resolveLab(req.params.id);
   if (!lab) return res.status(404).json({ error: "Lab not found." });
+  const t0 = Date.now();
+  const stage = (s) => log("lab.stop.stage", { user: req.user.id, lab: lab.id, stage: s, ms: Date.now() - t0 });
+  stage("begin");
   return withLabLock(`${req.user.id}:${lab.id}`, async () => {
+  stage("locked");
   const inst = await svc.activeInstance(req.user.id, lab.id) || await svc.latestInstance(req.user.id, lab.id);
   if (!inst || !ownOrAdmin(req, inst)) return res.status(404).json({ error: "No lab session to stop." });
   if (inst.status === "stopped") {
@@ -488,9 +492,10 @@ labApi.post("/labs/:id/stop", ah(async (req, res) => {
     catch { cur = await svc.getInstance(cur.id) || cur; } // raced transition: work with fresh state
   }
   await destroyInstance(cur);
+  stage("destroyed");
   try { cur = await svc.setInstanceStatus(cur, "stopped"); } catch { /* force below covers it */ }
   cur = await svc.forceInstanceState(cur.id, { status: "stopped", provider_reference: "", network_name: "", target_ip: "", host_endpoint: "", stopped_at: new Date().toISOString() });
-  log("lab.stop", { user: req.user.id, lab: lab.id });
+  log("lab.stop", { user: req.user.id, lab: lab.id, ms: Date.now() - t0 });
   res.json({ ok: true, instance: pubInstance(cur), progress: await svc.labProgress(req.user.id, lab.id) });
   });
 }));
