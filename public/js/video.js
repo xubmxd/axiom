@@ -228,34 +228,68 @@
     }
   }
 
-  // ---- fullscreen (whole stage, not just the video element) ----
-  async function toggleFS() {
+  // ---- fullscreen (whole player wrapper: video + custom controls + progress) ----
+  // Wrapper first so VIDEO + CUSTOM CONTROLS + PROGRESS BAR stay in
+  // fullscreen where supported; video-element fallbacks (incl. iOS
+  // webkitEnterFullscreen) only when the wrapper request is unavailable
+  // or rejected. State always derives from the real browser state.
+  const isFS = () => !!(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    (typeof v.webkitDisplayingFullscreen === "boolean" ? v.webkitDisplayingFullscreen : false)
+  );
+  async function enterFS() {
     try {
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-      } else if (player.requestFullscreen) {
-        await player.requestFullscreen();
-      } else if (v.requestFullscreen) {
-        await v.requestFullscreen();
-      } else if (v.webkitEnterFullscreen) {
-        // iOS Safari: element fullscreen is unsupported — fall back to the
-        // native video fullscreen. Our controls are hidden with the page,
-        // so temporarily enable the native ones.
+      if (player.requestFullscreen) { await player.requestFullscreen(); return true; }
+      if (typeof player.webkitRequestFullscreen === "function") { player.webkitRequestFullscreen(); return true; }
+    } catch { /* fall through to video-element fallbacks */ }
+    try {
+      if (v.requestFullscreen) { await v.requestFullscreen(); return true; }
+      if (typeof v.webkitRequestFullscreen === "function") { v.webkitRequestFullscreen(); return true; }
+    } catch { /* fall through to iOS native video fullscreen */ }
+    if (typeof v.webkitEnterFullscreen === "function") {
+      try {
+        // iOS Safari/iPhone: only the video element can go fullscreen, and
+        // the page (incl. custom controls) is hidden — enable native ones.
         v.controls = true;
         v.webkitEnterFullscreen();
-      } else {
-        toast("Fullscreen isn't supported in this browser");
+        return true;
+      } catch { v.controls = false; }
+    }
+    return false;
+  }
+  async function exitFS() {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) { await document.exitFullscreen(); return; }
+      if (document.webkitFullscreenElement && document.webkitExitFullscreen) { document.webkitExitFullscreen(); return; }
+    } catch {}
+    // iOS native video fullscreen is exited from the video's own UI;
+    // webkitendfullscreen below restores state.
+  }
+  async function toggleFS() {
+    try {
+      if (isFS()) { await exitFS(); }
+      else {
+        const ok = await enterFS();
+        if (!ok) { toast("Fullscreen isn't supported in this browser"); return; }
+        // Best-effort landscape on narrow touch layouts; ignored everywhere
+        // it isn't supported or allowed (desktop unaffected).
+        try {
+          const p = screen.orientation?.lock?.("landscape");
+          if (p && typeof p.catch === "function") await p.catch(() => {});
+        } catch {}
       }
     } catch { toast("Couldn't enter fullscreen"); }
   }
-  v.addEventListener("webkitendfullscreen", () => { v.controls = false; });
   function syncFS() {
-    const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const on = isFS();
     player.classList.toggle("fs", on);
+    if (!on) { try { screen.orientation?.unlock?.(); } catch {} }
     if (btnFull) { btnFull.innerHTML = on ? IC.min : IC.max; btnFull.setAttribute("aria-label", on ? "Exit fullscreen (f)" : "Fullscreen (f)"); }
     wake();
   }
+  v.addEventListener("webkitbeginfullscreen", () => { v.controls = true; syncFS(); });
+  v.addEventListener("webkitendfullscreen", () => { v.controls = false; syncFS(); });
   document.addEventListener("fullscreenchange", syncFS);
   document.addEventListener("webkitfullscreenchange", syncFS);
   btnFull.onclick = toggleFS;
