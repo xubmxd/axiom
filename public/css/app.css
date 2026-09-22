@@ -497,11 +497,24 @@ dialog.confirm p{margin:.3rem 0}
   .controls{gap:0}
   .controls button{width:32px;height:32px}
   #vol{display:none}
+  /* Narrow screens fit fewer controls: PiP is redundant on touch devices
+     (the OS provides it), so it yields to keep settings + fullscreen
+     reachable. Horizontal scroll is a safety net so no control is ever
+     clipped off-screen inside the overflow:hidden player. */
+  #btnPip{display:none}
+  .controls{overflow-x:auto;scrollbar-width:none}
+  .controls::-webkit-scrollbar{display:none}
   .controls .time{font-size:.7rem}
   .pmenu{bottom:4.1rem;right:.5rem}
   .mantra{flex-direction:column;align-items:flex-start}
   .mantra-r{justify-items:start}
   .foot{font-size:.72rem}
+}
+/* Phones: in-player prev/next are duplicates of the prev/next lesson
+   buttons below the player and the module panel, so they yield to keep
+   the time display, settings, and fullscreen on one tappable row. */
+@media (max-width:480px){
+  #btnPrev,#btnNext{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
