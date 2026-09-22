@@ -328,12 +328,11 @@ li.res a{gap:.5rem}
 .learn.focus{grid-template-columns:1fr}
 .learn.side-hidden{grid-template-columns:minmax(0,1fr)}
 .learn.side-hidden .side{display:none}
-/* mobile lesson navigation: compact reopen control, visible only when the
-   module panel is collapsed on narrow layouts (desktop unaffected) */
-.modules-reopen{display:none}
-@media (max-width:900px){
-  .learn.side-hidden .modules-reopen{display:inline-flex;align-items:center;gap:.4rem;margin-bottom:.6rem}
-}
+/* lesson navigation: compact reopen control, inline at the start of the
+   breadcrumb row, visible only while the module panel is collapsed.
+   Higher specificity than .btn so the hidden default actually wins. */
+.btn.modules-reopen{display:none}
+.learn.side-hidden .btn.modules-reopen{display:inline-flex;align-items:center;gap:.4rem;margin-right:.6rem;vertical-align:middle}
 .learn>*{min-width:0}
 .player{background:#000;border:1px solid var(--border2);border-radius:16px;overflow:hidden;position:relative;aspect-ratio:16/9;max-height:62vh;width:100%;min-height:240px}
 .player video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block}

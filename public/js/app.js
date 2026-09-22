@@ -33,11 +33,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const st = document.getElementById("sideToggle"), learn = document.querySelector(".learn");
   const side = document.getElementById("side");
-  // Mobile lesson navigation: selecting a lesson auto-collapses the module
-  // panel (MPA navigation reloads the page, so the collapsed intent is kept
-  // in sessionStorage and applied on the next lesson load — mobile only,
-  // desktop behavior unchanged). State changes only from real user actions:
-  // tapping a lesson link, the sidebar toggle, or the reopen control.
+  // Lesson navigation: selecting a lesson auto-collapses the module panel
+  // on mobile (MPA navigation reloads the page, so the collapsed intent is
+  // kept in sessionStorage and applied on the next lesson load — mobile
+  // only, desktop auto-collapse untouched). The reopen control lives inline
+  // in the breadcrumb row whenever the panel is collapsed, on any viewport
+  // (without it, a collapsed panel has no way back — the old toggle hides
+  // with the panel). State changes only from real user actions.
   if (st && learn && side) {
     const KEY = "axiom:learn-side";
     const mq = window.matchMedia("(max-width: 900px)");
@@ -50,7 +52,11 @@ document.addEventListener("DOMContentLoaded", () => {
     reopen.setAttribute("aria-controls", "side");
     reopen.innerHTML = `<span aria-hidden="true">☰</span> Modules`;
     reopen.setAttribute("aria-label", "Show course modules");
-    if (stage) stage.prepend(reopen);
+    // Inline at the start of the breadcrumb row (library / course / …)
+    // so it shares the line instead of taking its own row above it.
+    const crumbs = stage?.querySelector(".crumbs");
+    if (crumbs) crumbs.prepend(reopen);
+    else if (stage) stage.prepend(reopen);
     const read = () => { try { return sessionStorage.getItem(KEY); } catch { return null; } };
     const save = (v) => { try { sessionStorage.setItem(KEY, v); } catch {} };
     const sync = () => {
