@@ -173,14 +173,26 @@
   document.getElementById("btnPrev").onclick = () => { if (prevId) location.href = "/learn/video/" + prevId; };
   document.getElementById("btnNext").onclick = () => nextId && (location.href = "/learn/video/" + nextId);
 
-  // ---- volume ----
+  // ---- volume (persisted per browser) ----
+  const VOL_KEY = "axiom:vol";
+  try {
+    const saved = JSON.parse(localStorage.getItem(VOL_KEY) || "null");
+    if (saved && typeof saved.volume === "number") {
+      v.volume = Math.max(0, Math.min(1, saved.volume));
+      vol.value = String(v.volume);
+    }
+    if (saved && typeof saved.muted === "boolean") v.muted = saved.muted;
+  } catch {}
   const syncMute = () => {
     btnMute.innerHTML = (v.muted || v.volume === 0) ? IC.volx : IC.vol;
     btnMute.setAttribute("aria-pressed", String(v.muted));
   };
   btnMute.onclick = () => { v.muted = !v.muted; syncMute(); wake(); };
   vol.oninput = (e) => { v.volume = +e.target.value; v.muted = false; syncMute(); };
-  v.addEventListener("volumechange", syncMute);
+  v.addEventListener("volumechange", () => {
+    syncMute();
+    try { localStorage.setItem(VOL_KEY, JSON.stringify({ volume: v.volume, muted: v.muted })); } catch {}
+  });
   syncMute();
 
   // ---- settings menu: speed (persisted), theater, shortcut hints ----
