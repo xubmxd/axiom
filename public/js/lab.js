@@ -260,6 +260,57 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) { toast(err.message || "Failed."); b.disabled = false; }
   });
 
+  // ---------- student VPN pack (personal WireGuard config for Kali) ----------
+  const vpnBox = wrap.querySelector("[data-vpn]");
+  if (vpnBox) {
+    const vpnLine = vpnBox.querySelector("[data-vpn-line]");
+    const vpnSay = (t) => { if (vpnLine) vpnLine.textContent = t; };
+    vpnBox.addEventListener("click", async (e) => {
+      const dl = e.target.closest("[data-vpn-download]");
+      const re = e.target.closest("[data-vpn-regenerate]");
+      const st = e.target.closest("[data-vpn-status]");
+      if (dl) {
+        dl.disabled = true;
+        try {
+          const r = await fetch(`/api/vpn/pack`);
+          if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Pack unavailable.");
+          const blob = await r.blob();
+          const fn = /filename="([^"]+)"/.exec(r.headers.get("content-disposition") || "")?.[1] || "axiom-vpn.conf";
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = fn;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+          toast("VPN pack downloaded — wg-quick up to join");
+          location.reload();
+        } catch (err) { toast(err.message || "Download failed."); dl.disabled = false; }
+      }
+      if (re) {
+        re.disabled = true;
+        try {
+          const r = await fetch(`/api/vpn/regenerate`, { method: "POST" });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || "Regenerate failed.");
+          toast("New pack issued — download it again");
+          location.reload();
+        } catch (err) { toast(err.message || "Failed."); re.disabled = false; }
+      }
+      if (st) {
+        st.disabled = true;
+        try {
+          const r = await fetch(`/api/vpn/status`);
+          const j = await r.json().catch(() => ({}));
+          vpnSay(j.configured
+            ? `Pack ready · your VPN IP ${j.clientIp || ""}${j.connected ? " · connected" : j.gateway ? " · no handshake yet — is wg-quick up?" : " · gateway offline"}`
+            : "No pack yet.");
+        } catch { vpnSay("Status unavailable — retry."); }
+        finally { st.disabled = false; }
+      }
+    });
+  }
+
   // ---------- integrated terminal (scoped; never a host shell) ----------
   const termForm = document.getElementById("termForm");
   const termInput = document.getElementById("termInput");

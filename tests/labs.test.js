@@ -45,12 +45,14 @@ describe("answer normalization + validation", () => {
 });
 
 describe("lab definitions", () => {
-  it("discovers and validates the first lab", async () => {
+  it("discovers and validates the first lab (VM #2 lives alongside it)", async () => {
     const { loadAllDefinitions, validateDefinition } = await import("../server/labs/definitions.js");
     const all = loadAllDefinitions(path.join(REPO, "labs"));
-    assert.equal(all.length, 1);
-    assert.equal(all[0].def.slug, "m6-6-2-1-whois-vm1");
-    assert.deepEqual(validateDefinition(all[0].def), []);
+    assert.equal(all.length, 3);
+    const bySlug = Object.fromEntries(all.map((l) => [l.def.slug, l]));
+    assert.equal(bySlug["m6-6-2-1-whois-vm1"].def.title, "6.2.1 Whois Enumeration");
+    assert.ok(bySlug["m6-6-2-1-whois-vm2"], "VM #2 definition must be discovered");
+    for (const l of all) assert.deepEqual(validateDefinition(l.def), []);
   });
   it("rejects malformed definitions", async () => {
     const { validateDefinition } = await import("../server/labs/definitions.js");
@@ -144,7 +146,7 @@ describe("lab service (sqlite)", () => {
     assert.equal(p.objectiveDone, 2);
     assert.ok(p.complete);
     const mod = await svc.moduleProgress(userId, lab.course_id, 6);
-    assert.deepEqual(mod, { total: 1, completed: 1 });
+    assert.deepEqual(mod, { total: 3, completed: 1 }); // VM #2 + VM #3 share Module 6
   });
 
   it("repeat correct submissions stay idempotent", async () => {

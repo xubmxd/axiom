@@ -19,7 +19,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import { log } from "../log.js";
-import { buildWhoisResponse, ZONE, LAB_DOMAIN } from "./whois-data.js";
+import { syncInstanceVpn, unsyncInstanceVpn, reconcileVpn } from "./vpn.js";
+import { buildWhoisResponse, buildVm2WhoisResponse, buildVm3WhoisResponse, labDomain, labZone, ZONE, LAB_DOMAIN, VM2_SLUG, VM3_SLUG } from "./whois-data.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -81,15 +82,42 @@ function safeName(prefix, id) {
   return `${prefix}-${String(id).toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40)}`;
 }
 
+// Container hostname derived from the target's declared hostname
+// (vm1.megacorpone.lab → vm1). VM #1 keeps its exact historic value.
+function containerHostname(target) {
+  const first = String(target?.hostname || "").split(".")[0].toLowerCase().replace(/[^a-z0-9-]/g, "");
+  return first || "vm1";
+}
+
+// Per-instance runtime flag for labs that need one (VM #2). Returns the
+// plaintext secret to inject into the target, or null for static labs.
+// Lazy service import mirrors getLabTargetsMeta (avoids a module cycle).
+function isFlagLab(lab) {
+  return String(lab?.slug || "") === VM2_SLUG;
+}
+
+async function runtimeFlagFor(lab, instance) {
+  if (!isFlagLab(lab)) return null;
+  const { ensureRuntimeFlag } = await import("./service.js");
+  const row = await ensureRuntimeFlag({
+    instanceId: instance.id,
+    labId: lab.id || "",
+    userId: instance.user_id || "",
+    objectiveKey: "flag",
+  });
+  return row?.flag_value || null;
+}
+
 // The app may run on the Docker host (bridge IPs routable) or inside its
 // own container (only the published loopback port is routable until the
 // app joins the lab network). Prefer the direct target endpoint, fall back
-// to the provisioned host endpoint.
-export async function resolveEndpoint(instance) {
+// to the provisioned host endpoint. The domain probe defaults to VM #1's
+// domain so existing callers are unchanged; pass the lab's domain for more.
+export async function resolveEndpoint(instance, domain = LAB_DOMAIN) {
   const direct = { host: instance.target_ip, port: instance.target_port || 43 };
   if (direct.host) {
     try {
-      await whoisQuery(direct.host, direct.port, LAB_DOMAIN, 1500);
+      await whoisQuery(direct.host, direct.port, domain, 1500);
       return direct;
     } catch { /* fall through to host endpoint */ }
   }
@@ -109,6 +137,8 @@ async function docker(args, timeout = 60_000) {
 // (Kept so existing definitions keep working unchanged.)
 const LEGACY_BUILD_CONTEXTS = {
   "axiom-lab-whois-vm1:latest": "lab-images/m6/whois-vm1",
+  "axiom-lab-whois-vm2:latest": "lab-images/m6/whois-vm2",
+  "axiom-lab-whois-vm3:latest": "lab-images/m6/whois-vm3",
 };
 
 // Resolve where `docker build` should run for an image. Pure + exported for tests.
@@ -191,20 +221,28 @@ const dockerProvider = {
     const target = metas.find((t) => t.target_type === "whois-server") || metas[0] || {};
     const image = target.image_reference || "axiom-lab-whois-vm1:latest";
     await ensureImage(image, target.metadata_json);
+    const domain = labDomain(lab?.slug);
+    // Labs with a runtime flag (VM #2) get a per-instance secret minted at
+    // provisioning time and injected into the target as an environment
+    // variable. Static labs (VM #1) provision exactly as before.
+    const flag = await runtimeFlagFor(lab, instance);
+    const hostname = containerHostname(target);
     const { name: networkName, cidr, targetIp } = await pickDockerSubnet();
     await docker(["network", "create", "--driver", "bridge", `--subnet=${cidr}`, "--internal=false", networkName], 30000);
     const cname = safeName("axiom", instance.id);
     try {
-      await docker([
+      const runArgs = [
         "run", "-d", "--name", cname,
         "--network", networkName, "--ip", targetIp,
         "--memory", "128m", "--cpus", "0.25", "--pids-limit", "64",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
         "--read-only", "--tmpfs", "/tmp",
         "--publish", "127.0.0.1::43",
-        "--hostname", "vm1",
-        image,
-      ], 60000);
+        "--hostname", hostname,
+      ];
+      if (flag) runArgs.push("--env", `AXIOM_WHOIS_FLAG=${flag}`);
+      runArgs.push(image);
+      await docker(runArgs, 60000);
     } catch (e) {
       await docker(["network", "rm", networkName], 15000).catch(() => {});
       throw e;
@@ -232,9 +270,9 @@ const dockerProvider = {
         } catch (e) {
           throw new Error(`Axiom could not join lab network as ${selfContainer} — check AXIOM_SELF_CONTAINER. ${String(e?.message || e).slice(0, 160)}`);
         }
-        await waitForWhois(targetIp, 43);
+        await waitForWhois(targetIp, 43, domain);
       } else {
-        await waitForWhois("127.0.0.1", hostPort);
+        await waitForWhois("127.0.0.1", hostPort, domain);
       }
     } catch (e) {
       // Never leave orphans behind a failed start.
@@ -243,6 +281,13 @@ const dockerProvider = {
       await docker(["network", "rm", networkName], 30000).catch(() => {});
       throw e;
     }
+    // Student VPN (best-effort, never fails provisioning): attach the
+    // gateway to this lab net and open the owner's target to their client.
+    // No-op unless VPN is enabled and the owner holds a VPN pack.
+    await syncInstanceVpn({
+      id: instance.id, user_id: instance.user_id || "",
+      provider: "docker", network_name: networkName, target_ip: targetIp,
+    });
     return {
       networkName, networkCidr: cidr, targetIp, targetPort: 43,
       hostEndpoint: `127.0.0.1:${hostPort}`, providerReference: cname,
@@ -255,6 +300,10 @@ const dockerProvider = {
     if (selfContainer && instance.network_name) {
       await docker(["network", "disconnect", "-f", instance.network_name, selfContainer], 15000).catch(() => {});
     }
+    // Student VPN first: drop the owner's firewall rules and detach the
+    // gateway before the network itself is removed (rm fails with live
+    // endpoints). No-op unless VPN is enabled.
+    await unsyncInstanceVpn(instance);
     if (cname) await docker(["rm", "-f", cname], 30000).catch((e) => log("lab.docker.rm", { ref: cname, error: String(e?.message || e).slice(0, 200) }));
     if (instance.network_name) await docker(["network", "rm", instance.network_name], 30000).catch(() => {});
     const ms = Date.now() - t0;
@@ -278,7 +327,7 @@ function virtualSubnet() {
   return { cidr: `${LOCAL_SUBNET_BASE}.${third}.0/24`, targetIp: `${LOCAL_SUBNET_BASE}.${third}.10` };
 }
 
-function startLocalWhoisServer() {
+function startLocalWhoisServer(responder = buildWhoisResponse) {
   return new Promise((resolve, reject) => {
     const server = net.createServer((sock) => {
       let buf = "";
@@ -288,7 +337,7 @@ function startLocalWhoisServer() {
         if (buf.includes("\n") || buf.length > 1024) {
           clearTimeout(kill);
           const query = buf.split(/\r?\n/)[0].trim();
-          sock.end(buildWhoisResponse(query));
+          sock.end(responder(query));
         }
       });
       sock.on("error", () => {});
@@ -301,11 +350,22 @@ function startLocalWhoisServer() {
 const localProvider = {
   name: "local",
   async provision(lab, instance) {
-    const server = await startLocalWhoisServer();
+    // Flag labs serve their own dataset with the instance's runtime flag;
+    // VM #3 serves its static Tech Email dataset; other static labs keep
+    // the exact historic responder.
+    let responder = buildWhoisResponse;
+    const flag = await runtimeFlagFor(lab, instance);
+    if (flag) {
+      const captured = flag;
+      responder = (q) => buildVm2WhoisResponse(q, captured);
+    } else if (String(lab?.slug || "") === VM3_SLUG) {
+      responder = buildVm3WhoisResponse;
+    }
+    const server = await startLocalWhoisServer(responder);
     const port = server.address().port;
     localServers.set(instance.id, { server, port });
     const { cidr, targetIp } = virtualSubnet();
-    await waitForWhois("127.0.0.1", port);
+    await waitForWhois("127.0.0.1", port, labDomain(lab?.slug));
     return {
       networkName: `local-${instance.id.slice(0, 12)}`, networkCidr: cidr,
       targetIp, targetPort: 43,
@@ -356,43 +416,58 @@ export async function destroyInstance(instance) {
 // Scoped command runner. NEVER a host shell: no shell is spawned, only an
 // allowlist of lab-network commands is interpreted, and `whois` performs a
 // real TCP/43 query against the instance's own target endpoint.
-export async function runTerminalCommand(instance, raw) {
+// The optional lab scopes help text and DNS helpers to the lab's domain;
+// without it the terminal behaves exactly as VM #1 always has.
+export async function runTerminalCommand(instance, raw, lab = null) {
   const input = String(raw || "").slice(0, 512).trim();
   if (!input) return { output: "" };
   const argv = input.match(/"[^"]*"|'[^']*'|\S+/g)?.map((t) => t.replace(/^["']|["']$/g, "")) || [];
   const cmd = (argv[0] || "").toLowerCase();
   const args = argv.slice(1);
+  const domain = lab ? labDomain(lab.slug ?? lab) : LAB_DOMAIN;
+  const zone = lab ? labZone(lab.slug ?? lab) : ZONE;
   switch (cmd) {
-    case "help": return { output: HELP_TEXT };
+    case "help": return { output: helpText(domain) };
     case "clear": return { output: "", clear: true };
     case "echo": return { output: args.join(" ").slice(0, 2000) };
-    case "targets": return { output: targetSummary(instance) };
-    case "whois": return terminalWhois(instance, args);
+    case "targets": return { output: await targetSummary(instance, lab) };
+    case "whois": return terminalWhois(instance, args, domain);
     case "dig":
     case "nslookup":
-    case "host": return { output: terminalDns(args) };
+    case "host": return { output: terminalDns(args, domain, zone) };
     default:
       return { output: `Command not available in the lab terminal: ${cmd}\nAvailable: help, whois, dig, nslookup, host, targets, echo, clear` };
   }
 }
 
-const HELP_TEXT = [
-  "Lab terminal — scoped to this lab environment.",
-  "",
-  "  whois <domain> [-h <whois-server>]  query the lab WHOIS service (TCP/43)",
-  "  dig <domain> [NS]                   minimal lab DNS helper",
-  "  nslookup <domain>                   minimal lab DNS helper",
-  "  host <domain>                       minimal lab DNS helper",
-  "  targets                             show this lab's targets",
-  "  echo <text>                         print text",
-  "  clear                               clear the terminal",
-  "",
-  "Example:  whois megacorpone.com -h <target-ip>",
-].join("\n");
-
-function targetSummary(instance) {
+function helpText(domain) {
   return [
-    `NAME     ${"VM #1"}`,
+    "Lab terminal — scoped to this lab environment.",
+    "",
+    "  whois <domain> [-h <whois-server>]  query the lab WHOIS service (TCP/43)",
+    "  dig <domain> [NS]                   minimal lab DNS helper",
+    "  nslookup <domain>                   minimal lab DNS helper",
+    "  host <domain>                       minimal lab DNS helper",
+    "  targets                             show this lab's targets",
+    "  echo <text>                         print text",
+    "  clear                               clear the terminal",
+    "",
+    `Example:  whois ${domain} -h <target-ip>`,
+  ].join("\n");
+}
+
+const HELP_TEXT = helpText(LAB_DOMAIN);
+
+async function targetSummary(instance, lab = null) {
+  let name = "VM #1";
+  if (lab?.id) {
+    try {
+      const targets = await getLabTargetsMeta(lab.id);
+      if (targets[0]?.name) name = targets[0].name;
+    } catch { /* fall back to the historic default */ }
+  }
+  return [
+    `NAME     ${name}`,
     `IP       ${instance.target_ip || "(provisioning…)"}`,
     `PORT     ${instance.target_port || 43}/tcp (whois)`,
     `NETWORK  ${instance.network_cidr || "(provisioning…)"} (isolated)`,
@@ -402,11 +477,11 @@ function targetSummary(instance) {
 function resolveTargetHost(instance, flag) {
   if (!flag) return null; // null = use the instance endpoint
   const f = String(flag).toLowerCase();
-  const known = new Set([(instance.target_ip || "").toLowerCase(), "target", "vm1", "vm1.megacorpone.lab", "localhost", "127.0.0.1"]);
+  const known = new Set([(instance.target_ip || "").toLowerCase(), "target", "vm1", "vm1.megacorpone.lab", "vm2", "vm2.example.lab", "vm3", "vm3.example.lab", "localhost", "127.0.0.1"]);
   return known.has(f) ? null : flag; // non-target hosts are rejected below
 }
 
-async function terminalWhois(instance, args) {
+async function terminalWhois(instance, args, domain = LAB_DOMAIN) {
   let serverFlag = null;
   const rest = [];
   for (let i = 0; i < args.length; i++) {
@@ -417,7 +492,7 @@ async function terminalWhois(instance, args) {
   if (!rest.length) return { output: "Usage: whois <domain> [-h <whois-server>]" };
   const foreign = resolveTargetHost(instance, serverFlag);
   if (foreign) return { output: `External WHOIS servers are not reachable from the lab terminal.\nUse the lab target: whois ${rest[0]} -h ${instance.target_ip || "<target-ip>"}` };
-  const { host, port } = await resolveEndpoint(instance);
+  const { host, port } = await resolveEndpoint(instance, domain);
   if (!port) return { output: "Target is not running. Start the lab first." };
   try {
     const out = await whoisQuery(host, port, rest[0], 10000);
@@ -433,25 +508,23 @@ function targetSafeError(e) {
   return "could not reach the target — is the lab running?";
 }
 
-function terminalDns(args) {
-  const domain = (args.find((a) => !a.startsWith("-")) || "").toLowerCase().replace(/\.$/, "");
-  if (!domain) return "Usage: dig <domain>";
-  if (domain === LAB_DOMAIN || domain === "megacorpone.com") {
+function terminalDns(args, domain = LAB_DOMAIN, zone = ZONE) {
+  const lookup = (args.find((a) => !a.startsWith("-")) || "").toLowerCase().replace(/\.$/, "");
+  if (!lookup) return "Usage: dig <domain>";
+  if (lookup === domain) {
     return [
-      `; Lab DNS helper (scoped to ${LAB_DOMAIN})`,
+      `; Lab DNS helper (scoped to ${domain})`,
       ``,
-      `${LAB_DOMAIN}.        3600  IN  NS  ${ZONE.ns[0]}.`,
-      `${LAB_DOMAIN}.        3600  IN  NS  ${ZONE.ns[1]}.`,
-      `${LAB_DOMAIN}.        3600  IN  NS  ${ZONE.ns[2]}.`,
+      ...zone.ns.map((ns) => `${domain}.        3600  IN  NS  ${ns}.`),
       ``,
       `;; Use whois against the lab target for authoritative registration data:`,
-      `;;   whois ${LAB_DOMAIN} -h <target-ip>`,
+      `;;   whois ${domain} -h <target-ip>`,
     ].join("\n");
   }
-  if (ZONE.ns.includes(domain) || ZONE.ns.includes(domain + ".")) {
-    return `${domain}.  3600  IN  A  93.184.216.32\n;; Registrar WHOIS: ${ZONE.registrarWhois}`;
+  if (zone.ns.includes(lookup) || zone.ns.includes(lookup + ".")) {
+    return `${lookup}.  3600  IN  A  93.184.216.32\n;; Registrar WHOIS: ${zone.registrarWhois}`;
   }
-  return `No lab records for ${domain} (helper is scoped to ${LAB_DOMAIN}).`;
+  return `No lab records for ${lookup} (helper is scoped to ${domain}).`;
 }
 
 // ---------- boot reconciliation ----------
@@ -460,6 +533,7 @@ function terminalDns(args) {
 // actives are inspected and reaped when their container is gone.
 export async function reconcileOnBoot() {
   const { allActiveInstances, forceInstanceState } = await import("./service.js");
+  const { clearRuntimeFlags } = await import("./service.js");
   const actives = await allActiveInstances().catch(() => []);
   for (const inst of actives) {
     try {
@@ -474,6 +548,7 @@ export async function reconcileOnBoot() {
         }
         if (!alive) {
           await destroyInstance(inst).catch(() => {});
+          await clearRuntimeFlags(inst.id).catch(() => {});
           await forceInstanceState(inst.id, { status: "failed", error: "Target did not survive restart." });
         } else if (process.env.AXIOM_SELF_CONTAINER && inst.network_name) {
           // A recreated app container loses its lab-network attachments;
@@ -482,10 +557,14 @@ export async function reconcileOnBoot() {
             log("lab.reconcile.connect", { instance: inst.id, error: String(e?.message || e).slice(0, 200) }));
         }
       } else if (inst.provider !== "docker") {
+        await clearRuntimeFlags(inst.id).catch(() => {});
         await forceInstanceState(inst.id, { status: "failed", error: "Host restarted; start the lab again." });
       }
     } catch (e) {
       log("lab.reconcile", { instance: inst.id, error: String(e?.message || e).slice(0, 200) });
     }
   }
+  // Student VPN: re-attach surviving nets, restore peers from the DB,
+  // rebuild per-student firewall rules. No-op unless VPN is enabled.
+  await reconcileVpn().catch(() => {});
 }

@@ -60,7 +60,7 @@ describe("course catalog service", () => {
     const u = await createUser({ username: "coursetester", email: "c@test.local", displayName: "C", password: "password12345" });
     userId = u.id;
     const r = await svc.seedFromDefinitions(path.join(REPO, "labs"));
-    assert.equal(r.labs, 1);
+    assert.equal(r.labs, 3);
     assert.equal(r.courses, 1);
     await svc.seedFromDefinitions(path.join(REPO, "labs")); // idempotent
     const courses = await svc.listLabCourses();
@@ -85,7 +85,8 @@ describe("course catalog service", () => {
     assert.equal(modules[0].title, "Information Gathering");
     assert.equal(modules[0].sections.length, 1);
     assert.equal(modules[0].sections[0].section, "6.2.1");
-    assert.equal(modules[0].sections[0].labs.length, 1);
+    assert.equal(modules[0].sections[0].labs.length, 3);
+    assert.deepEqual(modules[0].sections[0].labs.map((l) => l.lab.lab_number), [1, 2, 3]);
     assert.equal(modules[0].sections[0].labs[0].state, "not-started");
   });
 
@@ -113,9 +114,9 @@ describe("course catalog service", () => {
 
   it("aggregates course + module progress from existing progress rows", async () => {
     const cp = await svc.courseProgress(userId, courseId);
-    assert.deepEqual(cp, { total: 1, completed: 1, inProgress: 0, running: 0, notStarted: 0, pct: 100 });
+    assert.deepEqual(cp, { total: 3, completed: 1, inProgress: 0, running: 0, notStarted: 2, pct: 33 });
     const mp = await svc.moduleProgress(userId, courseId, 6);
-    assert.deepEqual(mp, { total: 1, completed: 1 });
+    assert.deepEqual(mp, { total: 3, completed: 1 });
     const empty = await svc.moduleProgress(userId, courseId, 999);
     assert.deepEqual(empty, { total: 0, completed: 0 });
   });
@@ -127,7 +128,7 @@ describe("course catalog service", () => {
     await db.run(`INSERT INTO labs(id, slug, title, course_id, module_number, module_name, lab_number, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?)`,
       ["lab_other", "other-lab", "Other", "lc_other", 6, "Other Module", 1, now, now]);
     const mp = await svc.moduleProgress(userId, courseId, 6);
-    assert.deepEqual(mp, { total: 1, completed: 1 });
+    assert.deepEqual(mp, { total: 3, completed: 1 });
     await db.run(`DELETE FROM labs WHERE id=?`, ["lab_other"]);
     await db.run(`DELETE FROM lab_courses WHERE id=?`, ["lc_other"]);
   });
@@ -181,7 +182,7 @@ describe("course routes (http)", () => {
     assert.ok(!html.includes("m6-6-2-1-whois-vm1"), "catalog must not link individual labs");
   });
 
-  it("/labs/core shows Module 6 → 6.2.1 → Lab 1", async () => {
+  it("/labs/core shows Module 6 → 6.2.1 → Lab 1 + Lab 2 + Lab 3", async () => {
     const r = await get("/labs/core");
     assert.equal(r.status, 200);
     const html = await r.text();
@@ -189,6 +190,9 @@ describe("course routes (http)", () => {
     assert.ok(html.includes("Information Gathering"));
     assert.ok(html.includes("6.2.1"));
     assert.ok(html.includes("/labs/core/m6-6-2-1-whois-vm1"));
+    assert.ok(html.includes("/labs/core/m6-6-2-1-whois-vm2"), "Lab 2 must appear under the same exercise");
+    assert.ok(html.includes("/labs/core/m6-6-2-1-whois-vm3"), "Lab 3 must appear under the same exercise");
+    assert.ok(html.includes("3 exercises"));
   });
 
   it("unknown course is a 404 page, not a crash", async () => {
@@ -249,7 +253,7 @@ describe("course routes (http)", () => {
 
   it("WHOIS lab lifecycle still works end-to-end (regression)", async () => {
     const labsRes = await get("/api/labs", { headers: { Cookie: cookie, Accept: "application/json" } });
-    const labId = (await labsRes.json()).labs[0].id;
+    const labId = (await labsRes.json()).labs.find((l) => l.slug === "m6-6-2-1-whois-vm1").id;
     const post = (p, body) => fetch(`${BASE}${p}`, {
       method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
@@ -317,7 +321,7 @@ describe("lifecycle concurrency + stop recovery (http)", () => {
     assert.equal(r.status, 302);
     cookie = (r.headers.get("set-cookie") || "").split(";")[0];
     const labsRes = await fetch(`${BASE}/api/labs`, { headers: { Cookie: cookie } });
-    labId = (await labsRes.json()).labs[0].id;
+    labId = (await labsRes.json()).labs.find((l) => l.slug === "m6-6-2-1-whois-vm1").id;
   });
   after(() => { try { child.kill(); } catch {} });
 

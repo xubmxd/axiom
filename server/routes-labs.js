@@ -17,7 +17,8 @@ import { ah } from "./wrap.js";
 import { log } from "./log.js";
 import * as svc from "./labs/service.js";
 import { selectProvider, provisionInstance, destroyInstance, runTerminalCommand } from "./labs/orchestrator.js";
-import { LAB_DOMAIN } from "./labs/whois-data.js";
+import { labDomain } from "./labs/whois-data.js";
+import { vpnStatus, ensureVpnClient, clientConfFor, regenerateVpnClient, revokeVpnClient } from "./labs/vpn.js";
 
 export const labPages = Router();
 export const labApi = Router();
@@ -88,6 +89,33 @@ function statusPill(status) {
   const map = { running: "reading", provisioning: "mixed", resetting: "mixed", stopping: "mixed", failed: "video", stopped: "" };
   const label = { running: "Running", provisioning: "Provisioning", resetting: "Resetting", stopping: "Stopping", failed: "Failed", stopped: "Stopped" }[status] || status;
   return `<span class="pill ${map[status] ?? ""}">${label}</span>`;
+}
+
+// Student VPN pack panel (Connection tab). Server-rendered state, live
+// actions via lab.js. Never embeds keys — the pack downloads as a file.
+function vpnPanel(vpn, domain, targetIp, username) {
+  if (!vpn?.enabled) {
+    return `<h3>From your own Kali (VPN)</h3>
+      <p class="dim small">Student VPN is not enabled on this server. Use the lab terminal above — it reaches the same target over the isolated lab network.</p>`;
+  }
+  const file = `axiom-${String(username || "student").toLowerCase().replace(/[^a-z0-9_-]/g, "_").slice(0, 32) || "student"}.conf`;
+  const kaliCmd = `whois ${domain} -h ${targetIp}`;
+  const copyBtn = (v) => `<button class="iconbtn xs" data-copy="${esc(v)}" aria-label="Copy command">⧉</button>`;
+  return `<h3>From your own Kali (VPN)</h3>
+    <div data-vpn>
+      <p class="dim small">Join the student VPN from your own Kali VM, then query the target IP directly — the same isolated target, your own terminal. The VPN reaches only YOUR running targets.</p>
+      <p class="mono small" data-vpn-line>${vpn.configured ? `Pack ready · your VPN IP ${esc(vpn.clientIp || "")}${vpn.gateway ? "" : " · gateway offline — retry in a minute"}` : "No pack yet — downloading creates your personal one."}</p>
+      <div class="lrow">
+        <button class="btn xs" data-vpn-download>Download VPN pack</button>
+        ${vpn.configured ? `<button class="btn xs" data-vpn-regenerate>Regenerate</button><button class="btn xs" data-vpn-status>Refresh status</button>` : ""}
+      </div>
+      <div class="cmdlist">
+        <div class="cmdrow"><code class="mono">sudo apt install wireguard -y</code>${copyBtn("sudo apt install wireguard -y")}</div>
+        <div class="cmdrow"><code class="mono">sudo wg-quick up ./${esc(file)}</code>${copyBtn(`sudo wg-quick up ./${file}`)}</div>
+        <div class="cmdrow"><code class="mono">${esc(kaliCmd)}</code>${copyBtn(kaliCmd)}</div>
+        <div class="cmdrow"><code class="mono">sudo wg-quick down ./${esc(file)}</code>${copyBtn(`sudo wg-quick down ./${file}`)}</div>
+      </div>
+    </div>`;
 }
 
 // ---------- pages ----------
@@ -203,15 +231,19 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
   if (!course || !lab || lab.status !== "active") {
     return res.status(404).send(layout({ title: "Lab unavailable", user: u, active: "labs", body: `<div class="wrap">${emptyState("Lab unavailable", "This lab may have been moved or removed.")}</div>` }));
   }
-  const [targets, objectives, progress, instance, notes, hints, modProg] = await Promise.all([
+  const [targets, objectives, progress, instance, notes, hints, modProg, vpn] = await Promise.all([
     svc.labTargets(lab.id), svc.labObjectives(lab.id), svc.labProgress(u.id, lab.id),
     svc.activeInstance(u.id, lab.id), svc.getNotes(u.id, lab.id), svc.hintsFor(u.id, lab.id),
     svc.moduleProgress(u.id, course.id, lab.module_number),
+    vpnStatus(u.id).catch(() => ({ enabled: false, gateway: false, configured: false })),
   ]);
   const extra = readDefExtra(lab);
   const instr = readInstructions(lab);
   const inst = pubInstance(instance);
   const primary = targets[0] || {};
+  // Each lab queries its own domain (VM #1: megacorpone.com,
+  // VM #2: example.net). Falls back to VM #1's domain.
+  const domain = labDomain(lab.slug);
   const targetIp = inst?.targetIp || "<TARGET-IP>";
   const withIp = (s) => esc(String(s).replaceAll("<TARGET-IP>", targetIp).replaceAll("<target-ip>", targetIp));
 
@@ -265,11 +297,12 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
             <div><p class="mono dim small">TARGET IP</p><p class="mono conn-ip">${esc(targetIp)} ${inst?.targetIp ? `<button class="iconbtn xs" data-copy="${esc(inst.targetIp)}" aria-label="Copy target IP">⧉</button>` : ""}</p></div>
             <div><p class="mono dim small">PORTS</p><p class="mono">43/tcp (whois)</p></div>
             <div><p class="mono dim small">NETWORK</p><p class="mono">${esc(inst?.networkCidr || "—")} <span class="dim">isolated lab network</span></p></div>
-            <div><p class="mono dim small">ACCESS</p><p>Lab terminal (always)${inst ? " · direct WHOIS from the Docker host" : ""}</p></div>
+            <div><p class="mono dim small">ACCESS</p><p>Lab terminal (always)${inst ? " · direct WHOIS from the Docker host" : ""}${vpn?.enabled ? " · Kali via VPN" : ""}</p></div>
           </div>
           <h3>From the lab terminal</h3>
-          <div class="cmdrow"><code class="mono">whois ${esc(LAB_DOMAIN)} -h ${esc(targetIp)}</code>${inst?.targetIp ? `<button class="iconbtn xs" data-copy="whois ${esc(LAB_DOMAIN)} -h ${esc(inst.targetIp)}" aria-label="Copy command">⧉</button>` : ""}</div>
-          ${inst?.hostEndpoint ? `<h3>From this machine's shell</h3><div class="cmdrow"><code class="mono">whois ${esc(LAB_DOMAIN)} -h ${esc(inst.hostEndpoint.replace(":", " -p "))}</code><button class="iconbtn xs" data-copy="whois ${esc(LAB_DOMAIN)} -h ${esc(inst.hostEndpoint.replace(":", " -p "))}" aria-label="Copy command">⧉</button></div><p class="dim small">Loopback mapping of your isolated target — unique to your session.</p>` : `<p class="dim small">Start the lab to get connection details.</p>`}
+          <div class="cmdrow"><code class="mono">whois ${esc(domain)} -h ${esc(targetIp)}</code>${inst?.targetIp ? `<button class="iconbtn xs" data-copy="whois ${esc(domain)} -h ${esc(inst.targetIp)}" aria-label="Copy command">⧉</button>` : ""}</div>
+          ${inst?.hostEndpoint ? `<h3>From this machine's shell</h3><div class="cmdrow"><code class="mono">whois ${esc(domain)} -h ${esc(inst.hostEndpoint.replace(":", " -p "))}</code><button class="iconbtn xs" data-copy="whois ${esc(domain)} -h ${esc(inst.hostEndpoint.replace(":", " -p "))}" aria-label="Copy command">⧉</button></div><p class="dim small">Loopback mapping of your isolated target — unique to your session.</p>` : `<p class="dim small">Start the lab to get connection details.</p>`}
+          ${vpnPanel(vpn, domain, targetIp, u.username)}
         </section>
 
         <section class="card tabpanel" role="tabpanel" id="panel-notes" aria-labelledby="tab-notes" tabindex="0" hidden>
@@ -295,7 +328,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
         <section class="card terminal-card" aria-label="Integrated terminal">
           <div class="sech"><h2><span class="h-ic" aria-hidden="true">▸</span> Lab Terminal</h2><span class="mono dim small">scoped · no host shell</span></div>
           <div class="term-out" id="termOut" role="log" aria-label="Terminal output" tabindex="0"><div class="dim">Type <b>help</b> to see available commands. Runs inside your isolated lab environment.</div></div>
-          <form class="term-in" id="termForm"><span class="mono term-ps" aria-hidden="true">lab ❯</span><input id="termInput" autocomplete="off" spellcheck="false" aria-label="Terminal input" placeholder="whois ${esc(LAB_DOMAIN)} -h ${esc(targetIp)}" ${inst ? "" : "disabled"}><button class="btn primary xs" type="submit" ${inst ? "" : "disabled"}>Run</button></form>
+          <form class="term-in" id="termForm"><span class="mono term-ps" aria-hidden="true">lab ❯</span><input id="termInput" autocomplete="off" spellcheck="false" aria-label="Terminal input" placeholder="whois ${esc(domain)} -h ${esc(targetIp)}" ${inst ? "" : "disabled"}><button class="btn primary xs" type="submit" ${inst ? "" : "disabled"}>Run</button></form>
         </section>
       </div>
 
@@ -466,6 +499,7 @@ labApi.post("/labs/:id/start", ah(async (req, res) => {
     });
   } catch (e) {
     log("lab.start.fail", { user: req.user.id, lab: lab.id, error: String(e?.message || e).slice(0, 300) });
+    await svc.clearRuntimeFlags(inst.id).catch(() => {});
     inst = await svc.setInstanceStatus(inst, "failed", { error: "provisioning failed" }).catch(() => inst);
     return res.status(500).json({ error: "Could not start the lab target. Please retry.", instance: pubInstance(inst) });
   }
@@ -495,6 +529,7 @@ labApi.post("/labs/:id/stop", ah(async (req, res) => {
   stage("destroyed");
   try { cur = await svc.setInstanceStatus(cur, "stopped"); } catch { /* force below covers it */ }
   cur = await svc.forceInstanceState(cur.id, { status: "stopped", provider_reference: "", network_name: "", target_ip: "", host_endpoint: "", stopped_at: new Date().toISOString() });
+  await svc.clearRuntimeFlags(cur.id).catch(() => {});
   log("lab.stop", { user: req.user.id, lab: lab.id, ms: Date.now() - t0 });
   res.json({ ok: true, instance: pubInstance(cur), progress: await svc.labProgress(req.user.id, lab.id) });
   });
@@ -515,6 +550,9 @@ labApi.post("/labs/:id/reset", ah(async (req, res) => {
   if (inst.status !== "running") return res.status(409).json({ error: `Cannot reset while ${inst.status}.` });
   let cur = await svc.setInstanceStatus(inst, "resetting");
   await destroyInstance(cur);
+  // A reset rebuilds the environment from scratch: drop the old runtime
+  // secrets so provisioning mints fresh ones (new flag for flag labs).
+  await svc.clearRuntimeFlags(cur.id).catch(() => {});
   log("lab.reset", { user: req.user.id, lab: lab.id });
   try {
     const details = await provisionInstance({ lab, instance: cur });
@@ -588,8 +626,37 @@ labApi.post("/labs/:id/terminal", ah(async (req, res) => {
   const inst = await svc.activeInstance(req.user.id, lab.id);
   if (!inst || !ownOrAdmin(req, inst)) return res.status(409).json({ error: "Start the lab to use the terminal." });
   if (inst.status !== "running") return res.status(409).json({ error: `Terminal unavailable while ${inst.status}.` });
-  const r = await runTerminalCommand(inst, req.body?.command);
+  const r = await runTerminalCommand(inst, req.body?.command, lab);
   res.json({ ok: true, ...r });
+}));
+
+// ---------- student VPN (personal WireGuard packs for Kali access) ----------
+function vpnErr(res, e) {
+  if (e?.name === "VpnError") return res.status(e.status || 503).json({ error: e.message });
+  throw e;
+}
+
+labApi.get("/vpn/status", ah(async (req, res) => {
+  res.json(await vpnStatus(req.user.id));
+}));
+
+labApi.get("/vpn/pack", ah(async (req, res) => {
+  try {
+    await ensureVpnClient(req.user.id);
+    const conf = await clientConfFor(req.user.id);
+    const safe = String(req.user.username || "student").toLowerCase().replace(/[^a-z0-9_-]/g, "_").slice(0, 32) || "student";
+    log("vpn.pack", { user: req.user.id });
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="axiom-${safe}.conf"`);
+    res.send(conf);
+  } catch (e) { vpnErr(res, e); }
+}));
+
+labApi.post("/vpn/regenerate", ah(async (req, res) => {
+  try {
+    const client = await regenerateVpnClient(req.user.id);
+    res.json({ ok: true, clientIp: client.client_ip });
+  } catch (e) { vpnErr(res, e); }
 }));
 
 // ---------- admin ----------
@@ -603,8 +670,15 @@ labApi.post("/admin/lab-instances/:id/stop", needAdminJson, ah(async (req, res) 
   if (!inst) return res.status(404).json({ error: "Instance not found." });
   await destroyInstance(inst);
   const cur = await svc.forceInstanceState(inst.id, { status: "stopped", provider_reference: "", network_name: "", target_ip: "", host_endpoint: "", stopped_at: new Date().toISOString() });
+  await svc.clearRuntimeFlags(inst.id).catch(() => {});
   log("lab.admin.stop", { by: req.user.id, instance: inst.id });
   res.json({ ok: true, instance: pubInstance(cur) });
+}));
+
+labApi.post("/admin/vpn/:userId/revoke", needAdminJson, ah(async (req, res) => {
+  await revokeVpnClient(req.params.userId);
+  log("vpn.admin.revoke", { by: req.user.id, user: req.params.userId });
+  res.json({ ok: true });
 }));
 
 export async function labById(id) {

@@ -255,6 +255,32 @@ export async function migrate() {
       revealed_at TEXT NOT NULL,
       PRIMARY KEY(user_id, lab_id, hint_id)
     )`,
+    // Per-instance runtime flags (e.g. VM #2's WHOIS DNS-section flag).
+    // One row per (instance, objective): the plaintext value lives
+    // server-side only so targets can serve it; the API never exposes this
+    // table and validation compares hashes. Rows are created at provision,
+    // rotated on reset, and removed on stop.
+    `CREATE TABLE IF NOT EXISTS lab_runtime_flags(
+      instance_id TEXT NOT NULL,
+      objective_key TEXT NOT NULL DEFAULT 'flag',
+      lab_id TEXT NOT NULL DEFAULT '',
+      user_id TEXT NOT NULL DEFAULT '',
+      flag_value TEXT NOT NULL DEFAULT '',
+      flag_hash TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      PRIMARY KEY(instance_id, objective_key)
+    )`,
+    // Student VPN clients (one WireGuard identity per user, HTB/THM-style).
+    // Server-generated keypair so the pack is a one-click download; the
+    // private key is shown only to its owner via the pack endpoint and is
+    // rotated on regenerate / destroyed on revoke.
+    `CREATE TABLE IF NOT EXISTS vpn_clients(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      public_key TEXT NOT NULL DEFAULT '',
+      private_key TEXT NOT NULL DEFAULT '',
+      client_ip TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    )`,
   ];
   for (const s of stmts) await execRaw(s);
   try { await execRaw(`INSERT INTO scan_state(id) VALUES(1) ON CONFLICT DO NOTHING`); } catch {}

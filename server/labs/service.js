@@ -3,7 +3,8 @@
 // Definitions (labs/*/lab.json) seed immutable metadata. Everything mutable
 // — instances, objective progress, submissions, notes, hint views — lives
 // here in the database, keyed to the existing users table.
-import { all, get, run, uid, nowIso } from "../db.js";
+import crypto from "node:crypto";
+import { all, get, run, uid, nowIso, isPg } from "../db.js";
 import { coerceValidationType, verifyAnswer, hashAnswer } from "./answers.js";
 import { loadAllDefinitions, normalizePlacement } from "./definitions.js";
 
@@ -267,12 +268,55 @@ export async function forceInstanceState(id, patch) {
   return getInstance(id);
 }
 
+// ---------- per-instance runtime flags ----------
+// Objectives with validation_type "flag" are answered by a secret minted at
+// provisioning time (unique per instance) rather than the static definition
+// hash. Static-hash objectives are untouched: this only applies when the
+// objective's validation type is "flag" and a runtime row exists for the
+// submitting instance. Server-side only — no route ever returns these rows.
+export function mintFlagValue() {
+  return `AXIOM{${crypto.randomBytes(16).toString("hex")}}`;
+}
+
+export async function getRuntimeFlag(instanceId, objectiveKey = "flag") {
+  if (!instanceId) return null;
+  return get(`SELECT * FROM lab_runtime_flags WHERE instance_id=? AND objective_key=?`, [instanceId, objectiveKey]);
+}
+
+export async function ensureRuntimeFlag({ instanceId, labId = "", userId = "", objectiveKey = "flag" }) {
+  const ex = await getRuntimeFlag(instanceId, objectiveKey);
+  if (ex?.flag_value) return ex;
+  const flag = mintFlagValue();
+  const now = nowIso();
+  const cols = `(instance_id, objective_key, lab_id, user_id, flag_value, flag_hash, created_at)`;
+  const vals = [instanceId, objectiveKey, labId, userId, flag, hashAnswer(flag, "exact"), now];
+  if (isPg()) {
+    await run(`INSERT INTO lab_runtime_flags${cols} VALUES(?,?,?,?,?,?,?) ON CONFLICT (instance_id, objective_key) DO NOTHING`, vals);
+  } else {
+    await run(`INSERT OR IGNORE INTO lab_runtime_flags${cols} VALUES(?,?,?,?,?,?,?)`, vals);
+  }
+  return getRuntimeFlag(instanceId, objectiveKey);
+}
+
+export async function clearRuntimeFlags(instanceId) {
+  if (!instanceId) return;
+  await run(`DELETE FROM lab_runtime_flags WHERE instance_id=?`, [instanceId]);
+}
+
+async function verifyObjectiveAnswer(objective, answer, instanceId) {
+  if (objective.validation_type === "flag" && instanceId) {
+    const rt = await getRuntimeFlag(instanceId, objective.objective_key).catch(() => null);
+    if (rt?.flag_hash) return verifyAnswer(answer, rt.flag_hash, "exact");
+  }
+  return verifyAnswer(answer, objective.expected_value_hash, objective.validation_type);
+}
+
 // ---------- submissions ----------
 export async function submitAnswer({ userId, lab, objectiveKey, answer, instanceId = "" }) {
   const objective = await get(`SELECT * FROM lab_objectives WHERE lab_id=? AND objective_key=?`, [lab.id, objectiveKey]);
   if (!objective) return { ok: false, error: "Unknown objective." };
   const now = nowIso();
-  const correct = verifyAnswer(answer, objective.expected_value_hash, objective.validation_type);
+  const correct = await verifyObjectiveAnswer(objective, answer, instanceId);
   // Idempotent: an already-completed objective stays completed without a
   // duplicate "completed" event, but the attempt is still recorded.
   const prior = await get(`SELECT * FROM lab_objective_progress WHERE user_id=? AND lab_id=? AND objective_id=?`,

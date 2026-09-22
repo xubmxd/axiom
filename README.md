@@ -38,6 +38,11 @@ Postgres), `pgdata` (database). Course files survive container recreation.
 | `READING_COMPLETION_THRESHOLD` | 0.9 | scroll fraction auto-complete |
 | `READING_INACTIVITY_TIMEOUT` | 60 | seconds without interaction → pause timer |
 | `STREAK_MINUTES` | 15 | meaningful-day threshold |
+| `LAB_PROVIDER` | `auto` | Cyber Range backend: `docker` (isolated nets) or `local` (dev fallback) |
+| `VPN_ENABLED` | `0` | student VPN (WireGuard packs for Kali access): `1` to enable |
+| `VPN_ENDPOINT_HOST` | — | LAN/public IP or hostname students connect to (UDP `VPN_ENDPOINT_PORT`) |
+| `VPN_ENDPOINT_PORT` | `51820` | WireGuard listen/publish port |
+| `VPN_SUBNET_BASE` | `10.212` | /24 for student tunnel IPs; keep clear of lab subnets |
 
 ## Architecture
 

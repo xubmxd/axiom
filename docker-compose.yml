@@ -34,6 +34,31 @@ services:
     build: ./lab-images/m6/whois-vm1
     image: axiom-lab-whois-vm1:latest
     profiles: [lab-images]
+  whois-vm2:
+    build: ./lab-images/m6/whois-vm2
+    image: axiom-lab-whois-vm2:latest
+    profiles: [lab-images]
+  whois-vm3:
+    build: ./lab-images/m6/whois-vm3
+    image: axiom-lab-whois-vm3:latest
+    profiles: [lab-images]
+  # Student VPN gateway (optional WireGuard endpoint so personal Kali VMs can
+  # reach their own lab targets directly). Harmless when VPN_ENABLED=0: it
+  # carries no peers and forwards nothing. Requires UDP VPN_ENDPOINT_PORT
+  # forwarded to this host + VPN_ENDPOINT_HOST set to a student-reachable IP.
+  vpn:
+    build: ./vpn-gateway
+    container_name: axiom-vpn
+    environment:
+      VPN_SUBNET_BASE: ${VPN_SUBNET_BASE:-10.212}
+      WG_PORT: ${VPN_ENDPOINT_PORT:-51820}
+    ports: ["${VPN_ENDPOINT_PORT:-51820}:51820/udp"]
+    cap_add: [NET_ADMIN]
+    sysctls:
+      net.ipv4.ip_forward: 1
+    volumes: [vpnconf:/config]
+    restart: unless-stopped
 volumes:
   pgdata:
   appdata:
+  vpnconf:

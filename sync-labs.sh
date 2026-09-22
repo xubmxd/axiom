@@ -13,5 +13,6 @@ RDIR="${2:-/opt/lumen}"
 
 rsync -avz --delete labs/ "$DEST:$RDIR/labs/"
 rsync -avz --delete lab-images/ "$DEST:$RDIR/lab-images/"
+rsync -avz --delete vpn-gateway/ "$DEST:$RDIR/vpn-gateway/"
 # -t gives sudo a terminal for its password prompt over non-interactive ssh.
 ssh -t "$DEST" "cd '$RDIR' && sudo docker compose up -d --build"
