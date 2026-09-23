@@ -136,15 +136,40 @@
   player.addEventListener("keydown", wake);
   wake();
 
+  // Tap-to-reveal on touch: the first tap while chrome is auto-hidden only
+  // brings the controls back — it must not toggle play / fullscreen.
+  // Capture the idle state on pointerdown (before wake() below clears it)
+  // and consume the click/dblclick that follows the reveal tap.
+  let revealTap = false;
+  player.addEventListener("pointerdown", (e) => {
+    if (player.classList.contains("idle") && !v.paused &&
+        !e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) {
+      revealTap = true;
+    } else {
+      revealTap = false;
+    }
+  }, { capture: true });
   // ---- transport controls ----
   const togglePlay = () => { v.paused ? v.play() : v.pause(); };
   btnPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
   document.getElementById("btnFf").onclick = () => { if (v.duration) v.currentTime = Math.min(v.duration, v.currentTime + 5); wake(); };
   // Click-to-toggle on the player surface — but never when interacting with
-  // controls, menus, links, the seek bar, or the autoplay prompt.
-  player.onclick = (e) => { if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return; togglePlay(); };
-  player.ondblclick = (e) => { if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return; toggleFS(); };
+  // controls, menus, links, the seek bar, or the autoplay prompt. A reveal
+  // tap (chrome was hidden) only wakes the overlay.
+  player.onclick = (e) => {
+    if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) { revealTap = false; return; }
+    if (revealTap) { revealTap = false; wake(); return; }
+    // Fallback for input paths without a preceding pointerdown.
+    if (player.classList.contains("idle") && !v.paused) { wake(); return; }
+    togglePlay();
+  };
+  player.ondblclick = (e) => {
+    if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) { revealTap = false; return; }
+    if (revealTap) { revealTap = false; wake(); return; }
+    if (player.classList.contains("idle") && !v.paused) { wake(); return; }
+    toggleFS();
+  };
 
   // ---- timeline: click + drag scrub with hover time preview ----
   const ratioAt = (clientX) => {
