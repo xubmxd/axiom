@@ -227,7 +227,9 @@
     bigPlay.innerHTML = bigIcon(v.paused ? IC.play : IC.pause);
     bigPlay.setAttribute("aria-label", v.paused ? "Play (k)" : "Pause (k)");
   }
-  const togglePlay = () => { flashCenter(v.paused ? IC.play : IC.pause); v.paused ? v.play() : v.pause(); };
+  // Beat only on pause: resume just fades the button out, so there is no
+  // icon rebuild blink when playback starts.
+  const togglePlay = () => { if (!v.paused) flashCenter(IC.pause); v.paused ? v.play() : v.pause(); };
   btnPlay.onclick = togglePlay;
   if (bigPlay) bigPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };

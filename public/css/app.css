@@ -386,12 +386,12 @@ li.res a{gap:.5rem}
 .player:fullscreen,.player:-webkit-full-screen{position:fixed;inset:0;width:100vw;height:100vh;max-width:100vw;max-height:100vh;margin:0;border:0;border-radius:0;display:flex;flex-direction:column;background:#000}
 .player:fullscreen::backdrop{background:#000}
 .player:fullscreen video,.player:-webkit-full-screen video{flex:1 1 auto;min-height:0;width:100%;height:100%;max-height:100%;aspect-ratio:auto;object-fit:contain;background:#000}
-.pcenter{position:absolute;inset:0;display:grid;place-items:center;font-size:3rem;color:#fff;pointer-events:none;opacity:0;transition:opacity .2s;text-shadow:0 2px 20px #000;background:none;border:0;padding:0}
-.player.paused .pcenter{opacity:.9;pointer-events:auto;cursor:pointer}
-.player.paused .pcenter:focus-visible{outline:none}
-.player.paused .pcenter:focus-visible .pcircle{outline:2px solid var(--accent);outline-offset:3px}
+.pcenter{position:absolute;inset:0;display:grid;place-items:center;font-size:3rem;color:#fff;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s linear .25s;text-shadow:0 2px 20px #000;background:none;border:0;padding:0}
+.player.paused .pcenter,.player.playing:not(.idle) .pcenter{opacity:.9;visibility:visible;pointer-events:auto;cursor:pointer;transition:opacity .2s,visibility 0s}
+.player .pcenter:focus-visible{outline:none}
+.player .pcenter:focus-visible .pcircle{outline:2px solid var(--accent);outline-offset:3px}
 /* brief toggle feedback (YouTube-style beat), never interactive */
-.player.flash .pcenter,.player.idle.playing.flash .pcenter{opacity:1;pointer-events:none}
+.player.flash .pcenter,.player.idle.playing.flash .pcenter{opacity:1;visibility:visible;pointer-events:none;transition:opacity .2s,visibility 0s}
 .pcircle{display:grid;place-items:center;width:104px;height:104px;border-radius:50%;background:rgba(8,10,14,.62);box-shadow:0 4px 28px rgba(0,0,0,.5)}
 .pcircle svg{width:44px;height:44px;color:#fff;filter:drop-shadow(0 2px 12px rgba(0,0,0,.6));pointer-events:none}
 .player.flash .pcircle{animation:pbeat .5s ease-out}
