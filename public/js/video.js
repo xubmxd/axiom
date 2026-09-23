@@ -17,6 +17,7 @@
   const btnMenu = document.getElementById("btnMenu"), menu = document.getElementById("pMenu");
   const btnCC = document.getElementById("btnCC"), mTheater = document.getElementById("mTheater");
   const spin = document.getElementById("pSpin");
+  const bigPlay = document.getElementById("bigPlay");
   const nextId = document.querySelector("[data-next-id]")?.dataset.nextId;
   const prevId = document.querySelector("[data-prev-id]")?.dataset.prevId;
   let restored = parseFloat(root.dataset.pos || "0");
@@ -36,8 +37,8 @@
     tDur.textContent = fmt(v.duration);
     if (restored > 0 && restored < (v.duration || 1) - 5) { try { v.currentTime = restored; } catch {} }
   });
-  v.addEventListener("play", () => { player.classList.remove("paused"); player.classList.add("playing"); btnPlay.innerHTML = IC.pause; wake(); });
-  v.addEventListener("pause", () => { player.classList.add("paused"); player.classList.remove("playing"); btnPlay.innerHTML = IC.play; wake(); flush(); lastTick = null; });
+  v.addEventListener("play", () => { player.classList.remove("paused"); player.classList.add("playing"); btnPlay.innerHTML = IC.pause; syncBig(); wake(); });
+  v.addEventListener("pause", () => { player.classList.add("paused"); player.classList.remove("playing"); btnPlay.innerHTML = IC.play; syncBig(); wake(); flush(); lastTick = null; });
   player.classList.add("paused");
   v.addEventListener("timeupdate", () => {
     tCur.textContent = fmt(v.currentTime);
@@ -151,8 +152,27 @@
     lastTouchTap ||
     (touchLayout && e.pointerType !== "mouse");
   // ---- transport controls ----
-  const togglePlay = () => { v.paused ? v.play() : v.pause(); };
+  // Persistent center button (paused) + brief toggle flash, YouTube-style.
+  let flashTimer = null;
+  function flashCenter(icon) {
+    if (!bigPlay) return;
+    bigPlay.innerHTML = icon;
+    player.classList.add("flash");
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => {
+      player.classList.remove("flash");
+      syncBig();
+    }, 600);
+  }
+  // Persistent center icon + label; never stomps an in-flight flash.
+  function syncBig() {
+    if (!bigPlay || player.classList.contains("flash")) return;
+    bigPlay.innerHTML = v.paused ? IC.play : IC.pause;
+    bigPlay.setAttribute("aria-label", v.paused ? "Play (k)" : "Pause (k)");
+  }
+  const togglePlay = () => { flashCenter(v.paused ? IC.play : IC.pause); v.paused ? v.play() : v.pause(); };
   btnPlay.onclick = togglePlay;
+  if (bigPlay) bigPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
   document.getElementById("btnFf").onclick = () => { if (v.duration) v.currentTime = Math.min(v.duration, v.currentTime + 5); wake(); };
   // Click-to-toggle on the player surface — but never when interacting with

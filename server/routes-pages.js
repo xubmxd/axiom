@@ -457,7 +457,7 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
       <div class="player" id="player">
         <video id="vid" src="/media/${l.course_id}/video/${l.id}" preload="metadata" playsinline>${subs.map((s, i) => `<track kind="subtitles" src="/media/${l.course_id}/resource/${s.id}" srclang="en" label="${esc(s.title)}${subs.length > 1 ? ` ${i + 1}` : ""}">`).join("")}</video>
         <div class="pspinner" id="pSpin" aria-hidden="true"></div>
-        <div class="pcenter" id="bigPlay" aria-hidden="true">${PLAYER_ICONS.play}</div>
+        <button class="pcenter" id="bigPlay" aria-label="Play (k)">${PLAYER_ICONS.play}</button>
         <div class="pbadge mono" id="pDone"${prog?.completed ? "" : " hidden"}>Completed</div>
         <div class="perror" id="pError" hidden><p>This video couldn't be loaded.</p></div>
         <div class="pchrome">
