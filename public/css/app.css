@@ -389,7 +389,15 @@ li.res a{gap:.5rem}
 .pcenter{position:absolute;inset:0;display:grid;place-items:center;font-size:3rem;color:#fff;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s linear .25s;text-shadow:0 2px 20px #000;background:none;border:0;padding:0}
 .player.paused .pcenter,.player.playing:not(.idle) .pcenter{opacity:.9;visibility:visible;pointer-events:auto;cursor:pointer;transition:opacity .2s,visibility 0s}
 .player .pcenter:focus-visible{outline:none}
-.player .pcenter:focus-visible .pcircle{outline:2px solid var(--accent);outline-offset:3px}
+/* mobile hygiene: no tap flash, no callout, no text selection blinks */
+.player,.player *{-webkit-tap-highlight-color:transparent}
+.player{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.player button{outline:none}
+@media (hover:hover) and (pointer:fine){
+  .player .controls button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:8px}
+  .player .pcenter:focus-visible .pcircle{outline:2px solid var(--accent);outline-offset:3px}
+  .player .pmenu button:focus-visible,.player .nextUp button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+}
 /* brief toggle feedback (YouTube-style beat), never interactive */
 .player.flash .pcenter,.player.idle.playing.flash .pcenter{opacity:1;visibility:visible;pointer-events:none;transition:opacity .2s,visibility 0s}
 .pcircle{display:grid;place-items:center;width:104px;height:104px;border-radius:50%;background:rgba(8,10,14,.62);box-shadow:0 4px 28px rgba(0,0,0,.5)}
