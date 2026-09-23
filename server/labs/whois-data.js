@@ -11,7 +11,7 @@
 // local-process fallback) so the observable challenge is identical no
 // matter which provider provisioned the instance.
 //
-// VM #2 (same exercise, example.net) lives below. Its record is
+// VM #2 (same exercise, offensive-security.com) lives below. Its record is
 // built per instance with a runtime flag embedded in the DNS section — VM #1
 // output is byte-identical to before.
 export const LAB_DOMAIN = "megacorpone.com";
@@ -88,11 +88,11 @@ export const ZONE = {
   registrarWhois: REGISTRAR_WHOIS,
 };
 
-// ---------- VM #2: example.net (same 6.2.1 exercise) ----------
-// Independently recreated record for the lab domain example.net.
+// ---------- VM #2: offensive-security.com (same 6.2.1 exercise) ----------
+// Independently recreated record for the lab domain offensive-security.com.
 // The discovery path is:
 //
-//   whois example.net -h <TARGET-IP>
+//   whois offensive-security.com -h <TARGET-IP>
 //     → DNS section of the response
 //     → flag embedded as a DNS TXT verification token
 //
@@ -101,12 +101,12 @@ export const ZONE = {
 // browser except inside the live WHOIS response itself.
 export const VM2_SLUG = "m6-6-2-1-whois-vm2";
 export const VM1_SLUG = "m6-6-2-1-whois-vm1";
-export const VM2_DOMAIN = "example.net";
+export const VM2_DOMAIN = "offensive-security.com";
 export const VM2_REGISTRAR_WHOIS = "whois.tucows.com";
 
 export const VM2_ZONE = {
   domain: VM2_DOMAIN,
-  ns: ["ns1.example.net", "ns2.example.net"],
+  ns: ["ns1.offensive-security.com", "ns2.offensive-security.com"],
   registrarWhois: VM2_REGISTRAR_WHOIS,
 };
 
@@ -126,7 +126,7 @@ export function labZone(labOrSlug) {
 export function buildVm2WhoisResponse(query, flag) {
   const q = String(query || "").trim().toLowerCase();
   if (!q || q === VM2_DOMAIN || q === `domain ${VM2_DOMAIN}`) return vm2DomainResponse(flag);
-  if (q === "ns1.example.net" || q === "ns2.example.net") return vm2NameserverResponse(q);
+  if (q === "ns1.offensive-security.com" || q === "ns2.offensive-security.com") return vm2NameserverResponse(q);
   return vm2NotFoundResponse(String(query || "").trim());
 }
 
@@ -145,11 +145,11 @@ function vm2DomainResponse(flag) {
     `Registrar Abuse Contact Email: domainabuse@tucows.com`,
     `Registrar Abuse Contact Phone: +1.4165350121`,
     `Domain Status: clientTransferProhibited https://icann.org/epp#clientTransferProhibited`,
-    `Name Server: NS1.EXAMPLE.NET`,
-    `Name Server: NS2.EXAMPLE.NET`,
+    `Name Server: NS1.OFFENSIVE-SECURITY.COM`,
+    `Name Server: NS2.OFFENSIVE-SECURITY.COM`,
     `DNSSEC: unsigned`,
     `DNS Status: active`,
-    `DNS Primary: NS1.EXAMPLE.NET`,
+    `DNS Primary: NS1.OFFENSIVE-SECURITY.COM`,
     `DNS Serial: 2026081901`,
     `DNS TXT: axiom-verification=${token}`,
     ``,
@@ -182,10 +182,10 @@ function vm2NotFoundResponse(q) {
   ].join("\r\n") + "\r\n";
 }
 
-// ---------- VM #3: example.net Tech Email (same 6.2.1 exercise) ----------
+// ---------- VM #3: offensive-security.com Tech Email (same 6.2.1 exercise) ----------
 // Independently recreated record for the same lab domain. The discovery path is:
 //
-//   whois example.net -h <TARGET-IP>
+//   whois offensive-security.com -h <TARGET-IP>
 //     → inspect the returned record
 //     → Tech Email address
 //
@@ -195,12 +195,12 @@ function vm2NotFoundResponse(q) {
 // never stored in the lab definition and never sent to the browser — only
 // the live WHOIS response carries it.
 export const VM3_SLUG = "m6-6-2-1-whois-vm3";
-export const TECH_EMAIL = "tech@example.net";
+export const TECH_EMAIL = "tech@offensive-security.com";
 
 export function buildVm3WhoisResponse(query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q || q === VM2_DOMAIN || q === `domain ${VM2_DOMAIN}`) return vm3DomainResponse();
-  if (q === "ns1.example.net" || q === "ns2.example.net") return vm2NameserverResponse(q);
+  if (q === "ns1.offensive-security.com" || q === "ns2.offensive-security.com") return vm2NameserverResponse(q);
   return vm2NotFoundResponse(String(query || "").trim());
 }
 
@@ -218,13 +218,13 @@ function vm3DomainResponse() {
     `Registrar Abuse Contact Email: domainabuse@tucows.com`,
     `Registrar Abuse Contact Phone: +1.4165350121`,
     `Domain Status: clientTransferProhibited https://icann.org/epp#clientTransferProhibited`,
-    `Name Server: NS1.EXAMPLE.NET`,
-    `Name Server: NS2.EXAMPLE.NET`,
+    `Name Server: NS1.OFFENSIVE-SECURITY.COM`,
+    `Name Server: NS2.OFFENSIVE-SECURITY.COM`,
     `DNSSEC: unsigned`,
     `DNS Status: active`,
-    `DNS Primary: NS1.EXAMPLE.NET`,
+    `DNS Primary: NS1.OFFENSIVE-SECURITY.COM`,
     `DNS Serial: 2026081901`,
-    `Tech Name: Example Operations`,
+    `Tech Name: Offensive Security Operations`,
     `Tech Email: ${TECH_EMAIL}`,
     `Tech Phone: +1.2125550148`,
     ``,

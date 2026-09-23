@@ -58,13 +58,13 @@ describe("vm2 definition", () => {
   it("leaks no flag through the definition file", async () => {
     const raw = fs.readFileSync(VM2_DEF, "utf8");
     assert.ok(!raw.includes("AXIOM{"), "flag must never be baked into lab.json");
-    assert.ok(raw.includes("example.net"), "queried domain is public instruction");
+    assert.ok(raw.includes("offensive-security.com"), "queried domain is public instruction");
   });
 
   it("instructs the documented query pattern without revealing the flag", async () => {
     const def = readDef();
     const joined = JSON.stringify(def.instructions);
-    assert.ok(joined.includes("whois example.net -h <TARGET-IP>"));
+    assert.ok(joined.includes("whois offensive-security.com -h <TARGET-IP>"));
     assert.ok(!joined.includes("AXIOM{"));
   });
 });
@@ -72,7 +72,7 @@ describe("vm2 definition", () => {
 describe("vm2 whois dataset", () => {
   it("serves a realistic record with the flag inside the DNS section", async () => {
     const { buildVm2WhoisResponse } = await import("../server/labs/whois-data.js");
-    const out = buildVm2WhoisResponse("example.net", "AXIOM{deadbeef0123456789abcdef01234567}");
+    const out = buildVm2WhoisResponse("offensive-security.com", "AXIOM{deadbeef0123456789abcdef01234567}");
     for (const section of [
       "Domain Name:", "Registry Domain ID:", "Registrar WHOIS Server:",
       "Registrar URL:", "Updated Date:", "Creation Date:",
@@ -88,12 +88,12 @@ describe("vm2 whois dataset", () => {
 
   it("answers case-insensitively and rejects unknown domains", async () => {
     const { buildVm2WhoisResponse } = await import("../server/labs/whois-data.js");
-    const a = buildVm2WhoisResponse("EXAMPLE.NET", "AXIOM{x}");
+    const a = buildVm2WhoisResponse("OFFENSIVE-SECURITY.COM", "AXIOM{x}");
     assert.ok(a.includes("DNS TXT:"));
-    assert.ok(buildVm2WhoisResponse("domain example.net", "AXIOM{x}").includes("DNS TXT:"));
+    assert.ok(buildVm2WhoisResponse("domain offensive-security.com", "AXIOM{x}").includes("DNS TXT:"));
     assert.ok(buildVm2WhoisResponse("megacorpone.com", "AXIOM{x}").startsWith("No match"));
     assert.ok(buildVm2WhoisResponse("no-such-domain-xyz.test", "AXIOM{x}").startsWith("No match"));
-    assert.ok(buildVm2WhoisResponse("ns1.example.net", "AXIOM{x}").includes("Server Name:"));
+    assert.ok(buildVm2WhoisResponse("ns1.offensive-security.com", "AXIOM{x}").includes("Server Name:"));
   });
 
   it("maps labs to their own domains, defaulting to VM #1", async () => {
@@ -112,7 +112,7 @@ describe("vm2 whois dataset", () => {
     assert.ok(/ns3\.megacorpone\.com/i.test(out));
     assert.ok(out.includes("whois.gandi.net"));
     assert.ok(!out.includes("AXIOM{"), "VM #1 must never carry a flag");
-    assert.ok(!out.toLowerCase().includes("example"));
+    assert.ok(!out.toLowerCase().includes("offensive-security"));
   });
 });
 
@@ -185,9 +185,9 @@ describe("vm2 service (sqlite)", () => {
       // real TCP/43 query against the provisioned endpoint
       const { host, port } = await orch.resolveEndpoint(
         { target_ip: details.targetIp, target_port: 43, host_endpoint: details.hostEndpoint },
-        "example.net",
+        "offensive-security.com",
       );
-      const out = await orch.whoisQuery(host, port, "example.net");
+      const out = await orch.whoisQuery(host, port, "offensive-security.com");
       assert.ok(out.includes("Name Server"), "realistic record shape");
       const dnsSection = out.split(/\r?\n/).filter((l) => /^DNS[\s:]/.test(l));
       assert.ok(dnsSection.length >= 3, "DNS section present");
@@ -196,13 +196,13 @@ describe("vm2 service (sqlite)", () => {
 
       // terminal goes over the same real path, scoped to this lab
       const inst = { id: iid, target_ip: details.targetIp, target_port: 43, host_endpoint: details.hostEndpoint, provider: "local", network_cidr: details.networkCidr };
-      const t = await orch.runTerminalCommand(inst, `whois example.net -h ${details.targetIp}`, lab);
+      const t = await orch.runTerminalCommand(inst, `whois offensive-security.com -h ${details.targetIp}`, lab);
       assert.ok(t.output.includes(stored.flag_value), "terminal returns the live target response");
       const help = await orch.runTerminalCommand(inst, "help", lab);
-      assert.ok(help.output.includes("example.net"));
-      const dig = await orch.runTerminalCommand(inst, "dig example.net NS", lab);
-      assert.ok(dig.output.includes("ns1.example.net"));
-      const evil = await orch.runTerminalCommand(inst, "whois example.net -h evil.example", lab);
+      assert.ok(help.output.includes("offensive-security.com"));
+      const dig = await orch.runTerminalCommand(inst, "dig offensive-security.com NS", lab);
+      assert.ok(dig.output.includes("ns1.offensive-security.com"));
+      const evil = await orch.runTerminalCommand(inst, "whois offensive-security.com -h evil.example", lab);
       assert.ok(/not reachable/i.test(evil.output));
 
       // wrong flag fails without revealing anything; right flag completes
@@ -225,9 +225,9 @@ describe("vm2 service (sqlite)", () => {
         assert.ok(!stale.correct, "pre-reset flag must not validate after reset");
         const ep2 = await orch.resolveEndpoint(
           { target_ip: details2.targetIp, target_port: 43, host_endpoint: details2.hostEndpoint },
-          "example.net",
+          "offensive-security.com",
         );
-        const out2 = await orch.whoisQuery(ep2.host, ep2.port, "example.net");
+        const out2 = await orch.whoisQuery(ep2.host, ep2.port, "offensive-security.com");
         assert.ok(out2.includes(stored2.flag_value), "reset environment serves the fresh flag");
         const good2 = await svc.submitAnswer({ userId, lab, objectiveKey: "flag", answer: stored2.flag_value, instanceId: iid });
         assert.ok(good2.correct);
@@ -236,7 +236,7 @@ describe("vm2 service (sqlite)", () => {
       }
       await svc.clearRuntimeFlags(iid);
       assert.equal(await svc.getRuntimeFlag(iid, "flag"), null);
-      await assert.rejects(orch.whoisQuery("127.0.0.1", details.hostEndpoint.split(":")[1], "example.net", 1500));
+      await assert.rejects(orch.whoisQuery("127.0.0.1", details.hostEndpoint.split(":")[1], "offensive-security.com", 1500));
     } finally {
       await local.destroy({ id: iid }).catch(() => {});
       await svc.clearRuntimeFlags(iid).catch(() => {});
@@ -250,7 +250,7 @@ describe("vm2 service (sqlite)", () => {
       const out = await orch.whoisQuery("127.0.0.1", d1.hostEndpoint.split(":")[1], "megacorpone.com");
       assert.ok(/ns3\.megacorpone\.com/i.test(out));
       assert.ok(out.includes("whois.gandi.net"));
-      const miss = await orch.whoisQuery("127.0.0.1", d1.hostEndpoint.split(":")[1], "example.net");
+      const miss = await orch.whoisQuery("127.0.0.1", d1.hostEndpoint.split(":")[1], "offensive-security.com");
       assert.ok(miss.startsWith("No match"), "VM #1 knows nothing of VM #2's domain");
     } finally {
       await local.destroy({ id: "li_vm1reg", provider_reference: d1.providerReference, network_name: d1.networkName });

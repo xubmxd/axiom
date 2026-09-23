@@ -242,7 +242,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
   const inst = pubInstance(instance);
   const primary = targets[0] || {};
   // Each lab queries its own domain (VM #1: megacorpone.com,
-  // VM #2: example.net). Falls back to VM #1's domain.
+  // VM #2: offensive-security.com). Falls back to VM #1's domain.
   const domain = labDomain(lab.slug);
   const targetIp = inst?.targetIp || "<TARGET-IP>";
   const withIp = (s) => esc(String(s).replaceAll("<TARGET-IP>", targetIp).replaceAll("<target-ip>", targetIp));

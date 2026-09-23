@@ -477,7 +477,7 @@ async function targetSummary(instance, lab = null) {
 function resolveTargetHost(instance, flag) {
   if (!flag) return null; // null = use the instance endpoint
   const f = String(flag).toLowerCase();
-  const known = new Set([(instance.target_ip || "").toLowerCase(), "target", "vm1", "vm1.megacorpone.lab", "vm2", "vm2.example.lab", "vm3", "vm3.example.lab", "localhost", "127.0.0.1"]);
+  const known = new Set([(instance.target_ip || "").toLowerCase(), "target", "vm1", "vm1.megacorpone.lab", "vm2", "vm2.offensive-security.lab", "vm3", "vm3.offensive-security.lab", "localhost", "127.0.0.1"]);
   return known.has(f) ? null : flag; // non-target hosts are rejected below
 }
 

@@ -12,7 +12,7 @@ process.env.LAB_PROVIDER = "local";
 const REPO = path.resolve(import.meta.dirname, "..");
 const VM3_SLUG = "m6-6-2-1-whois-vm3";
 const VM3_DEF = path.join(REPO, "labs/module-06/6.2.1-whois/vm-03/lab.json");
-const TECH_EMAIL = "tech@example.net";
+const TECH_EMAIL = "tech@offensive-security.com";
 
 function readDef() {
   return JSON.parse(fs.readFileSync(VM3_DEF, "utf8"));
@@ -63,19 +63,19 @@ describe("vm3 definition", () => {
     const def = readDef();
     assert.equal(recordEmail, TECH_EMAIL);
     assert.ok(verifyAnswer(TECH_EMAIL, def.objectives[0].expectedHash, "case-insensitive-exact"));
-    assert.ok(verifyAnswer("  TECH@EXAMPLE.NET  ", def.objectives[0].expectedHash, "case-insensitive-exact"));
+    assert.ok(verifyAnswer("  TECH@OFFENSIVE-SECURITY.COM  ", def.objectives[0].expectedHash, "case-insensitive-exact"));
   });
 
   it("leaks no answer through the definition file", async () => {
     const raw = fs.readFileSync(VM3_DEF, "utf8");
     assert.ok(!raw.includes(TECH_EMAIL), "answer must never be baked into lab.json");
-    assert.ok(raw.includes("example.net"), "queried domain is public instruction");
+    assert.ok(raw.includes("offensive-security.com"), "queried domain is public instruction");
   });
 
   it("instructs the documented query pattern without revealing the answer", async () => {
     const def = readDef();
     const joined = JSON.stringify(def.instructions);
-    assert.ok(joined.includes("whois example.net -h <TARGET-IP>"));
+    assert.ok(joined.includes("whois offensive-security.com -h <TARGET-IP>"));
     assert.ok(!joined.includes(TECH_EMAIL));
   });
 });
@@ -83,7 +83,7 @@ describe("vm3 definition", () => {
 describe("vm3 whois dataset", () => {
   it("serves a realistic record with a discoverable Tech Email", async () => {
     const { buildVm3WhoisResponse } = await import("../server/labs/whois-data.js");
-    const out = buildVm3WhoisResponse("example.net");
+    const out = buildVm3WhoisResponse("offensive-security.com");
     for (const section of [
       "Domain Name:", "Registry Domain ID:", "Registrar WHOIS Server:",
       "Registrar URL:", "Updated Date:", "Creation Date:",
@@ -99,18 +99,18 @@ describe("vm3 whois dataset", () => {
 
   it("answers case-insensitively and rejects unknown domains", async () => {
     const { buildVm3WhoisResponse } = await import("../server/labs/whois-data.js");
-    assert.ok(buildVm3WhoisResponse("EXAMPLE.NET").includes(TECH_EMAIL));
-    assert.ok(buildVm3WhoisResponse("domain example.net").includes(TECH_EMAIL));
+    assert.ok(buildVm3WhoisResponse("OFFENSIVE-SECURITY.COM").includes(TECH_EMAIL));
+    assert.ok(buildVm3WhoisResponse("domain offensive-security.com").includes(TECH_EMAIL));
     assert.ok(buildVm3WhoisResponse("megacorpone.com").startsWith("No match"));
     assert.ok(buildVm3WhoisResponse("no-such-domain-xyz.test").startsWith("No match"));
-    assert.ok(buildVm3WhoisResponse("ns2.example.net").includes("Server Name:"));
+    assert.ok(buildVm3WhoisResponse("ns2.offensive-security.com").includes("Server Name:"));
   });
 
-  it("maps VM #3 to the example.net domain", async () => {
+  it("maps VM #3 to the offensive-security.com domain", async () => {
     const { labDomain, labZone, VM2_DOMAIN } = await import("../server/labs/whois-data.js");
     assert.equal(labDomain("m6-6-2-1-whois-vm3"), VM2_DOMAIN);
     assert.equal(labDomain({ slug: "m6-6-2-1-whois-vm3" }), VM2_DOMAIN);
-    assert.equal(labZone("m6-6-2-1-whois-vm3").domain, "example.net");
+    assert.equal(labZone("m6-6-2-1-whois-vm3").domain, "offensive-security.com");
   });
 
   it("leaves the VM #1 dataset byte-identical", async () => {
@@ -119,13 +119,13 @@ describe("vm3 whois dataset", () => {
     assert.equal(out.length, 1078);
     assert.ok(/ns3\.megacorpone\.com/i.test(out));
     assert.ok(out.includes("whois.gandi.net"));
-    assert.ok(!out.toLowerCase().includes("example"));
+    assert.ok(!out.toLowerCase().includes("offensive-security"));
   });
 
   it("leaves the VM #2 dataset intact (flag still in DNS section)", async () => {
     const { buildVm2WhoisResponse } = await import("../server/labs/whois-data.js");
-    const out = buildVm2WhoisResponse("example.net", "AXIOM{deadbeef0123456789abcdef01234567}");
-    assert.equal(out.length, 878);
+    const out = buildVm2WhoisResponse("offensive-security.com", "AXIOM{deadbeef0123456789abcdef01234567}");
+    assert.equal(out.length, 922);
     assert.ok(out.includes("DNS TXT: axiom-verification=AXIOM{deadbeef0123456789abcdef01234567}"));
     assert.ok(!out.includes("Tech Email:"));
   });
@@ -175,9 +175,9 @@ describe("vm3 service (sqlite)", () => {
       // real TCP/43 query against the provisioned endpoint
       const { host, port } = await orch.resolveEndpoint(
         { target_ip: details.targetIp, target_port: 43, host_endpoint: details.hostEndpoint },
-        "example.net",
+        "offensive-security.com",
       );
-      const out = await orch.whoisQuery(host, port, "example.net");
+      const out = await orch.whoisQuery(host, port, "offensive-security.com");
       assert.ok(out.includes("Name Server"), "realistic record shape");
       assert.ok(out.includes("DNS Status:"), "DNS information present");
       const techLine = out.split(/\r?\n/).find((l) => l.startsWith("Tech Email:"));
@@ -185,18 +185,18 @@ describe("vm3 service (sqlite)", () => {
 
       // terminal goes over the same real path, scoped to this lab
       const inst = { id: iid, target_ip: details.targetIp, target_port: 43, host_endpoint: details.hostEndpoint, provider: "local", network_cidr: details.networkCidr };
-      const t = await orch.runTerminalCommand(inst, `whois example.net -h ${details.targetIp}`, lab);
+      const t = await orch.runTerminalCommand(inst, `whois offensive-security.com -h ${details.targetIp}`, lab);
       assert.ok(t.output.includes(TECH_EMAIL), "terminal returns the live target response");
       const help = await orch.runTerminalCommand(inst, "help", lab);
-      assert.ok(help.output.includes("example.net"));
+      assert.ok(help.output.includes("offensive-security.com"));
       const targets = await orch.runTerminalCommand(inst, "targets", lab);
       assert.ok(targets.output.includes("VM #3"), "terminal names this lab's target");
 
       // wrong fails silently; case/space variants pass; exact passes; progress completes
-      const bad = await svc.submitAnswer({ userId, lab, objectiveKey: "tech-email", answer: "admin@example.net", instanceId: iid });
+      const bad = await svc.submitAnswer({ userId, lab, objectiveKey: "tech-email", answer: "admin@offensive-security.com", instanceId: iid });
       assert.ok(bad.ok && !bad.correct);
       assert.ok(!JSON.stringify(bad).includes(TECH_EMAIL));
-      const variant = await svc.submitAnswer({ userId, lab, objectiveKey: "tech-email", answer: "  TECH@EXAMPLE.NET ", instanceId: iid });
+      const variant = await svc.submitAnswer({ userId, lab, objectiveKey: "tech-email", answer: "  TECH@OFFENSIVE-SECURITY.COM ", instanceId: iid });
       assert.ok(variant.correct, "reasonable case/whitespace differences normalize");
       const p = await svc.labProgress(userId, lab.id);
       assert.ok(p.complete);
@@ -208,9 +208,9 @@ describe("vm3 service (sqlite)", () => {
       try {
         const ep2 = await orch.resolveEndpoint(
           { target_ip: details2.targetIp, target_port: 43, host_endpoint: details2.hostEndpoint },
-          "example.net",
+          "offensive-security.com",
         );
-        const out2 = await orch.whoisQuery(ep2.host, ep2.port, "example.net");
+        const out2 = await orch.whoisQuery(ep2.host, ep2.port, "offensive-security.com");
         assert.ok(out2.includes(TECH_EMAIL), "reset environment serves the same record");
         const good2 = await svc.submitAnswer({ userId, lab, objectiveKey: "tech-email", answer: TECH_EMAIL, instanceId: iid });
         assert.ok(good2.correct);
@@ -218,7 +218,7 @@ describe("vm3 service (sqlite)", () => {
         await local.destroy({ id: iid, provider_reference: details2.providerReference, network_name: details2.networkName });
       }
       await svc.clearRuntimeFlags(iid);
-      await assert.rejects(orch.whoisQuery("127.0.0.1", details.hostEndpoint.split(":")[1], "example.net", 1500));
+      await assert.rejects(orch.whoisQuery("127.0.0.1", details.hostEndpoint.split(":")[1], "offensive-security.com", 1500));
     } finally {
       await local.destroy({ id: iid }).catch(() => {});
       await svc.clearRuntimeFlags(iid).catch(() => {});
@@ -247,7 +247,7 @@ describe("vm3 service (sqlite)", () => {
     try {
       const stored = await svc.getRuntimeFlag(iid, "flag");
       assert.ok(stored?.flag_value);
-      const out = await orch.whoisQuery("127.0.0.1", d2.hostEndpoint.split(":")[1], "example.net");
+      const out = await orch.whoisQuery("127.0.0.1", d2.hostEndpoint.split(":")[1], "offensive-security.com");
       assert.ok(out.includes(stored.flag_value));
       assert.ok(!out.includes("Tech Email:"));
       const good = await svc.submitAnswer({ userId, lab: vm2, objectiveKey: "flag", answer: stored.flag_value, instanceId: iid });
