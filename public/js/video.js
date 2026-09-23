@@ -151,6 +151,62 @@
     e.sourceCapabilities?.firesTouchEvents === true ||
     lastTouchTap ||
     (touchLayout && e.pointerType !== "mouse");
+  // Double-tap sides to seek -10s/+10s (cumulative), YouTube-style.
+  // Single taps only ever reveal chrome; middle taps reset the chain.
+  function makeSeekFlash(side) {
+    const el = document.createElement("div");
+    el.className = "seekflash " + side;
+    el.hidden = true;
+    const ring = document.createElement("span");
+    ring.className = "seekring";
+    const delta = document.createElement("span");
+    delta.className = "seekdelta";
+    delta.textContent = side === "left" ? "-10" : "+10";
+    el.appendChild(ring);
+    el.appendChild(delta);
+    player.appendChild(el);
+    return el;
+  }
+  const flashL = makeSeekFlash("left"), flashR = makeSeekFlash("right");
+  let lastTapAt = 0, lastTapSide = 0, tapChain = 0, rippleTimer = null;
+  function surfaceZone(clientX) {
+    const r = player.getBoundingClientRect();
+    if (!r.width) return 0;
+    const x = (clientX - r.left) / r.width;
+    return x < 0.4 ? -1 : x > 0.6 ? 1 : 0;
+  }
+  function ripple(side, secs) {
+    const el = side < 0 ? flashL : flashR;
+    const other = side < 0 ? flashR : flashL;
+    other.hidden = true;
+    other.classList.remove("go");
+    const label = el.querySelector(".seekdelta");
+    if (label) label.textContent = (side < 0 ? "-" : "+") + secs;
+    el.hidden = false;
+    el.classList.remove("go");
+    void el.offsetWidth;
+    el.classList.add("go");
+    clearTimeout(rippleTimer);
+    rippleTimer = setTimeout(() => {
+      flashL.hidden = flashR.hidden = true;
+      flashL.classList.remove("go");
+      flashR.classList.remove("go");
+    }, 650);
+  }
+  function handleSurfaceTap(e) {
+    if (v.paused || typeof e.clientX !== "number") { tapChain = 0; return; }
+    const side = surfaceZone(e.clientX);
+    if (!side) { tapChain = 0; return; }
+    const now = performance.now();
+    tapChain = (now - lastTapAt < 350 && side === lastTapSide) ? tapChain + 1 : 1;
+    lastTapAt = now;
+    lastTapSide = side;
+    if (tapChain < 2) return;
+    if (side < 0) v.currentTime = Math.max(0, (v.currentTime || 0) - 10);
+    else v.currentTime = v.duration ? Math.min(v.duration, (v.currentTime || 0) + 10) : (v.currentTime || 0) + 10;
+    ripple(side, 10 * (tapChain - 1));
+    wake();
+  }
   // ---- transport controls ----
   // Persistent center button (paused) + brief toggle beat, YouTube-style.
   const bigIcon = (icon) => '<span class="pcircle">' + icon + "</span>";
@@ -185,6 +241,7 @@
     lastTouchTap = false;
     if (touchTap) {
       if (player.classList.contains("idle") && !v.paused) wake();
+      handleSurfaceTap(e);
       return;
     }
     // Fallback for mouse paths without a preceding pointerdown.
