@@ -152,11 +152,12 @@
     lastTouchTap ||
     (touchLayout && e.pointerType !== "mouse");
   // ---- transport controls ----
-  // Persistent center button (paused) + brief toggle flash, YouTube-style.
+  // Persistent center button (paused) + brief toggle beat, YouTube-style.
+  const bigIcon = (icon) => '<span class="pcircle">' + icon + "</span>";
   let flashTimer = null;
   function flashCenter(icon) {
     if (!bigPlay) return;
-    bigPlay.innerHTML = icon;
+    bigPlay.innerHTML = bigIcon(icon);
     player.classList.add("flash");
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => {
@@ -167,7 +168,7 @@
   // Persistent center icon + label; never stomps an in-flight flash.
   function syncBig() {
     if (!bigPlay || player.classList.contains("flash")) return;
-    bigPlay.innerHTML = v.paused ? IC.play : IC.pause;
+    bigPlay.innerHTML = bigIcon(v.paused ? IC.play : IC.pause);
     bigPlay.setAttribute("aria-label", v.paused ? "Play (k)" : "Pause (k)");
   }
   const togglePlay = () => { flashCenter(v.paused ? IC.play : IC.pause); v.paused ? v.play() : v.pause(); };
