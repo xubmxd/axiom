@@ -137,6 +137,19 @@
     e.sourceCapabilities?.firesTouchEvents === true ||
     lastTouchTap ||
     (touchLayout && e.pointerType !== "mouse");
+  // A touch that starts on hidden chrome only reveals it: between this
+  // gesture's pointerdown (surface target) and its click, wake() makes the
+  // just-faded-in buttons hittable, so a click landing on one must not fire
+  // it. Mouse stays precise-click (desktop toggles); keyboard clicks carry
+  // detail 0 and are never swallowed. Seek/volume are pointer-driven intent
+  // and stay live.
+  player.addEventListener("click", (e) => {
+    if (e.detail > 0 && gestureHidden && isTouchTap(e) && e.target.closest?.("button")) {
+      e.stopPropagation();
+      e.preventDefault();
+      gestureHidden = false;
+    }
+  }, { capture: true });
   function wake() {
     player.classList.remove("idle");
     clearTimeout(idleTimer);

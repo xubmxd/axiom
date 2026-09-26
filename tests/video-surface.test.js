@@ -36,7 +36,11 @@ function makeEl(id) {
     innerHTML: "",
     value: "1",
     _handlers: handlers,
-    addEventListener: (t, fn) => { (handlers[t] ||= []).push(fn); },
+    _capClick: [],
+    addEventListener: (t, fn, opts) => {
+      if (t === "click" && opts && opts.capture) el._capClick.push(fn);
+      else (handlers[t] ||= []).push(fn);
+    },
     removeEventListener: () => {},
     setPointerCapture: () => {},
     appendChild: (c) => { el.children.push(c); return c; },
@@ -104,17 +108,25 @@ function buildContext(touchHoverNone) {
   vm.createContext(sandbox);
   vm.runInContext(SRC, sandbox, { filename: "video.js" });
   const player = getEl("player");
-  const tap = ({ pointerType = "mouse", idle = false, touchEvent = false, clientX = undefined } = {}) => {
+  const tap = ({ pointerType = "mouse", idle = false, touchEvent = false, clientX = undefined, clickTarget = null, detail = 1 } = {}) => {
     if (idle) player.classList.add("idle");
     for (const fn of (player._handlers.pointerdown || [])) fn({ target: v, pointerType });
     if (typeof player.onclick === "function") {
-      player.onclick({
-        target: v,
+      const ev = {
+        target: clickTarget || v,
         clientX,
         pointerType: undefined,
+        detail,
         sourceCapabilities: touchEvent ? { firesTouchEvents: true } : undefined,
-      });
+        _stopped: false,
+        stopPropagation() { this._stopped = true; },
+        preventDefault() {},
+      };
+      for (const fn of player._capClick) fn(ev);
+      if (!ev._stopped) player.onclick(ev);
+      return ev;
     }
+    return null;
   };
   return { v, player, bigPlay: getEl("bigPlay"), btnPlay: getEl("btnPlay"), menu: getEl("pMenu"), tap };
 }
@@ -148,6 +160,18 @@ describe("video surface input model", () => {
     tap({ ...TOUCH, clientX: 50 });
     assert.ok(!player.classList.contains("idle"));
     assert.equal(v.pauseCount, 0);
+  });
+
+  it("reveal tap landing on a faded-in button does not fire it", () => {
+    const { v, player, bigPlay, tap } = buildContext(true);
+    v.paused = false;
+    // pointerdown starts on the surface (idle); the click lands on the
+    // center button that wake() just made hittable, as in real browsers.
+    const ev = tap({ ...TOUCH, idle: true, clickTarget: { closest: () => bigPlay, tagName: "SPAN" } });
+    assert.ok(ev && ev._stopped);
+    assert.equal(v.pauseCount, 0);
+    assert.equal(v.playCount, 0);
+    assert.ok(!player.classList.contains("idle"));
   });
 
   it("hide is suppressed while the settings menu is open", () => {
