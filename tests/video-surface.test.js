@@ -116,12 +116,12 @@ function buildContext(touchHoverNone) {
       });
     }
   };
-  return { v, player, bigPlay: getEl("bigPlay"), btnPlay: getEl("btnPlay"), tap };
+  return { v, player, bigPlay: getEl("bigPlay"), btnPlay: getEl("btnPlay"), menu: getEl("pMenu"), tap };
 }
 
 const TOUCH = { pointerType: "touch", touchEvent: true };
 
-describe("video surface never toggles playback", () => {
+describe("video surface input model", () => {
   it("touch reveal tap shows chrome without pausing", () => {
     const { v, player, tap } = buildContext(true);
     v.paused = false;
@@ -131,10 +131,31 @@ describe("video surface never toggles playback", () => {
     assert.equal(v.paused, false);
   });
 
-  it("touch tap on visible chrome does not pause", () => {
-    const { v, tap } = buildContext(true);
+  it("touch tap on visible chrome hides it without pausing or beating", () => {
+    const { v, player, tap } = buildContext(true);
     v.paused = false;
-    tap({ ...TOUCH, idle: false });
+    tap({ ...TOUCH, idle: false, clientX: 50 });
+    assert.equal(v.pauseCount, 0);
+    assert.ok(player.classList.contains("idle"));
+    assert.ok(!player.classList.contains("flash"));
+  });
+
+  it("touch tap while hidden re-shows without pausing", () => {
+    const { v, player, tap } = buildContext(true);
+    v.paused = false;
+    tap({ ...TOUCH, idle: false, clientX: 50 });
+    assert.ok(player.classList.contains("idle"));
+    tap({ ...TOUCH, clientX: 50 });
+    assert.ok(!player.classList.contains("idle"));
+    assert.equal(v.pauseCount, 0);
+  });
+
+  it("hide is suppressed while the settings menu is open", () => {
+    const { v, player, menu, tap } = buildContext(true);
+    v.paused = false;
+    menu.hidden = false;
+    tap({ ...TOUCH, idle: false, clientX: 50 });
+    assert.ok(!player.classList.contains("idle"));
     assert.equal(v.pauseCount, 0);
   });
 
@@ -146,17 +167,18 @@ describe("video surface never toggles playback", () => {
     assert.ok(!player.classList.contains("idle"));
   });
 
-  it("mouse click on empty space does not pause", () => {
+  it("mouse click on empty space toggles (desktop unchanged)", () => {
     const { v, tap } = buildContext(false);
     v.paused = false;
     tap({ pointerType: "mouse", idle: false });
-    assert.equal(v.pauseCount, 0);
+    assert.equal(v.pauseCount, 1);
   });
 
-  it("mouse click while idle only reveals", () => {
+  it("mouse click while idle reveals first", () => {
     const { v, player, tap } = buildContext(false);
     v.paused = false;
     tap({ pointerType: "mouse", idle: true });
+    // A gesture that started hidden only reveals; the next click toggles.
     assert.equal(v.pauseCount, 0);
     assert.ok(!player.classList.contains("idle"));
   });
@@ -182,11 +204,13 @@ describe("video surface never toggles playback", () => {
     assert.equal(v.pauseCount, 1);
   });
 
-  it("beat fires on pause only, never on resume", () => {
+  it("beat fires on explicit toggle in both directions", () => {
     const { v, player, bigPlay } = buildContext(true);
     v.paused = true;
     bigPlay.onclick({ target: bigPlay });
-    assert.ok(!player.classList.contains("flash"));
+    assert.ok(player.classList.contains("flash"));
+    assert.equal(v.paused, false);
+    player.classList.remove("flash");
     bigPlay.onclick({ target: bigPlay });
     assert.ok(player.classList.contains("flash"));
     assert.equal(v.paused, true);

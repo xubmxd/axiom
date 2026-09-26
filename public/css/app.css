@@ -398,18 +398,10 @@ li.res a{gap:.5rem}
   .player .pcenter:focus-visible .pcircle{outline:2px solid var(--accent);outline-offset:3px}
   .player .pmenu button:focus-visible,.player .nextUp button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 }
-/* brief toggle feedback (YouTube-style beat), never interactive */
+/* toggle-beat visibility gate (motion itself is WAAPI in video.js) */
 .player.flash .pcenter,.player.idle.playing.flash .pcenter{opacity:1;visibility:visible;pointer-events:none;transition:opacity .2s,visibility 0s}
 .pcircle{display:grid;place-items:center;width:104px;height:104px;border-radius:50%;background:rgba(8,10,14,.62);box-shadow:0 4px 28px rgba(0,0,0,.5)}
 .pcircle svg{width:44px;height:44px;color:#fff;filter:drop-shadow(0 2px 12px rgba(0,0,0,.6));pointer-events:none}
-.player.flash .pcircle{animation:pbeat .5s ease-out}
-@keyframes pbeat{
-  0%{transform:scale(.45);opacity:0}
-  25%{transform:scale(1.06);opacity:.95}
-  60%{transform:scale(1);opacity:.9}
-  100%{transform:scale(1.18);opacity:0}
-}
-@media (prefers-reduced-motion:reduce){.player.flash .pcircle{animation:none}}
 /* double-tap side seek feedback: ripple + delta, pointer-transparent */
 .seekflash{position:absolute;top:0;bottom:0;width:42%;display:grid;place-items:center;pointer-events:none;opacity:0;z-index:4}
 .seekflash.left{left:0}

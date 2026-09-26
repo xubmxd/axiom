@@ -123,6 +123,20 @@
 
   // ---- overlay chrome: control auto-hide ----
   let idleTimer = null;
+  // Gesture bookkeeping runs BEFORE wake() below (registration order is
+  // what counts when the tap lands directly on the player): it snapshots
+  // whether chrome was hidden when this gesture started, because the
+  // pointerdown wake clears .idle before click ever fires.
+  const touchLayout = typeof matchMedia === "function" && matchMedia("(hover: none)").matches;
+  let lastTouchTap = false, gestureHidden = false;
+  player.addEventListener("pointerdown", (e) => {
+    lastTouchTap = e.pointerType === "touch";
+    gestureHidden = player.classList.contains("idle");
+  }, { capture: true });
+  const isTouchTap = (e) =>
+    e.sourceCapabilities?.firesTouchEvents === true ||
+    lastTouchTap ||
+    (touchLayout && e.pointerType !== "mouse");
   function wake() {
     player.classList.remove("idle");
     clearTimeout(idleTimer);
@@ -132,27 +146,24 @@
       else wake();
     }, 2800);
   }
+  // Explicit hide for the touch overlay toggle: conceal now without
+  // rescheduling; the next interaction wakes. Callers must wake() instead
+  // while the settings menu is open so it is never stranded.
+  function hideChrome() {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+    player.classList.add("idle");
+  }
   player.addEventListener("pointermove", wake, { passive: true });
   player.addEventListener("pointerdown", wake, { passive: true });
   player.addEventListener("keydown", wake);
   wake();
 
-  // Touch taps never toggle playback: a tap on the surface only brings
-  // back auto-hidden chrome. Pausing/playing is exclusively via the
-  // transport buttons (plus keyboard on desktop). The pointer type is
-  // recorded on pointerdown because click itself carries no pointer type;
-  // hover:none is a fallback for browsers without sourceCapabilities.
-  const touchLayout = typeof matchMedia === "function" && matchMedia("(hover: none)").matches;
-  let lastTouchTap = false;
-  player.addEventListener("pointerdown", (e) => {
-    lastTouchTap = e.pointerType === "touch";
-  }, { capture: true });
-  const isTouchTap = (e) =>
-    e.sourceCapabilities?.firesTouchEvents === true ||
-    lastTouchTap ||
-    (touchLayout && e.pointerType !== "mouse");
+  // Responsive surface model, one implementation (see gesture snapshot
+  // above): touch taps toggle overlay visibility (never playback), mouse
+  // clicks toggle playback (desktop behavior unchanged).
   // Double-tap sides to seek -10s/+10s (cumulative), YouTube-style.
-  // Single taps only ever reveal chrome; middle taps reset the chain.
+  // Lone taps only toggle chrome visibility; middle taps reset the chain.
   function makeSeekFlash(side) {
     const el = document.createElement("div");
     el.className = "seekflash " + side;
@@ -208,43 +219,72 @@
     wake();
   }
   // ---- transport controls ----
-  // Persistent center button (paused) + brief toggle beat, YouTube-style.
+  // Center feedback beat: a persistent icon node animated with WAAPI
+  // (fade + scale) only on intentional toggles. Any in-flight animation
+  // is cancelled first, so rapid toggles never queue, flicker, or wedge.
   const bigIcon = (icon) => '<span class="pcircle">' + icon + "</span>";
-  let flashTimer = null;
+  const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let flashTimer = null, beatAnim = null;
   function flashCenter(icon) {
     if (!bigPlay) return;
+    if (beatAnim) { try { beatAnim.cancel(); } catch {} beatAnim = null; }
     bigPlay.innerHTML = bigIcon(icon);
     player.classList.add("flash");
     clearTimeout(flashTimer);
+    const circle = bigPlay.firstElementChild || bigPlay;
+    if (!reduceMotion && circle && typeof circle.animate === "function") {
+      try {
+        beatAnim = circle.animate(
+          [
+            { opacity: 0, transform: "scale(.5)" },
+            { opacity: 0.95, transform: "scale(1.06)", offset: 0.25 },
+            { opacity: 0.9, transform: "scale(1)", offset: 0.6 },
+            { opacity: 0, transform: "scale(1.18)" },
+          ],
+          { duration: 500, easing: "ease-out" }
+        );
+      } catch { beatAnim = null; }
+    }
     flashTimer = setTimeout(() => {
+      if (beatAnim) { try { beatAnim.cancel(); } catch {} beatAnim = null; }
       player.classList.remove("flash");
       syncBig();
     }, 600);
   }
-  // Persistent center icon + label; never stomps an in-flight flash.
+  // Persistent center icon + label; never stomps an in-flight beat.
   function syncBig() {
     if (!bigPlay || player.classList.contains("flash")) return;
     bigPlay.innerHTML = bigIcon(v.paused ? IC.play : IC.pause);
     bigPlay.setAttribute("aria-label", v.paused ? "Play (k)" : "Pause (k)");
   }
-  // Beat only on pause: resume just fades the button out, so there is no
-  // icon rebuild blink when playback starts.
-  const togglePlay = () => { if (!v.paused) flashCenter(IC.pause); v.paused ? v.play() : v.pause(); };
+  // The beat fires here — the only intentional-toggle entry point (center
+  // button, transport button, keyboard) — never from surface taps or media
+  // events, so showing/hiding the overlay stays animation-free.
+  const togglePlay = () => { flashCenter(v.paused ? IC.play : IC.pause); v.paused ? v.play() : v.pause(); };
   btnPlay.onclick = togglePlay;
   if (bigPlay) bigPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
   document.getElementById("btnFf").onclick = () => { if (v.duration) v.currentTime = Math.min(v.duration, v.currentTime + 5); wake(); };
-  // Clicks on the player surface never toggle playback — play/pause lives
-  // exclusively on the center + transport buttons (and keyboard). Surface
-  // clicks only wake chrome; touch taps additionally drive double-tap seek.
-  // Never fires for controls, menus, links, the seek bar, or the autoplay
-  // prompt.
+  // Surface clicks never toggle playback on touch — taps toggle overlay
+  // visibility only (show when hidden, hide when visible). Mouse clicks
+  // keep desktop click-to-toggle. Never fires for controls, menus, links,
+  // the seek bar, or the autoplay prompt.
   player.onclick = (e) => {
     if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return;
     const touchTap = isTouchTap(e);
     lastTouchTap = false;
-    if (!v.paused) wake();
-    if (touchTap) handleSurfaceTap(e);
+    if (touchTap) {
+      if (v.paused) { tapChain = 0; return; }
+      if (gestureHidden) { wake(); handleSurfaceTap(e); return; }
+      if (!menu.hidden || seek.classList.contains("scrubbing")) { wake(); handleSurfaceTap(e); return; }
+      handleSurfaceTap(e);
+      // A lone tap hides; a chained second tap re-shows inside the seek.
+      if (tapChain < 2) hideChrome();
+      return;
+    }
+    // Mouse: a gesture that started hidden only reveals; otherwise toggle.
+    if (!v.paused && gestureHidden) { wake(); return; }
+    togglePlay();
   };
   player.ondblclick = (e) => {
     if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return;
