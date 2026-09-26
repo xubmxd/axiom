@@ -494,7 +494,9 @@ dialog.confirm p{margin:.3rem 0}
 }
 @media (max-width:1024px){
   /* tablet: rail joins the flow; mobile priority = Continue → Stats → Activity → In Progress */
-  .ws-grid{display:flex;flex-direction:column}
+  /* stretch (not start): display:contents wrappers make the cards
+     themselves flex items, and start would shrink them to fit-content */
+  .ws-grid{display:flex;flex-direction:column;align-items:stretch}
   .ws-main,.ws-rail{display:contents}
   .rail-card:first-child{order:1}
   .statrow{order:2}
