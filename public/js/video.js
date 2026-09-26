@@ -234,21 +234,17 @@
   if (bigPlay) bigPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
   document.getElementById("btnFf").onclick = () => { if (v.duration) v.currentTime = Math.min(v.duration, v.currentTime + 5); wake(); };
-  // Click-to-toggle on the player surface — but never when interacting with
-  // controls, menus, links, the seek bar, or the autoplay prompt, and never
-  // from a touch tap (touch only reveals auto-hidden chrome).
+  // Clicks on the player surface never toggle playback — play/pause lives
+  // exclusively on the center + transport buttons (and keyboard). Surface
+  // clicks only wake chrome; touch taps additionally drive double-tap seek.
+  // Never fires for controls, menus, links, the seek bar, or the autoplay
+  // prompt.
   player.onclick = (e) => {
     if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return;
     const touchTap = isTouchTap(e);
     lastTouchTap = false;
-    if (touchTap) {
-      if (player.classList.contains("idle") && !v.paused) wake();
-      handleSurfaceTap(e);
-      return;
-    }
-    // Fallback for mouse paths without a preceding pointerdown.
-    if (player.classList.contains("idle") && !v.paused) { wake(); return; }
-    togglePlay();
+    if (!v.paused) wake();
+    if (touchTap) handleSurfaceTap(e);
   };
   player.ondblclick = (e) => {
     if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return;
