@@ -262,9 +262,10 @@
       if (beatAnim) { try { beatAnim.cancel(); } catch {} beatAnim = null; }
       player.classList.remove("flash");
       syncBig();
-    }, 600);
+    }, 500);
   }
-  // Persistent center icon + label; never stomps an in-flight beat.
+  // Center icon persists only while paused (big play button); while playing
+  // it stays hidden and appears solely via the in-flight beat above.
   function syncBig() {
     if (!bigPlay || player.classList.contains("flash")) return;
     bigPlay.innerHTML = bigIcon(v.paused ? IC.play : IC.pause);

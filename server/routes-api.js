@@ -99,14 +99,18 @@ async function maybeCompleteCourse(userId, courseId) {
   const pr = await get(`SELECT COUNT(*) t, SUM(COALESCE(rp.completed,0)) d FROM reading_pages p LEFT JOIN reading_progress rp ON rp.page_id=p.id AND rp.user_id=? WHERE p.course_id=? AND p.is_active=1`, [userId, courseId]);
   const total = (lr?.t || 0) + (pr?.t || 0);
   const done = (lr?.d || 0) + (pr?.d || 0);
+  const ex = await get(`SELECT * FROM course_completions WHERE user_id=? AND course_id=?`, [userId, courseId]);
   if (total > 0 && done >= total) {
-    const ex = await get(`SELECT * FROM course_completions WHERE user_id=? AND course_id=?`, [userId, courseId]);
     if (!ex) {
       const t = await get(`SELECT SUM(video_secs+reading_secs) s FROM daily_activity WHERE user_id=?`, [userId]);
       await run(`INSERT INTO course_completions(user_id, course_id, completed_at, learned_secs, items_done, items_total) VALUES(?,?,?,?,?,?)`,
         [userId, courseId, nowIso(), Math.round(t?.s || 0), done, total]);
       log("course.complete", { user: userId, course: courseId });
     }
+  } else if (ex) {
+    // Self-heal: rescan added items or the user un-marked one — a stale row
+    // would otherwise keep counting a merely-started course as completed.
+    await run(`DELETE FROM course_completions WHERE user_id=? AND course_id=?`, [userId, courseId]);
   }
 }
 

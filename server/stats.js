@@ -98,7 +98,19 @@ export async function streaks(userId, tzOffset) {
 
 export async function totals(userId) {
   const r = await get(`SELECT SUM(video_secs) v, SUM(reading_secs) rd, SUM(completions) c FROM daily_activity WHERE user_id=?`, [userId]);
-  const cc = await get(`SELECT COUNT(*) n FROM course_completions WHERE user_id=?`, [userId]);
+  // Live count: a course is completed only if it has items and zero
+  // incomplete items right now. Counting the course_completions event log
+  // goes stale (rescan adds lessons, user un-marks an item) and then shows
+  // merely-started courses as completed.
+  const cc = await get(
+    `SELECT COUNT(*) n FROM courses c
+     WHERE ((SELECT COUNT(*) FROM lessons l WHERE l.course_id=c.id AND l.is_active=1)
+          + (SELECT COUNT(*) FROM reading_pages p WHERE p.course_id=c.id AND p.is_active=1)) > 0
+       AND NOT EXISTS (SELECT 1 FROM lessons l LEFT JOIN video_progress vp ON vp.lesson_id=l.id AND vp.user_id=?
+                       WHERE l.course_id=c.id AND l.is_active=1 AND COALESCE(vp.completed,0)=0)
+       AND NOT EXISTS (SELECT 1 FROM reading_pages p LEFT JOIN reading_progress rp ON rp.page_id=p.id AND rp.user_id=?
+                       WHERE p.course_id=c.id AND p.is_active=1 AND COALESCE(rp.completed,0)=0)`,
+    [userId, userId]);
   return {
     videoSecs: Math.round(r?.v || 0), readingSecs: Math.round(r?.rd || 0),
     completions: r?.c || 0, coursesCompleted: cc?.n || 0,
