@@ -26,6 +26,21 @@ docker compose exec app npm run bootstrap:admin -- admin you@home.local <passwor
 Volumes: `./courses` (read-only course files), `appdata` (SQLite fallback — unused with
 Postgres), `pgdata` (database). Course files survive container recreation.
 
+## Extra course libraries
+
+Admin → **Course libraries** can scan more than one directory. Each library is a
+folder that either holds `video/` + `reading/` course folders or holds course
+folders directly (each course is a folder; the type is inferred from content).
+Local runs can point at any path on disk. Under Docker the path must first be
+mounted into the container, e.g.:
+
+```yaml
+volumes:
+  - /mnt/external_drive/course:/libraries/external:ro
+```
+
+then add `/libraries/external` in the admin panel and **Rescan courses**.
+
 ## Configuration (env)
 
 | Var | Default | Purpose |

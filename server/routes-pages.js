@@ -830,7 +830,7 @@ pages.get("/admin", needAdmin, async (req, res) => {
     <div class="tablewrap"><table><thead><tr><th>Library</th><th>Status</th><th>Courses</th><th></th></tr></thead><tbody>${rootRows || `<tr><td colspan=4 class=dim>No libraries yet.</td></tr>`}</tbody></table></div>
     <form id="rootForm" class="form" style="margin-top:12px">
       <h3 style="margin:0">Add library</h3>
-      <p class="dim small" style="margin:4px 0 8px">Absolute path to a directory holding <span class="mono">video/</span> and <span class="mono">reading/</span> course folders. It must already exist on the server${process.env.DOCKER === "1" ? " (mount it into the container first)" : ""}.</p>
+      <p class="dim small" style="margin:4px 0 8px">Absolute path to a library folder, checked <b>inside the app container</b> — under Docker, mount the host directory into the container first (see <span class="mono">docker-compose.yml</span>), then add the container path here. The folder must either hold <span class="mono">video/</span> and <span class="mono">reading/</span> course folders, or hold course folders directly (each course is a folder; loose files at the top level are ignored).</p>
       <label>Directory path<input name="path" placeholder="/mnt/media/courses2" required style="width:100%"></label>
       <label>Label (optional)<input name="label" placeholder="External drive" maxlength="80" style="width:100%"></label>
       <div class="lrow"><button class="btn primary" type="submit">Add library</button><span class="dim small" id="rootMsg"></span></div>

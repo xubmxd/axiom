@@ -380,12 +380,22 @@ async function migrateCourseRoots() {
     if (!(await columnExists("courses", "root_path"))) {
       try { await execRaw(`ALTER TABLE courses ADD COLUMN root_path TEXT`); } catch {}
     }
+    // dir_prefix is the path segment between the library root and the course
+    // folder: "video"/"reading" for structured libraries, "" for flat ones
+    // (course folders directly under the root). NULL = legacy structured row.
+    if (!(await columnExists("courses", "dir_prefix"))) {
+      try { await execRaw(`ALTER TABLE courses ADD COLUMN dir_prefix TEXT`); } catch {}
+    }
+    try { await run(`UPDATE courses SET dir_prefix=kind WHERE dir_prefix IS NULL`); } catch {}
     // Seed the default root once: only when the table is completely empty
     // (fresh install). Explicit deletes are respected afterwards.
+    // NOTE: pg returns COUNT(*) as a string ("0" is truthy), so coerce —
+    // a strict === 0 check silently skips the seed on PostgreSQL and the
+    // admin panel ends up showing "No libraries yet".
     const { default: path } = await import("node:path");
     const defaultPath = path.resolve(config.coursesRoot || "courses");
     const count = await get(`SELECT COUNT(*) n FROM course_roots`);
-    if ((count?.n || 0) === 0) {
+    if (Number(count?.n ?? 0) === 0) {
       const now = new Date().toISOString();
       await run(
         `INSERT INTO course_roots(id, path, label, is_active, last_error, created_at, updated_at) VALUES(?,?,?,?,?,?,?)`,

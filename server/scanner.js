@@ -142,11 +142,19 @@ function collectRelPaths(tree) {
 }
 
 // ---- multiple course libraries ----
-// Every root is a COURSES_ROOT-equivalent directory containing video/ and
-// reading/ subfolders. Roots are managed from the admin panel (course_roots
-// table); COURSES_ROOT env only seeds the default row on first boot.
+// Every root is a library directory managed from the admin panel
+// (course_roots table); COURSES_ROOT env only seeds the default row.
+// Two layouts are accepted per root and auto-detected on every scan:
+//   structured: <root>/video/<course> + <root>/reading/<course>
+//   flat:       <root>/<course>  (kind inferred from content)
+// courses.dir_prefix records which layout a course was found in ("video",
+// "reading", or "" for flat) so path resolution stays exact.
 export function normalizeRootPath(p) {
   return path.resolve(String(p || "").trim());
+}
+
+function isDir(p) {
+  try { return fs.statSync(p).isDirectory(); } catch { return false; }
 }
 
 export async function listCourseRoots(includeInactive = false) {
@@ -159,19 +167,16 @@ export async function listCourseRoots(includeInactive = false) {
   return [{ id: "root_default", path: path.resolve(config.coursesRoot || "courses"), label: "Default library", is_active: 1 }];
 }
 
-async function ensureRootDirs(rootPath) {
-  fs.mkdirSync(rootPath, { recursive: true });
-  for (const sub of ["video", "reading"]) fs.mkdirSync(path.join(rootPath, sub), { recursive: true });
-}
-
 // Shared validation for the admin API: returns an error string or null.
+// NOTE: the path is checked from inside the app process — under Docker that
+// means inside the container, not on the host. The message says so.
 export function validateRootPath(candidate, existingRoots = []) {
   const raw = String(candidate || "").trim();
   if (!raw) return "Path is required.";
   if (/\0/.test(raw)) return "Invalid path.";
   const norm = normalizeRootPath(raw);
   let stat = null;
-  try { stat = fs.statSync(norm); } catch { return `Directory does not exist: ${norm}`; }
+  try { stat = fs.statSync(norm); } catch { return `Directory does not exist (checked inside the app container): ${norm}. If Axiom runs in Docker, mount the host directory into the container first, then add the container path.`; }
   if (!stat.isDirectory()) return `Not a directory: ${norm}`;
   const dataDir = path.resolve(config.dataDir || "data");
   if (norm === dataDir || norm.startsWith(dataDir + path.sep) || dataDir.startsWith(norm + path.sep)) {
@@ -206,30 +211,56 @@ export async function scanAll(manual = false) {
     }
     const seen = new Set();
     const enabledIds = new Set(uniq.map((r) => r.id));
+    const defaultPath = normalizeRootPath(config.coursesRoot || "courses");
     let courseCount = 0;
     const errors = [];
-    for (const root of uniq) {
+    const scanOne = async (kind, coursePath, name, root, prefix) => {
       try {
-        await ensureRootDirs(root.path);
+        const finalKind = await scanCourse(kind, coursePath, name, root, prefix);
+        seen.add(`${root.id}:${finalKind}:${slugify(name)}`);
+        courseCount++;
       } catch (e) {
-        const msg = `Cannot access ${root.path}: ${String(e?.message || e).slice(0, 200)}`;
+        errors.push(`${name}: ${String(e?.message || e).slice(0, 200)}`);
+      }
+    };
+    for (const root of uniq) {
+      // The default library keeps the guided layout: its video/ + reading/
+      // folders are created on first boot. Extra libraries are never
+      // modified — a read-only external drive must scan as-is, so directory
+      // creation there is best-effort and failures never skip the root.
+      const isDefault = root.id === "root_default" || root.path === defaultPath;
+      if (isDefault) {
+        try {
+          fs.mkdirSync(root.path, { recursive: true });
+          for (const sub of ["video", "reading"]) fs.mkdirSync(path.join(root.path, sub), { recursive: true });
+        } catch (e) {
+          const msg = `Cannot access ${root.path}: ${String(e?.message || e).slice(0, 200)}`;
+          errors.push(msg);
+          try { await run(`UPDATE course_roots SET last_error=?, updated_at=? WHERE id=?`, [msg.slice(0, 500), nowIso(), root.id]); } catch {}
+          continue;
+        }
+      } else if (!isDir(root.path)) {
+        const msg = `Library missing: ${root.path} (was it unmounted?)`;
         errors.push(msg);
         try { await run(`UPDATE course_roots SET last_error=?, updated_at=? WHERE id=?`, [msg.slice(0, 500), nowIso(), root.id]); } catch {}
         continue;
       }
-      for (const kind of ["video", "reading"]) {
-        const kindDir = path.join(root.path, kind);
-        const dirs = await fsp.readdir(kindDir, { withFileTypes: true }).catch(() => []);
-        const names = dirs.filter((d) => d.isDirectory() && !d.name.startsWith(".")).map((d) => d.name).sort(natSort);
-        for (const name of names) {
-          try {
-            await scanCourse(kind, path.join(kindDir, name), name, root);
-            seen.add(`${root.id}:${kind}:${slugify(name)}`);
-            courseCount++;
-          } catch (e) {
-            errors.push(`${name}: ${String(e?.message || e).slice(0, 200)}`);
-          }
+      const kinds = ["video", "reading"].filter((k) => isDir(path.join(root.path, k)));
+      if (kinds.length) {
+        // structured layout: <root>/video/<course>, <root>/reading/<course>
+        for (const kind of kinds) {
+          const kindDir = path.join(root.path, kind);
+          const dirs = await fsp.readdir(kindDir, { withFileTypes: true }).catch(() => []);
+          const names = dirs.filter((d) => d.isDirectory() && !d.name.startsWith(".")).map((d) => d.name).sort(natSort);
+          for (const name of names) await scanOne(kind, path.join(kindDir, name), name, root, kind);
         }
+      } else if (!isDefault) {
+        // flat layout: course folders directly under the root (kind inferred
+        // from content). Only for extra libraries — the default keeps its
+        // guided video//reading/ structure.
+        const dirs = await fsp.readdir(root.path, { withFileTypes: true }).catch(() => []);
+        const names = dirs.filter((d) => d.isDirectory() && !d.name.startsWith(".")).map((d) => d.name).sort(natSort);
+        for (const name of names) await scanOne("video", path.join(root.path, name), name, root, "");
       }
       try { await run(`UPDATE course_roots SET last_error=?, updated_at=? WHERE id=?`, ["", nowIso(), root.id]); } catch {}
     }
@@ -258,12 +289,22 @@ export async function scanAll(manual = false) {
   }
 }
 
-async function scanCourse(kind, coursePath, dirName, root = null) {
+// prefix is the layout segment between the library root and the course
+// folder: "video"/"reading" for structured libraries, "" for flat ones
+// (course folders directly under the root — kind inferred from content).
+// Returns the final kind so the caller can build its seen-key.
+async function scanCourse(kindHint, coursePath, dirName, root = null, prefix = null) {
   const now = nowIso();
   const slug = slugify(dirName);
   const title = prettyTitle(dirName);
   const rootId = root?.id || "root_default";
   const rootPath = normalizeRootPath(root?.path || config.coursesRoot);
+  const tree = await buildFileTree(coursePath);
+  let kind = kindHint, dirPrefix = prefix ?? kindHint;
+  if (prefix === "") {
+    kind = tree.videos.length ? "video" : "reading";
+    dirPrefix = "";
+  }
   let course = null;
   try {
     course = await get(`SELECT * FROM courses WHERE root_id=? AND kind=? AND slug=?`, [rootId, kind, slug]);
@@ -274,13 +315,12 @@ async function scanCourse(kind, coursePath, dirName, root = null) {
       course = await get(`SELECT * FROM courses WHERE kind=? AND slug=? AND (root_id IS NULL OR root_id='')`, [kind, slug]);
     } catch { /* fresh schema: no legacy rows */ }
   }
-  const tree = await buildFileTree(coursePath);
   const hasIcon = tree.icon ? 1 : 0;
   if (!course) {
-    course = { id: uid("c"), kind, title, slug, dir_name: dirName, root_id: rootId, root_path: rootPath, has_icon: hasIcon, created_at: now, updated_at: now };
+    course = { id: uid("c"), kind, title, slug, dir_name: dirName, root_id: rootId, root_path: rootPath, dir_prefix: dirPrefix, has_icon: hasIcon, created_at: now, updated_at: now };
     try {
-      await run(`INSERT INTO courses(id, kind, title, slug, dir_name, root_id, root_path, has_icon, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [course.id, kind, title, slug, dirName, rootId, rootPath, hasIcon, now, now]);
+      await run(`INSERT INTO courses(id, kind, title, slug, dir_name, root_id, root_path, dir_prefix, has_icon, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        [course.id, kind, title, slug, dirName, rootId, rootPath, dirPrefix, hasIcon, now, now]);
     } catch {
       // Older schema without the new columns (should not happen post-migrate).
       await run(`INSERT INTO courses(id, kind, title, slug, dir_name, has_icon, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)`,
@@ -288,9 +328,10 @@ async function scanCourse(kind, coursePath, dirName, root = null) {
       course = await get(`SELECT * FROM courses WHERE id=?`, [course.id]);
     }
   } else {
+    course.dir_prefix = dirPrefix;
     try {
-      await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, root_id=?, root_path=?, updated_at=? WHERE id=?`,
-        [course.title || title, dirName, hasIcon, rootId, rootPath, now, course.id]);
+      await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, root_id=?, root_path=?, dir_prefix=?, updated_at=? WHERE id=?`,
+        [course.title || title, dirName, hasIcon, rootId, rootPath, dirPrefix, now, course.id]);
     } catch {
       await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, updated_at=? WHERE id=?`, [course.title || title, dirName, hasIcon, now, course.id]);
     }
@@ -321,6 +362,7 @@ async function scanCourse(kind, coursePath, dirName, root = null) {
   const lc = await get(`SELECT COUNT(*) c FROM lessons WHERE course_id=? AND is_active=1`, [course.id]);
   const pc = await get(`SELECT COUNT(*) c FROM reading_pages WHERE course_id=? AND is_active=1`, [course.id]);
   await run(`UPDATE courses SET lesson_count=?, page_count=?, last_scanned_at=?, updated_at=? WHERE id=?`, [lc?.c || 0, pc?.c || 0, now, now, course.id]);
+  return kind;
 }
 
 // relDir uses posix separators (course-relative). Root call has relDir "" and no group.
@@ -439,9 +481,12 @@ async function upsertResource(courseId, groupId, lessonId, r, now) {
 // that resolves outside the course root is rejected too.
 // Multi-root: courses carry a denormalized root_path; legacy rows without
 // one fall back to COURSES_ROOT so pre-upgrade installs keep working.
+// dir_prefix is the layout segment ("video"/"reading", or "" for flat
+// libraries); an explicit "" must NOT fall back to kind, hence ?? and not ||.
 export function courseDir(course) {
   const base = course?.root_path || course?.rootPath || config.coursesRoot;
-  return path.join(base, course.kind, course.dir_name);
+  const seg = course?.dir_prefix ?? course?.dirPrefix ?? course?.kind;
+  return seg ? path.join(base, seg, course.dir_name) : path.join(base, course.dir_name);
 }
 export function resolveInside(course, relKey) {
   const base = courseDir(course);
