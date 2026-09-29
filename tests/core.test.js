@@ -81,6 +81,19 @@ describe("title tag stripping", () => {
   });
 });
 
+describe("release-stub filtering", () => {
+  it("ignores Credits.txt and .url shortcuts, keeps real content", async () => {
+    const { classifyFile } = await import("../server/scanner.js");
+    assert.equal(classifyFile("Credits.txt"), "ignore");
+    assert.equal(classifyFile("CREDITS.TXT"), "ignore");
+    assert.equal(classifyFile("Important ReadMe.url"), "ignore");
+    assert.equal(classifyFile("link.URL"), "ignore");
+    assert.equal(classifyFile("Course Credits.txt"), "resource"); // lookalike still indexes
+    assert.equal(classifyFile("notes.txt"), "resource");
+    assert.equal(classifyFile("Lecture 1.mp4"), "video");
+  });
+});
+
 describe("reader sanitizer", () => {
   it("returns heading ids for sidebar anchors, without duplicate id attrs", async () => {
     const { sanitize } = await import("../server/sanitize.js");

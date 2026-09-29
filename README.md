@@ -73,7 +73,8 @@ courses/ (source of truth) → scanner (watcher + rescan, idempotent, stable pat
 - Recursive `content_groups` (unlimited depth, display-only Module/Submodule/Section
   labels); flat courses get no fake groups. Files are classified: video → lessons,
   HTML → reading pages, txt/pdf/srt/etc. → resources (same-basename companions attach
-  to their lesson, subtitles become `<track>`s). Moved files are re-linked by
+  to their lesson, subtitles become `<track>`s). Release stubs (`Credits.txt`,
+  `.url` shortcuts) and unknown extensions are skipped. Moved files are re-linked by
   basename+size so progress follows renames.
 - Imported HTML is **untrusted**: server-side sanitizer allowlists tags, strips scripts /
   handlers / dangerous URLs, rewrites images to authed media endpoints; no iframe, no

@@ -28,7 +28,13 @@ export function classifyFile(name) {
   if (!base || base.startsWith(".")) return "ignore";
   if (/^icon\./i.test(base)) return "icon";
   if (/^(thumbs\.db|desktop\.ini|\.ds_store)$/i.test(base)) return "ignore";
+  // Release-stub junk bundled with downloaded courses: never course content.
+  // Credits.txt is a promo/thanks stub (not a real reading page) and .url
+  // files are Windows shortcut stubs. Ignored by exact name / extension so
+  // legitimate lookalikes (e.g. "Course Credits.txt") still index normally.
+  if (base.toLowerCase() === "credits.txt") return "ignore";
   const ext = path.extname(base).toLowerCase();
+  if (ext === ".url") return "ignore";
   if (VIDEO_EXT.has(ext)) return "video";
   if (HTML_EXT.has(ext)) return "html";
   if (RESOURCE_EXT.has(ext)) return "resource";

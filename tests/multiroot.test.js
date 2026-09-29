@@ -105,6 +105,18 @@ describe("multiple libraries", () => {
     assert.equal((await db.all(`SELECT * FROM courses`)).length, 6);
   });
 
+  it("release stubs never index (and vanish on rescan if previously stored)", async () => {
+    w(`${X}/FlatVids/Credits.txt`, "thanks");
+    w(`${X}/FlatVids/Important ReadMe.url`, "[InternetShortcut]");
+    await scanner.scanAll(true);
+    const v = await db.get(`SELECT id FROM courses WHERE dir_name=? AND root_id=?`, ["FlatVids", "root_extra"]);
+    const res = await db.all(`SELECT file_name FROM resources WHERE course_id=? AND is_active=1`, [v.id]);
+    assert.ok(!res.some((r) => r.file_name === "Credits.txt"));
+    assert.ok(!res.some((r) => r.file_name === "Important ReadMe.url"));
+    fs.rmSync(`${X}/FlatVids/Credits.txt`, { force: true });
+    fs.rmSync(`${X}/FlatVids/Important ReadMe.url`, { force: true });
+  });
+
   it("removing a flat course folder deletes only that course", async () => {
     fs.rmSync(path.join(X, "FlatDocs"), { recursive: true, force: true });
     await scanner.scanAll(true);
