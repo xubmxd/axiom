@@ -351,6 +351,11 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
   const kindLabel = p.lessons > 0 && p.pages > 0 ? "Mixed" : p.lessons > 0 ? "Video" : "Reading";
   const countLabel = [p.lessons ? `${p.lessons} lessons` : "", p.pages ? `${p.pages} pages` : ""].filter(Boolean).join(" · ") || "empty";
   const comp = p.total > 0 && p.pct >= 100 ? await get(`SELECT * FROM course_completions WHERE user_id=? AND course_id=?`, [u.id, c.id]) : null;
+  let rootLabel = "";
+  try {
+    const rr = c.root_id ? await get(`SELECT label, path FROM course_roots WHERE id=?`, [c.root_id]) : null;
+    rootLabel = rr?.label || c.root_path || "";
+  } catch {}
 
   res.send(layout({ title: c.title, user: u, active: "library", body: `
   <div class="wrap">
@@ -359,7 +364,7 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
       ${iconArt(c, 88)}
       <div><p class="eyebrow mono">${esc(kindLabel)} course · ${esc(countLabel)}</p>
       <h1>${esc(c.title)}</h1>
-      <p class="dim small mono">source: courses/${esc(c.kind)}/${esc(c.dir_name)}</p>
+      <p class="dim small mono">source: ${esc(rootLabel || c.root_path || "courses")}/${esc(c.kind)}/${esc(c.dir_name)}</p>
       <div class="crow"><div class="cfill">${progressBar(p.pct, c.title)}<span class="dim small">${Math.round(p.pct)}% · ${p.done}/${p.total}</span></div>
       ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"} →</a>` : ""}</div></div>
     </section>
@@ -772,7 +777,12 @@ pages.get("/settings", needAuth, async (req, res) => {
 // ---------- Admin ----------
 pages.get("/admin", needAdmin, async (req, res) => {
   const users = await all(`SELECT id, username, email, display_name, role, status, created_at, last_seen_at FROM users ORDER BY created_at ASC`);
-  const courses = await all(`SELECT * FROM courses ORDER BY title ASC`);
+  let courses = [];
+  try {
+    courses = await all(`SELECT c.*, r.label root_label, r.path root_dir, r.is_active root_active FROM courses c LEFT JOIN course_roots r ON r.id=c.root_id ORDER BY c.title ASC`);
+  } catch {
+    courses = await all(`SELECT * FROM courses ORDER BY title ASC`);
+  }
   const scan = await get(`SELECT * FROM scan_state WHERE id=1`);
   const invs = await all(`SELECT id, role, email_hint, expires_at, used_at, created_at FROM invitations ORDER BY created_at DESC LIMIT 20`);
   const tu = await get(`SELECT COUNT(*) n FROM users`);
@@ -780,27 +790,52 @@ pages.get("/admin", needAdmin, async (req, res) => {
   const tl = await get(`SELECT (SELECT COUNT(*) FROM lessons WHERE is_active=1)+(SELECT COUNT(*) FROM reading_pages WHERE is_active=1) n`);
   const tt = await get(`SELECT SUM(video_secs+reading_secs) s FROM daily_activity`);
   const recent = await all(`SELECT d.day, d.video_secs, d.reading_secs, u.display_name FROM daily_activity d JOIN users u ON u.id=d.user_id ORDER BY d.day DESC LIMIT 10`);
+  let roots = [];
+  try {
+    roots = await all(`SELECT * FROM course_roots ORDER BY created_at ASC`);
+  } catch {
+    roots = [{ id: "root_default", path: config.coursesRoot, label: "Default library", is_active: 1, last_error: "" }];
+  }
+  const rootCounts = new Map();
+  for (const c of courses) rootCounts.set(c.root_id || "root_default", (rootCounts.get(c.root_id || "root_default") || 0) + 1);
   let storage = "n/a";
   try {
     const { execSync } = await import("node:child_process");
-    storage = execSync(`du -sh "${config.coursesRoot}" 2>/dev/null | cut -f1`).toString().trim() || "n/a";
+    const qs = (s) => `"${String(s).replace(/"/g, "")}"`;
+    const arg = roots.filter((r) => r.is_active).map((r) => qs(r.path)).join(" ") || qs(config.coursesRoot);
+    const out = execSync(`du -shc ${arg} 2>/dev/null | tail -1 | cut -f1`).toString().trim();
+    storage = out || "n/a";
   } catch {}
-  const rows = courses.map((c) => `<tr><td>${esc(c.title)}</td><td><span class="pill ${c.kind}">${c.kind}</span></td><td class="mono">${c.lesson_count || c.page_count || 0}</td><td class="mono dim">${c.last_scanned_at ? fmtDate(c.last_scanned_at) : "—"}</td></tr>`).join("");
+  const rows = courses.map((c) => `<tr><td>${esc(c.title)}</td><td><span class="pill ${c.kind}">${c.kind}</span></td><td class="dim small">${esc(c.root_label || c.root_path || "default")}</td><td class="mono">${c.lesson_count || c.page_count || 0}</td><td class="mono dim">${c.last_scanned_at ? fmtDate(c.last_scanned_at) : "—"}</td></tr>`).join("");
+  const rootRows = roots.map((r) => `<tr><td><b>${esc(r.label || "Library")}</b><br><span class="dim small mono">${esc(r.path)}</span>${r.last_error ? `<br><span class="dim small">⚠ ${esc(r.last_error.slice(0, 120))}</span>` : ""}</td>
+    <td>${r.is_active ? '<span class="pill reading">active</span>' : '<span class="pill video">paused</span>'}</td>
+    <td class="mono">${rootCounts.get(r.id) || 0}</td>
+    <td class="nowrap"><button class="btn xs" data-root-toggle="${r.id}">${r.is_active ? "Pause" : "Enable"}</button> <button class="btn xs danger" data-root-del="${r.id}" data-label="${esc(r.label || r.path)}">Remove</button></td></tr>`).join("");
   res.send(layout({ title: "Admin", user: req.user, active: "admin", body: `<div class="wrap wide">
   <p class="eyebrow mono">admin console</p><h1>System overview</h1>
   <div class="statrow">
     <div class="stat"><span class="mono dim">users</span><b>${tu.n}</b></div>
     <div class="stat"><span class="mono dim">courses</span><b>${tc.n}</b></div>
+    <div class="stat"><span class="mono dim">libraries</span><b>${roots.length}</b></div>
     <div class="stat"><span class="mono dim">items</span><b>${tl.n || 0}</b></div>
     <div class="stat"><span class="mono dim">learned</span><b>${fmtDur(tt.s || 0)}</b></div>
     <div class="stat"><span class="mono dim">storage</span><b>${esc(storage)}</b></div>
   </div>
   <div class="admin-grid">
   <section class="card"><div class="sech"><h2>Scanner</h2><span class="pill ${scan.last_status === "ok" ? "reading" : "video"}">${esc(scan.last_status)}</span></div>
-    <p class="dim small mono">last ok: ${scan.last_ok_at ? fmtDate(scan.last_ok_at) : "never"} · root: ${esc(config.coursesRoot)}</p>
+    <p class="dim small mono">last ok: ${scan.last_ok_at ? fmtDate(scan.last_ok_at) : "never"} · ${roots.length} ${roots.length === 1 ? "library" : "libraries"}</p>
     ${scan.last_error ? `<div class="alert">${esc(scan.last_error)}</div>` : ""}
     <div class="lrow"><button class="btn primary" id="rescan">Rescan courses</button><span class="dim small" id="scanMsg"></span></div>
-    <h3>Courses</h3><div class="tablewrap"><table><thead><tr><th>Title</th><th>Type</th><th>Items</th><th>Scanned</th></tr></thead><tbody>${rows}</tbody></table></div></section>
+    <h3>Course libraries</h3>
+    <div class="tablewrap"><table><thead><tr><th>Library</th><th>Status</th><th>Courses</th><th></th></tr></thead><tbody>${rootRows || `<tr><td colspan=4 class=dim>No libraries yet.</td></tr>`}</tbody></table></div>
+    <form id="rootForm" class="form" style="margin-top:12px">
+      <h3 style="margin:0">Add library</h3>
+      <p class="dim small" style="margin:4px 0 8px">Absolute path to a directory holding <span class="mono">video/</span> and <span class="mono">reading/</span> course folders. It must already exist on the server${process.env.DOCKER === "1" ? " (mount it into the container first)" : ""}.</p>
+      <label>Directory path<input name="path" placeholder="/mnt/media/courses2" required style="width:100%"></label>
+      <label>Label (optional)<input name="label" placeholder="External drive" maxlength="80" style="width:100%"></label>
+      <div class="lrow"><button class="btn primary" type="submit">Add library</button><span class="dim small" id="rootMsg"></span></div>
+    </form>
+    <h3>Courses</h3><div class="tablewrap"><table><thead><tr><th>Title</th><th>Type</th><th>Library</th><th>Items</th><th>Scanned</th></tr></thead><tbody>${rows}</tbody></table></div></section>
   <section class="card"><div class="sech"><h2>Users</h2><span class="dim small mono">${users.length}</span></div>
     <div class="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>
     ${users.map((x) => `<tr><td><b>${esc(x.display_name)}</b><br><span class="dim small mono">@${esc(x.username)}</span></td><td>${esc(x.role)}</td><td>${esc(x.status)}</td>
@@ -816,8 +851,11 @@ pages.get("/admin", needAdmin, async (req, res) => {
   </tbody></table></div></section>
   </div>
   <script>
-  document.getElementById('rescan').onclick=async(e)=>{e.target.disabled=true;document.getElementById('scanMsg').textContent='Scanning…';const r=await fetch('/api/admin/scan',{method:'POST'});const j=await r.json();document.getElementById('scanMsg').textContent=j.ok?('Done · '+j.courses+' courses'):(j.error||'Failed');e.target.disabled=false;toast(j.ok?'Scan completed':'Scan failed');if(j.ok)setTimeout(()=>location.reload(),800);};
+  document.getElementById('rescan').onclick=async(e)=>{e.target.disabled=true;document.getElementById('scanMsg').textContent='Scanning…';const r=await fetch('/api/admin/scan',{method:'POST'});const j=await r.json();document.getElementById('scanMsg').textContent=j.ok?('Done · '+j.courses+' courses'+(j.roots?' across '+j.roots+' libraries':'')):(j.error||(j.warnings&&j.warnings.join('; '))||'Failed');e.target.disabled=false;toast(j.ok?'Scan completed':'Scan failed');if(j.ok)setTimeout(()=>location.reload(),800);};
   document.querySelectorAll('[data-act]').forEach(b=>b.onclick=async()=>{await fetch('/api/admin/users/'+b.dataset.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:b.dataset.act})});location.reload();});
   document.getElementById('invForm').onsubmit=async(e)=>{e.preventDefault();const fd=new FormData(e.target);const r=await fetch('/api/admin/invites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email_hint:fd.get('email_hint'),role:fd.get('role')})});const j=await r.json();document.getElementById('invOut').innerHTML=j.url?'<p class=mono>Share link (single-use, expires):<br><input value=\\''+j.url+'\\' readonly onclick=this.select() style=width:100%></p>':(j.error||'Failed');toast('Invitation created');};
+  document.getElementById('rootForm').onsubmit=async(e)=>{e.preventDefault();const fd=new FormData(e.target);const msg=document.getElementById('rootMsg');msg.textContent='Adding…';const r=await fetch('/api/admin/roots',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:fd.get('path'),label:fd.get('label')})});const j=await r.json().catch(()=>({}));if(!r.ok){msg.textContent=j.error||'Failed';toast('Could not add library');return;}msg.textContent='Added — rescanning…';toast('Library added');const s=await fetch('/api/admin/scan',{method:'POST'});if(s.ok)setTimeout(()=>location.reload(),800);else location.reload();};
+  document.querySelectorAll('[data-root-toggle]').forEach(b=>b.onclick=async()=>{const id=b.dataset.rootToggle;const pausing=b.textContent.trim()==='Pause';const r=await fetch('/api/admin/roots/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:!pausing})});const j=await r.json().catch(()=>({}));if(!r.ok){toast(j.error||'Failed');return;}toast(pausing?'Library paused':'Library enabled');const s=await fetch('/api/admin/scan',{method:'POST'});if(s.ok)setTimeout(()=>location.reload(),800);else location.reload();});
+  document.querySelectorAll('[data-root-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Remove library "'+b.dataset.label+'"? Its courses will be unindexed (progress for those courses is deleted). Files on disk are NOT touched.'))return;const r=await fetch('/api/admin/roots/'+b.dataset.rootDel,{method:'DELETE'});const j=await r.json().catch(()=>({}));if(!r.ok){toast(j.error||'Failed');return;}toast('Library removed');location.reload();});
   </script>` }));
 });

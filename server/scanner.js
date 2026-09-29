@@ -141,36 +141,116 @@ function collectRelPaths(tree) {
   return { groups, lessons, pages, resources };
 }
 
+// ---- multiple course libraries ----
+// Every root is a COURSES_ROOT-equivalent directory containing video/ and
+// reading/ subfolders. Roots are managed from the admin panel (course_roots
+// table); COURSES_ROOT env only seeds the default row on first boot.
+export function normalizeRootPath(p) {
+  return path.resolve(String(p || "").trim());
+}
+
+export async function listCourseRoots(includeInactive = false) {
+  try {
+    const rows = await all(
+      `SELECT * FROM course_roots ${includeInactive ? "" : "WHERE is_active=1"} ORDER BY created_at ASC`
+    );
+    if (rows?.length) return rows;
+  } catch { /* table may not exist yet during early migrate */ }
+  return [{ id: "root_default", path: path.resolve(config.coursesRoot || "courses"), label: "Default library", is_active: 1 }];
+}
+
+async function ensureRootDirs(rootPath) {
+  fs.mkdirSync(rootPath, { recursive: true });
+  for (const sub of ["video", "reading"]) fs.mkdirSync(path.join(rootPath, sub), { recursive: true });
+}
+
+// Shared validation for the admin API: returns an error string or null.
+export function validateRootPath(candidate, existingRoots = []) {
+  const raw = String(candidate || "").trim();
+  if (!raw) return "Path is required.";
+  if (/\0/.test(raw)) return "Invalid path.";
+  const norm = normalizeRootPath(raw);
+  let stat = null;
+  try { stat = fs.statSync(norm); } catch { return `Directory does not exist: ${norm}`; }
+  if (!stat.isDirectory()) return `Not a directory: ${norm}`;
+  const dataDir = path.resolve(config.dataDir || "data");
+  if (norm === dataDir || norm.startsWith(dataDir + path.sep) || dataDir.startsWith(norm + path.sep)) {
+    return "That path overlaps the app data directory — pick a directory outside DATA_DIR.";
+  }
+  for (const r of existingRoots) {
+    const other = normalizeRootPath(r.path || "");
+    if (!other) continue;
+    if (norm === other) return "That directory is already added.";
+    if (norm.startsWith(other + path.sep) || other.startsWith(norm + path.sep)) {
+      return `That directory overlaps an existing library (${other}) — nested libraries would scan courses twice.`;
+    }
+  }
+  return null;
+}
+
 export async function scanAll(manual = false) {
   const started = Date.now();
   await run(`UPDATE scan_state SET last_status='running', last_error='' WHERE id=1`);
   try {
-    fs.mkdirSync(config.coursesRoot, { recursive: true });
-    for (const sub of ["video", "reading"]) fs.mkdirSync(path.join(config.coursesRoot, sub), { recursive: true });
-    const seen = new Set();
-    let courseCount = 0;
-    for (const kind of ["video", "reading"]) {
-      const kindDir = path.join(config.coursesRoot, kind);
-      const dirs = await fsp.readdir(kindDir, { withFileTypes: true }).catch(() => []);
-      const names = dirs.filter((d) => d.isDirectory() && !d.name.startsWith(".")).map((d) => d.name).sort(natSort);
-      for (const name of names) {
-        await scanCourse(kind, path.join(kindDir, name), name);
-        seen.add(`${kind}:${slugify(name)}`);
-        courseCount++;
-      }
+    const roots = (await listCourseRoots(false)).map((r) => ({
+      ...r,
+      path: normalizeRootPath(r.path || config.coursesRoot),
+    }));
+    // de-dupe by resolved path (DB + env drift)
+    const uniq = [];
+    const seenPaths = new Set();
+    for (const r of roots) {
+      if (seenPaths.has(r.path)) continue;
+      seenPaths.add(r.path);
+      uniq.push(r);
     }
-    // remove courses no longer on disk
+    const seen = new Set();
+    const enabledIds = new Set(uniq.map((r) => r.id));
+    let courseCount = 0;
+    const errors = [];
+    for (const root of uniq) {
+      try {
+        await ensureRootDirs(root.path);
+      } catch (e) {
+        const msg = `Cannot access ${root.path}: ${String(e?.message || e).slice(0, 200)}`;
+        errors.push(msg);
+        try { await run(`UPDATE course_roots SET last_error=?, updated_at=? WHERE id=?`, [msg.slice(0, 500), nowIso(), root.id]); } catch {}
+        continue;
+      }
+      for (const kind of ["video", "reading"]) {
+        const kindDir = path.join(root.path, kind);
+        const dirs = await fsp.readdir(kindDir, { withFileTypes: true }).catch(() => []);
+        const names = dirs.filter((d) => d.isDirectory() && !d.name.startsWith(".")).map((d) => d.name).sort(natSort);
+        for (const name of names) {
+          try {
+            await scanCourse(kind, path.join(kindDir, name), name, root);
+            seen.add(`${root.id}:${kind}:${slugify(name)}`);
+            courseCount++;
+          } catch (e) {
+            errors.push(`${name}: ${String(e?.message || e).slice(0, 200)}`);
+          }
+        }
+      }
+      try { await run(`UPDATE course_roots SET last_error=?, updated_at=? WHERE id=?`, ["", nowIso(), root.id]); } catch {}
+    }
+    // remove courses no longer on disk — but ONLY for roots we just scanned.
+    // Courses from disabled roots are left untouched so disabling a library
+    // hides nothing and deletes nothing; re-enabling restores it as-is.
     const existing = await all(`SELECT * FROM courses`);
     for (const c of existing) {
-      if (!seen.has(`${c.kind}:${c.slug}`)) {
+      const rid = c.root_id || "root_default";
+      if (!enabledIds.has(rid)) continue;
+      if (!seen.has(`${rid}:${c.kind}:${c.slug}`)) {
         await run(`DELETE FROM courses WHERE id=?`, [c.id]);
         log("course.removed", { course: c.title });
       }
     }
     const okAt = nowIso();
-    await run(`UPDATE scan_state SET last_ok_at=?, last_status='ok', last_error='', course_count=? WHERE id=1`, [okAt, courseCount]);
-    log("scan.ok", { courses: courseCount, ms: Date.now() - started, manual });
-    return { ok: true, courses: courseCount };
+    const errSummary = errors.slice(0, 3).join("; ");
+    await run(`UPDATE scan_state SET last_ok_at=?, last_status=?, last_error=?, course_count=? WHERE id=1`,
+      [okAt, errors.length ? "ok" : "ok", errSummary.slice(0, 500), courseCount]);
+    log("scan.ok", { courses: courseCount, roots: uniq.length, ms: Date.now() - started, manual });
+    return { ok: true, courses: courseCount, roots: uniq.length, warnings: errors.slice(0, 5) };
   } catch (err) {
     await run(`UPDATE scan_state SET last_status='error', last_error=? WHERE id=1`, [String(err?.message || err).slice(0, 500)]);
     log("scan.error", { error: String(err?.message || err) });
@@ -178,19 +258,42 @@ export async function scanAll(manual = false) {
   }
 }
 
-async function scanCourse(kind, coursePath, dirName) {
+async function scanCourse(kind, coursePath, dirName, root = null) {
   const now = nowIso();
   const slug = slugify(dirName);
   const title = prettyTitle(dirName);
-  let course = await get(`SELECT * FROM courses WHERE kind=? AND slug=?`, [kind, slug]);
+  const rootId = root?.id || "root_default";
+  const rootPath = normalizeRootPath(root?.path || config.coursesRoot);
+  let course = null;
+  try {
+    course = await get(`SELECT * FROM courses WHERE root_id=? AND kind=? AND slug=?`, [rootId, kind, slug]);
+  } catch { course = null; }
+  if (!course) {
+    // Adopt pre-multi-root rows (root_id NULL) so progress survives the upgrade.
+    try {
+      course = await get(`SELECT * FROM courses WHERE kind=? AND slug=? AND (root_id IS NULL OR root_id='')`, [kind, slug]);
+    } catch { /* fresh schema: no legacy rows */ }
+  }
   const tree = await buildFileTree(coursePath);
   const hasIcon = tree.icon ? 1 : 0;
   if (!course) {
-    course = { id: uid("c"), kind, title, slug, dir_name: dirName, has_icon: hasIcon, created_at: now, updated_at: now };
-    await run(`INSERT INTO courses(id, kind, title, slug, dir_name, has_icon, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)`,
-      [course.id, kind, title, slug, dirName, hasIcon, now, now]);
+    course = { id: uid("c"), kind, title, slug, dir_name: dirName, root_id: rootId, root_path: rootPath, has_icon: hasIcon, created_at: now, updated_at: now };
+    try {
+      await run(`INSERT INTO courses(id, kind, title, slug, dir_name, root_id, root_path, has_icon, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+        [course.id, kind, title, slug, dirName, rootId, rootPath, hasIcon, now, now]);
+    } catch {
+      // Older schema without the new columns (should not happen post-migrate).
+      await run(`INSERT INTO courses(id, kind, title, slug, dir_name, has_icon, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)`,
+        [course.id, kind, title, slug, dirName, hasIcon, now, now]);
+      course = await get(`SELECT * FROM courses WHERE id=?`, [course.id]);
+    }
   } else {
-    await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, updated_at=? WHERE id=?`, [course.title || title, dirName, hasIcon, now, course.id]);
+    try {
+      await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, root_id=?, root_path=?, updated_at=? WHERE id=?`,
+        [course.title || title, dirName, hasIcon, rootId, rootPath, now, course.id]);
+    } catch {
+      await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, updated_at=? WHERE id=?`, [course.title || title, dirName, hasIcon, now, course.id]);
+    }
     course = await get(`SELECT * FROM courses WHERE id=?`, [course.id]);
   }
 
@@ -334,8 +437,11 @@ async function upsertResource(courseId, groupId, lessonId, r, now) {
 // Lexical containment first (blocks ../ traversal even for missing files),
 // then canonical containment: when both sides exist on disk, a symlink chain
 // that resolves outside the course root is rejected too.
+// Multi-root: courses carry a denormalized root_path; legacy rows without
+// one fall back to COURSES_ROOT so pre-upgrade installs keep working.
 export function courseDir(course) {
-  return path.join(config.coursesRoot, course.kind, course.dir_name);
+  const base = course?.root_path || course?.rootPath || config.coursesRoot;
+  return path.join(base, course.kind, course.dir_name);
 }
 export function resolveInside(course, relKey) {
   const base = courseDir(course);
@@ -352,13 +458,39 @@ export function resolveInside(course, relKey) {
   return target;
 }
 
-let watcher = null;
-export function startWatcher(onChange) {
+let watchers = [];
+export function stopWatcher() {
+  for (const w of watchers) { try { w.close(); } catch {} }
+  watchers = [];
+  clearTimeout(startWatcher._t);
+}
+// Watches every active library root (debounced rescan). Restarts cleanly so
+// the admin API can re-arm it after roots change. Falls back to
+// COURSES_ROOT when the DB isn't reachable yet (early boot).
+export async function startWatcher(onChange) {
+  stopWatcher();
+  const fire = () => {
+    if (!onChange) return;
+    clearTimeout(startWatcher._t);
+    startWatcher._t = setTimeout(() => onChange().catch(() => {}), 2500);
+  };
+  let roots = [];
   try {
-    fs.watch(config.coursesRoot, { recursive: true }, (_evt, file) => {
-      if (!file) return;
-      clearTimeout(startWatcher._t);
-      startWatcher._t = setTimeout(() => onChange && onChange().catch(() => {}), 2500);
-    });
-  } catch { watcher = null; }
+    roots = await listCourseRoots(false);
+  } catch { roots = []; }
+  if (!roots.length) roots = [{ path: config.coursesRoot }];
+  const paths = [...new Set(roots.map((r) => {
+    try { return normalizeRootPath(r.path); } catch { return null; }
+  }).filter(Boolean))];
+  for (const p of paths) {
+    try {
+      fs.mkdirSync(p, { recursive: true });
+      const w = fs.watch(p, { recursive: true }, (_evt, file) => {
+        if (!file) return;
+        fire();
+      });
+      watchers.push(w);
+    } catch { /* best-effort: scan still works via Rescan button */ }
+  }
+  return () => stopWatcher();
 }

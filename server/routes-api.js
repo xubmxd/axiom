@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { get, run, all, nowIso } from "./db.js";
+import { get, run, all, nowIso, uid } from "./db.js";
 import { findLogin, verifyPassword, createSession, sessionCookie, createUser, rateLimit, sha256 } from "./auth.js";
 import { log } from "./log.js";
 import { config } from "./config.js";
-import { scanAll } from "./scanner.js";
+import { scanAll, normalizeRootPath, validateRootPath, listCourseRoots, startWatcher } from "./scanner.js";
 import { recordHeartbeat, bumpCompletion, dayFor } from "./stats.js";
 import { ah } from "./wrap.js";
 
@@ -205,5 +205,99 @@ api.patch("/admin/users/:id", needAdminJson, ah(async (req, res) => {
   await run(`UPDATE users SET status=?, updated_at=? WHERE id=?`, [status, nowIso(), req.params.id]);
   if (status === "disabled") await run(`DELETE FROM sessions WHERE user_id=?`, [req.params.id]);
   log("user.status", { by: req.user.id, target: req.params.id, status });
+  res.json({ ok: true });
+}));
+
+// ---- admin: course libraries (multiple scan roots) ----
+async function rearmWatcher() {
+  try { await startWatcher(() => scanAll(false)); } catch {}
+}
+api.get("/admin/roots", needAdminJson, ah(async (req, res) => {
+  const roots = await listCourseRoots(true);
+  const out = [];
+  for (const r of roots) {
+    const n = await get(`SELECT COUNT(*) n FROM courses WHERE root_id=?`, [r.id]);
+    out.push({ ...r, course_count: n?.n || 0 });
+  }
+  res.json({ ok: true, roots: out });
+}));
+api.post("/admin/roots", needAdminJson, ah(async (req, res) => {
+  const rawPath = String(req.body?.path || "").trim();
+  const label = String(req.body?.label || "").slice(0, 80).trim();
+  if (!rawPath) return res.status(400).json({ error: "Path is required." });
+  const existing = await listCourseRoots(true);
+  const err = validateRootPath(rawPath, existing);
+  if (err) return res.status(400).json({ error: err });
+  const norm = normalizeRootPath(rawPath);
+  if (existing.some((r) => normalizeRootPath(r.path) === norm)) {
+    return res.status(400).json({ error: "That directory is already added." });
+  }
+  const now = nowIso();
+  const id = uid("root");
+  try {
+    await run(`INSERT INTO course_roots(id, path, label, is_active, last_error, created_at, updated_at) VALUES(?,?,?,?,?,?,?)`,
+      [id, norm, label || norm.split("/").pop() || norm, 1, "", now, now]);
+  } catch {
+    return res.status(400).json({ error: "Could not add — path must be unique." });
+  }
+  const { default: fs } = await import("node:fs");
+  const { default: path } = await import("node:path");
+  try {
+    fs.mkdirSync(norm, { recursive: true });
+    for (const sub of ["video", "reading"]) fs.mkdirSync(path.join(norm, sub), { recursive: true });
+  } catch {}
+  log("roots.add", { by: req.user.id, path: norm });
+  await rearmWatcher();
+  const row = await get(`SELECT * FROM course_roots WHERE id=?`, [id]);
+  res.json({ ok: true, root: row });
+}));
+api.patch("/admin/roots/:id", needAdminJson, ah(async (req, res) => {
+  const row = await get(`SELECT * FROM course_roots WHERE id=?`, [req.params.id]);
+  if (!row) return res.status(404).json({ error: "Library not found." });
+  const now = nowIso();
+  if (req.body?.path !== undefined) {
+    const rawPath = String(req.body.path || "").trim();
+    if (!rawPath) return res.status(400).json({ error: "Path cannot be empty." });
+    const others = (await listCourseRoots(true)).filter((r) => r.id !== row.id);
+    const err = validateRootPath(rawPath, others);
+    if (err) return res.status(400).json({ error: err });
+    const norm = normalizeRootPath(rawPath);
+    await run(`UPDATE course_roots SET path=?, updated_at=? WHERE id=?`, [norm, now, row.id]);
+    // keep denormalized course paths in sync so media keeps resolving
+    try { await run(`UPDATE courses SET root_path=? WHERE root_id=?`, [norm, row.id]); } catch {}
+    log("roots.move", { by: req.user.id, id: row.id, path: norm });
+  }
+  if (req.body?.label !== undefined) {
+    await run(`UPDATE course_roots SET label=?, updated_at=? WHERE id=?`,
+      [String(req.body.label || "").slice(0, 80), now, row.id]);
+  }
+  if (req.body?.is_active !== undefined) {
+    const active = req.body.is_active ? 1 : 0;
+    if (!active) {
+      const total = await get(`SELECT COUNT(*) n FROM course_roots WHERE is_active=1`);
+      const thisActive = row.is_active ? 1 : 0;
+      if (thisActive && (total?.n || 0) <= 1) {
+        return res.status(400).json({ error: "At least one library must stay enabled." });
+      }
+    }
+    await run(`UPDATE course_roots SET is_active=?, updated_at=? WHERE id=?`, [active, now, row.id]);
+    log("roots.toggle", { by: req.user.id, id: row.id, active });
+  }
+  await rearmWatcher();
+  res.json({ ok: true, root: await get(`SELECT * FROM course_roots WHERE id=?`, [row.id]) });
+}));
+api.delete("/admin/roots/:id", needAdminJson, ah(async (req, res) => {
+  const row = await get(`SELECT * FROM course_roots WHERE id=?`, [req.params.id]);
+  if (!row) return res.status(404).json({ error: "Library not found." });
+  const total = await get(`SELECT COUNT(*) n FROM course_roots`);
+  if ((total?.n || 0) <= 1) {
+    return res.status(400).json({ error: "Cannot remove the last library. Disable courses by removing their folders instead." });
+  }
+  // Deleting a library removes its indexed courses; lesson/page cascades
+  // clean up groups, progress and completions via FK ON DELETE CASCADE.
+  await run(`DELETE FROM courses WHERE root_id=?`, [row.id]);
+  await run(`DELETE FROM course_roots WHERE id=?`, [row.id]);
+  log("roots.remove", { by: req.user.id, id: row.id, path: row.path });
+  await rearmWatcher();
   res.json({ ok: true });
 }));

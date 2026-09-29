@@ -108,6 +108,6 @@ app.use((err, req, res, next) => {
 });
 
 await scanAll(false);
-startWatcher(() => scanAll(false));
+await startWatcher(() => scanAll(false));
 
 app.listen(config.port, () => log("boot", { port: config.port, courses: config.coursesRoot, version: config.appVersion }));

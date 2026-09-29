@@ -89,10 +89,10 @@ media.get("/lab-course/:slug", ah(async (req, res) => {
 
 // video stream with range support — never loads whole file into memory
 media.get("/:cid/video/:lid", ah(async (req, res) => {
-  const l = await get(`SELECT l.*, c.dir_name, c.kind FROM lessons l JOIN courses c ON c.id=l.course_id WHERE l.id=?`, [req.params.lid]);
+  const l = await get(`SELECT l.*, c.dir_name, c.kind, c.root_path FROM lessons l JOIN courses c ON c.id=l.course_id WHERE l.id=?`, [req.params.lid]);
   if (!l || l.course_id !== req.params.cid) return res.status(404).end();
   let fp;
-  try { fp = resolveInside({ kind: l.kind || "video", dir_name: l.dir_name }, l.path_key); }
+  try { fp = resolveInside({ kind: l.kind || "video", dir_name: l.dir_name, root_path: l.root_path }, l.path_key); }
   catch { return res.status(403).end(); }
   let stat;
   try { stat = fs.statSync(fp); } catch { return res.status(404).send("file missing — rescan library"); }
@@ -146,14 +146,14 @@ const RESOURCE_MIME = {
   ".tif": "image/tiff", ".tiff": "image/tiff",
 };
 media.get("/:cid/resource/:rid", ah(async (req, res) => {
-  const r = await get(`SELECT r.*, c.dir_name, c.kind AS course_kind FROM resources r JOIN courses c ON c.id=r.course_id WHERE r.id=? AND r.is_active=1`, [req.params.rid]);
+  const r = await get(`SELECT r.*, c.dir_name, c.kind AS course_kind, c.root_path FROM resources r JOIN courses c ON c.id=r.course_id WHERE r.id=? AND r.is_active=1`, [req.params.rid]);
   if (!r || r.course_id !== req.params.cid) return res.status(404).end();
   const ext = path.extname(r.file_name).toLowerCase();
   if (ext === ".html" || ext === ".htm") return res.status(403).end();
   const mime = RESOURCE_MIME[ext];
   if (!mime) return res.status(403).end(); // allowlist only
   let fp;
-  try { fp = resolveInside({ kind: r.course_kind, dir_name: r.dir_name }, r.path_key); }
+  try { fp = resolveInside({ kind: r.course_kind, dir_name: r.dir_name, root_path: r.root_path }, r.path_key); }
   catch { return res.status(403).end(); }
   let stat;
   try { stat = fs.statSync(fp); } catch { return res.status(404).send("file missing — rescan library"); }

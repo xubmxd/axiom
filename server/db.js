@@ -151,6 +151,15 @@ export async function migrate() {
       id INTEGER PRIMARY KEY CHECK(id=1), last_ok_at TEXT, last_status TEXT NOT NULL DEFAULT 'never',
       last_error TEXT NOT NULL DEFAULT '', course_count INTEGER NOT NULL DEFAULT 0
     )`,
+    // Multiple course libraries: each root is a COURSES_ROOT-equivalent
+    // directory containing video/ and reading/ subfolders. Managed from
+    // the admin panel; the scanner walks every active root.
+    `CREATE TABLE IF NOT EXISTS course_roots(
+      id TEXT PRIMARY KEY, path TEXT NOT NULL, label TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_error TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`,
     // ---- Cyber Range ----
     // Dual-engine compatible: TEXT keys, no sequences, no PG-only features.
     // lab_courses are training paths (Core, Extra, …). They are deliberately
@@ -317,6 +326,7 @@ export async function migrate() {
   for (const s of idx) { try { await execRaw(s); } catch {} }
   await migrateLegacyModules();
   await migrateLabCourses();
+  await migrateCourseRoots();
   // App default timezone is Asia/Kolkata: fresh rows pick it up from the
   // column default; installs created before the switch still say UTC.
   try { await run(`UPDATE users SET timezone='Asia/Kolkata' WHERE timezone='UTC'`); } catch {}
@@ -355,6 +365,48 @@ async function migrateLabCourses() {
   } catch { /* never block boot on migration */ }
   try {
     if (await tableExists("labs") && !(await columnExists("labs", "section_name"))) await execRaw(`ALTER TABLE labs ADD COLUMN section_name TEXT NOT NULL DEFAULT ''`);
+  } catch { /* never block boot on migration */ }
+}
+// Multiple course libraries: one row per root directory. The default root
+// is seeded from COURSES_ROOT on first boot; extra roots are added from
+// the admin panel. Courses carry root_id + denormalized root_path so path
+// resolution stays synchronous (no join on every media request).
+async function migrateCourseRoots() {
+  try {
+    if (!(await tableExists("course_roots"))) return;
+    if (!(await columnExists("courses", "root_id"))) {
+      try { await execRaw(`ALTER TABLE courses ADD COLUMN root_id TEXT`); } catch {}
+    }
+    if (!(await columnExists("courses", "root_path"))) {
+      try { await execRaw(`ALTER TABLE courses ADD COLUMN root_path TEXT`); } catch {}
+    }
+    // Seed the default root once: only when the table is completely empty
+    // (fresh install). Explicit deletes are respected afterwards.
+    const { default: path } = await import("node:path");
+    const defaultPath = path.resolve(config.coursesRoot || "courses");
+    const count = await get(`SELECT COUNT(*) n FROM course_roots`);
+    if ((count?.n || 0) === 0) {
+      const now = new Date().toISOString();
+      await run(
+        `INSERT INTO course_roots(id, path, label, is_active, last_error, created_at, updated_at) VALUES(?,?,?,?,?,?,?)`,
+        ["root_default", defaultPath, "Default library", 1, "", now, now]
+      );
+    }
+    // Adopt legacy courses (pre-multi-root rows have NULL root_id).
+    const def = await get(`SELECT * FROM course_roots WHERE id=?`, ["root_default"])
+      || await get(`SELECT * FROM course_roots ORDER BY created_at ASC`);
+    if (def) {
+      const defPath = def.path || defaultPath;
+      try { await run(`UPDATE courses SET root_id=? WHERE root_id IS NULL`, [def.id]); } catch {}
+      try { await run(`UPDATE courses SET root_path=? WHERE root_path IS NULL OR root_path=''`, [defPath]); } catch {}
+      // Keep denormalized paths in sync when the default root was renamed.
+      try { await run(`UPDATE course_roots SET path=?, updated_at=? WHERE id=? AND path<>?`, [defaultPath, new Date().toISOString(), "root_default", defaultPath]); } catch {}
+    }
+    // Root-aware identity: same course name can exist in two libraries.
+    try { await execRaw(`DROP INDEX IF EXISTS uq_course_slug`); } catch {}
+    try { await execRaw(`CREATE UNIQUE INDEX IF NOT EXISTS uq_course_root_slug ON courses(root_id, kind, slug)`); } catch {}
+    try { await execRaw(`CREATE INDEX IF NOT EXISTS idx_courses_root ON courses(root_id)`); } catch {}
+    try { await execRaw(`CREATE UNIQUE INDEX IF NOT EXISTS uq_root_path ON course_roots(path)`); } catch {}
   } catch { /* never block boot on migration */ }
 }
 // One-way, idempotent port from the legacy flat `modules` model to recursive
