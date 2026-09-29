@@ -34,6 +34,8 @@ before(async () => {
   w(`${X}/Shared/01.mp4`);
   // same course name also exists in the default library (coexistence)
   w(`${D}/video/Shared/01.mp4`);
+  // release-group tag in folder + file names: stripped from titles only
+  w(`${X}/Tagged Course - [ @test_team ]/Lecture 1 - [ @test_team ].mp4`);
   // loose files at the library root are ignored (courses are folders)
   w(`${X}/loose.zip`, "PK");
   const now = new Date().toISOString();
@@ -45,7 +47,18 @@ before(async () => {
 describe("multiple libraries", () => {
   it("scans structured and flat layouts in one pass", async () => {
     const titles = (await db.all(`SELECT title FROM courses ORDER BY title`)).map((r) => r.title);
-    assert.deepEqual(titles, ["FlatDocs", "FlatVids", "Shared", "Shared", "Structured"]);
+    assert.deepEqual(titles, ["FlatDocs", "FlatVids", "Shared", "Shared", "Structured", "Tagged Course"]);
+  });
+
+  it("strips release-group tags from course and lesson titles (disk names kept)", async () => {
+    const c = await db.get(`SELECT * FROM courses WHERE title=?`, ["Tagged Course"]);
+    assert.ok(c);
+    assert.equal(c.dir_name, "Tagged Course - [ @test_team ]"); // on-disk name untouched
+    assert.match(c.slug, /test-team/); // identity still derived from the real name
+    const ls = await db.all(`SELECT title, file_name FROM lessons WHERE course_id=? AND is_active=1`, [c.id]);
+    assert.equal(ls.length, 1);
+    assert.equal(ls[0].title, "Lecture 1");
+    assert.equal(ls[0].file_name, "Lecture 1 - [ @test_team ].mp4");
   });
 
   it("infers flat kinds from content (video vs reading)", async () => {
@@ -85,11 +98,11 @@ describe("multiple libraries", () => {
     await db.run(`UPDATE course_roots SET is_active=0 WHERE id=?`, ["root_extra"]);
     const r = await scanner.scanAll(true);
     assert.equal(r.roots, 1);
-    assert.equal((await db.all(`SELECT * FROM courses`)).length, 5);
+    assert.equal((await db.all(`SELECT * FROM courses`)).length, 6);
     await db.run(`UPDATE course_roots SET is_active=1 WHERE id=?`, ["root_extra"]);
     const r2 = await scanner.scanAll(true);
     assert.equal(r2.roots, 2);
-    assert.equal((await db.all(`SELECT * FROM courses`)).length, 5);
+    assert.equal((await db.all(`SELECT * FROM courses`)).length, 6);
   });
 
   it("removing a flat course folder deletes only that course", async () => {

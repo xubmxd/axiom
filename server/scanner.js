@@ -55,8 +55,20 @@ export function companionKey(fileName) {
 function slugify(name) {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "course";
 }
+// Removes configured tag substrings (TITLE_STRIP) from a raw file/folder
+// name BEFORE pretty-printing, so "Course - [ @test_team ]" displays
+// as "Course". Literal match, all occurrences. On-disk names, slugs and
+// path_keys are never touched — this is display-only, which also keeps it
+// working on read-only library mounts where renaming files would fail.
+export function stripTitleTags(name) {
+  let out = String(name || "");
+  for (const tag of config.titleStrip || []) {
+    if (tag) out = out.split(tag).join("");
+  }
+  return out;
+}
 function prettyTitle(name) {
-  return name.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || name;
+  return stripTitleTags(name).replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || String(name || "");
 }
 // Display title = original filename without extension. Numeric prefixes
 // ("1.1.1. Whois Enumeration") are meaningful ordering metadata and must be
@@ -331,9 +343,9 @@ async function scanCourse(kindHint, coursePath, dirName, root = null, prefix = n
     course.dir_prefix = dirPrefix;
     try {
       await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, root_id=?, root_path=?, dir_prefix=?, updated_at=? WHERE id=?`,
-        [course.title || title, dirName, hasIcon, rootId, rootPath, dirPrefix, now, course.id]);
+        [title, dirName, hasIcon, rootId, rootPath, dirPrefix, now, course.id]);
     } catch {
-      await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, updated_at=? WHERE id=?`, [course.title || title, dirName, hasIcon, now, course.id]);
+      await run(`UPDATE courses SET title=?, dir_name=?, has_icon=?, updated_at=? WHERE id=?`, [title, dirName, hasIcon, now, course.id]);
     }
     course = await get(`SELECT * FROM courses WHERE id=?`, [course.id]);
   }

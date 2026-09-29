@@ -59,6 +59,28 @@ describe("html sanitizer", () => {
   });
 });
 
+describe("title tag stripping", () => {
+  it("removes the configured release-group tag, keeps anything else", async () => {
+    const { stripTitleTags } = await import("../server/scanner.js");
+    assert.equal(stripTitleTags("Course Name - [ @test_team ]"), "Course Name");
+    assert.equal(stripTitleTags("Lecture 1 - [ @test_team ] - [ @test_team ]"), "Lecture 1");
+    assert.equal(stripTitleTags("1.1.1. Whois Enumeration"), "1.1.1. Whois Enumeration");
+    assert.equal(stripTitleTags("Plain [brackets] stay"), "Plain [brackets] stay");
+  });
+  it("honors custom TITLE_STRIP patterns", async () => {
+    const { config } = await import("../server/config.js");
+    const { stripTitleTags } = await import("../server/scanner.js");
+    const prev = config.titleStrip;
+    config.titleStrip = ["[TAG]"];
+    try {
+      assert.equal(stripTitleTags("Intro [TAG]"), "Intro ");
+      assert.equal(stripTitleTags("Intro - [ @test_team ]"), "Intro - [ @test_team ]");
+    } finally {
+      config.titleStrip = prev;
+    }
+  });
+});
+
 describe("reader sanitizer", () => {
   it("returns heading ids for sidebar anchors, without duplicate id attrs", async () => {
     const { sanitize } = await import("../server/sanitize.js");
