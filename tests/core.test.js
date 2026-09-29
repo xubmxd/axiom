@@ -60,12 +60,21 @@ describe("html sanitizer", () => {
 });
 
 describe("title tag stripping", () => {
-  it("removes the configured release-group tag, keeps anything else", async () => {
+  // NOTE: tests use a fictional tag and set config explicitly — the default
+  // is empty and real patterns live only in private server env files.
+  it("removes configured tags, keeps anything else", async () => {
+    const { config } = await import("../server/config.js");
     const { stripTitleTags } = await import("../server/scanner.js");
-    assert.equal(stripTitleTags("Course Name - [ @test_team ]"), "Course Name");
-    assert.equal(stripTitleTags("Lecture 1 - [ @test_team ] - [ @test_team ]"), "Lecture 1");
-    assert.equal(stripTitleTags("1.1.1. Whois Enumeration"), "1.1.1. Whois Enumeration");
-    assert.equal(stripTitleTags("Plain [brackets] stay"), "Plain [brackets] stay");
+    const prev = config.titleStrip;
+    config.titleStrip = [" - [ @test_team ]"];
+    try {
+      assert.equal(stripTitleTags("Course Name - [ @test_team ]"), "Course Name");
+      assert.equal(stripTitleTags("Lecture 1 - [ @test_team ] - [ @test_team ]"), "Lecture 1");
+      assert.equal(stripTitleTags("1.1.1. Whois Enumeration"), "1.1.1. Whois Enumeration");
+      assert.equal(stripTitleTags("Plain [brackets] stay"), "Plain [brackets] stay");
+    } finally {
+      config.titleStrip = prev;
+    }
   });
   it("honors custom TITLE_STRIP patterns", async () => {
     const { config } = await import("../server/config.js");
@@ -75,6 +84,17 @@ describe("title tag stripping", () => {
     try {
       assert.equal(stripTitleTags("Intro [TAG]"), "Intro ");
       assert.equal(stripTitleTags("Intro - [ @test_team ]"), "Intro - [ @test_team ]");
+    } finally {
+      config.titleStrip = prev;
+    }
+  });
+  it("strips nothing by default", async () => {
+    const { config } = await import("../server/config.js");
+    const { stripTitleTags } = await import("../server/scanner.js");
+    const prev = config.titleStrip;
+    config.titleStrip = [];
+    try {
+      assert.equal(stripTitleTags("Course Name - [ @test_team ]"), "Course Name - [ @test_team ]");
     } finally {
       config.titleStrip = prev;
     }

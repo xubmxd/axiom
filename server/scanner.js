@@ -62,8 +62,8 @@ function slugify(name) {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "course";
 }
 // Removes configured tag substrings (TITLE_STRIP) from a raw file/folder
-// name BEFORE pretty-printing, so "Course - [ @test_team ]" displays
-// as "Course". Literal match, all occurrences. On-disk names, slugs and
+// name BEFORE pretty-printing, so "Course - [TAG]" displays as "Course".
+// Literal match, all occurrences. On-disk names, slugs and
 // path_keys are never touched — this is display-only, which also keeps it
 // working on read-only library mounts where renaming files would fail.
 export function stripTitleTags(name) {

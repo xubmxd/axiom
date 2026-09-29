@@ -22,6 +22,10 @@ let db, scanner;
 before(async () => {
   db = await import("../server/db.js");
   scanner = await import("../server/scanner.js");
+  // Fictional tag set explicitly: the default is empty and real patterns
+  // live only in private server env files, never in the repo.
+  const { config } = await import("../server/config.js");
+  config.titleStrip = [" - [ @test_team ]"];
   await db.initDb();
   // default root must seed exactly one row (regression: pg COUNT string bug)
   assert.equal((await db.all(`SELECT * FROM course_roots`)).length, 1);
@@ -34,7 +38,7 @@ before(async () => {
   w(`${X}/Shared/01.mp4`);
   // same course name also exists in the default library (coexistence)
   w(`${D}/video/Shared/01.mp4`);
-  // release-group tag in folder + file names: stripped from titles only
+  // distributor tag in folder + file names: stripped from titles only
   w(`${X}/Tagged Course - [ @test_team ]/Lecture 1 - [ @test_team ].mp4`);
   // loose files at the library root are ignored (courses are folders)
   w(`${X}/loose.zip`, "PK");
@@ -50,7 +54,7 @@ describe("multiple libraries", () => {
     assert.deepEqual(titles, ["FlatDocs", "FlatVids", "Shared", "Shared", "Structured", "Tagged Course"]);
   });
 
-  it("strips release-group tags from course and lesson titles (disk names kept)", async () => {
+  it("strips configured tags from course and lesson titles (disk names kept)", async () => {
     const c = await db.get(`SELECT * FROM courses WHERE title=?`, ["Tagged Course"]);
     assert.ok(c);
     assert.equal(c.dir_name, "Tagged Course - [ @test_team ]"); // on-disk name untouched

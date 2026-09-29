@@ -47,7 +47,7 @@ then add `/libraries/external` in the admin panel and **Rescan courses**.
 |---|---|---|
 | `PORT` / `APP_URL` | 3100 | listen port / public URL (invite links) |
 | `COURSES_ROOT` / `DATA_DIR` | ./courses ./data | course files / sqlite file |
-| `TITLE_STRIP` | ` - [ @test_team ]` | `|`-separated literal tags stripped from display titles (slugs/files untouched) |
+| `TITLE_STRIP` | *(empty)* | `|`-separated literal tags stripped from display titles (slugs/files untouched); set privately in `.env` |
 | `DATABASE_URL` | — (SQLite) | `postgres://…` enables PostgreSQL |
 | `SESSION_SECRET` | — | **required in prod**, httpOnly cookie sessions |
 | `VIDEO_COMPLETION_THRESHOLD` | 0.9 | auto-complete fraction |

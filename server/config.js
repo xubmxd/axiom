@@ -12,10 +12,11 @@ export const config = {
   readingCompletionThreshold: parseFloat(process.env.READING_COMPLETION_THRESHOLD || "0.9"),
   readingInactivitySecs: parseInt(process.env.READING_INACTIVITY_TIMEOUT || "60", 10),
   // Literal substrings stripped from display titles (courses, groups,
-  // lessons, resources) — e.g. release-group tags in downloaded course
-  // names like "Course Name - [ @test_team ]". `|`-separated.
+  // lessons, resources) — e.g. distributor tags bundled into downloaded
+  // course names. `|`-separated, set privately via the TITLE_STRIP env var
+  // (empty by default; never commit your patterns — they reveal your sources).
   // Slugs and on-disk names are untouched, so scanning stays stable.
-  titleStrip: String(process.env.TITLE_STRIP || " - [ @test_team ]").split("|").filter((s) => s.length > 0),
+  titleStrip: String(process.env.TITLE_STRIP || "").split("|").filter((s) => s.length > 0),
   heartbeatSecs: parseInt(process.env.LEARNING_SESSION_HEARTBEAT || "15", 10),
   streakMinutes: parseInt(process.env.STREAK_MINUTES || "15", 10),
   appVersion: "1.0.0",
