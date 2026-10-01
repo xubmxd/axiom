@@ -52,6 +52,49 @@ api.post("/progress/video", ah(async (req, res) => {
   res.json({ ok: true, completed: !!done });
 }));
 
+// ---- video progress (bulk: select multiple lessons, mark watched/unwatched) ----
+api.post("/progress/video/bulk", ah(async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: "auth" });
+  const { lessonIds, completed, tzOffset } = req.body || {};
+  if (!Array.isArray(lessonIds) || lessonIds.length === 0) return res.status(400).json({ error: "Select at least one lesson." });
+  if (lessonIds.length > 200) return res.status(400).json({ error: "Select at most 200 lessons at once." });
+  if (completed !== true && completed !== false) return res.status(400).json({ error: "completed must be true or false." });
+  const ids = [...new Set(lessonIds.map((s) => String(s)).filter(Boolean))].slice(0, 200);
+  if (!ids.length) return res.status(400).json({ error: "Select at least one lesson." });
+  const placeholders = ids.map(() => "?").join(",");
+  const lessons = await all(`SELECT * FROM lessons WHERE id IN (${placeholders}) AND is_active=1`, ids);
+  if (!lessons.length) return res.status(404).json({ error: "No matching lessons." });
+  const now = nowIso();
+  const done = completed ? 1 : 0;
+  let updated = 0, newlyCompleted = 0;
+  const courseIds = new Set();
+  for (const l of lessons) {
+    const row = await get(`SELECT * FROM video_progress WHERE user_id=? AND lesson_id=?`, [req.user.id, l.id]);
+    if (!row) {
+      await run(`INSERT INTO video_progress(user_id, lesson_id, position_secs, duration_secs, completed, completed_at, watch_secs, updated_at) VALUES(?,?,?,?,?,?,?,?)`,
+        [req.user.id, l.id, row?.position_secs || 0, 0, done, done ? now : null, 0, now]);
+      if (done) newlyCompleted++;
+    } else if ((row.completed ? 1 : 0) !== done) {
+      if (done) {
+        await run(`UPDATE video_progress SET completed=1, completed_at=COALESCE(completed_at,?), updated_at=? WHERE user_id=? AND lesson_id=?`,
+          [now, now, req.user.id, l.id]);
+        newlyCompleted++;
+      } else {
+        await run(`UPDATE video_progress SET completed=0, completed_at=NULL, updated_at=? WHERE user_id=? AND lesson_id=?`,
+          [now, req.user.id, l.id]);
+      }
+    } else {
+      continue;
+    }
+    updated++;
+    courseIds.add(l.course_id);
+    if (done) log("lesson.complete", { user: req.user.id, lesson: l.id, bulk: true });
+  }
+  for (let i = 0; i < newlyCompleted; i++) await bumpCompletion(req.user.id, tzOffset ?? req.tzOffset);
+  for (const cid of courseIds) await maybeCompleteCourse(req.user.id, cid);
+  res.json({ ok: true, updated, completed: !!done });
+}));
+
 // ---- reading progress ----
 api.post("/progress/reading", ah(async (req, res) => {
   if (!req.user) return res.status(401).json({ error: "auth" });

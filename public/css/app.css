@@ -308,6 +308,75 @@ a{color:inherit}
 .pct{font-family:var(--mono);font-size:.78rem}
 .llist.small a{padding:.4rem .6rem;font-size:.88rem}
 .ghost a{color:var(--text2)}
+/* bulk mark-watched: checkbox rows + selection bar (course page + sidebar) */
+.bulk-row{display:flex;gap:.15rem;align-items:center}
+.bulk-row>a{flex:1;min-width:0}
+/* selected rows highlight instantly (pure CSS, no JS needed) so a module
+   tick visibly selects every video beneath it */
+.bulk-row:has(.bulk-check:checked){background:var(--accent-soft);border-radius:10px}
+.bulk-row:has(.bulk-check:checked)>a:hover{background:transparent}
+/* custom checkbox system: same surface/border language as the rest of the
+   UI, primary-gradient fill + ✓ motif (matches .btn.primary and .done) */
+.bulk-check,
+.bulk-mod input,
+.bulk-select input{
+  appearance:none;-webkit-appearance:none;
+  width:18px;height:18px;margin:0;flex:none;
+  display:inline-grid;place-items:center;
+  background:linear-gradient(180deg,var(--surface2),var(--bg2));
+  border:1px solid var(--border2);
+  border-radius:6px;
+  cursor:pointer;
+  transition:border-color .15s,background .15s,box-shadow .15s,transform .1s;
+}
+.bulk-check{margin-left:.55rem}
+.side .bulk-check{margin-left:.4rem}
+.bulk-check:hover:not(:checked),
+.bulk-mod input:hover:not(:checked),
+.bulk-select input:hover:not(:checked){
+  border-color:var(--accent-line);
+  box-shadow:0 0 0 3px rgba(125,141,255,.12);
+}
+.bulk-check:active,
+.bulk-mod input:active,
+.bulk-select input:active{transform:scale(.93)}
+.bulk-check:checked,
+.bulk-mod input:checked,
+.bulk-select input:checked{
+  background:linear-gradient(180deg,#8b9bff,#6f7df2);
+  border-color:#6f7df2;
+  box-shadow:0 4px 14px rgba(125,141,255,.35);
+}
+.bulk-check:checked::after,
+.bulk-mod input:checked::after,
+.bulk-select input:checked::after{
+  content:"✓";color:#fff;font-size:11px;font-weight:800;line-height:1;
+  transform:translateY(-.5px);
+}
+.bulk-check:indeterminate,
+.bulk-mod input:indeterminate,
+.bulk-select input:indeterminate{
+  background:linear-gradient(180deg,#8b9bff,#6f7df2);
+  border-color:#6f7df2;
+  box-shadow:0 4px 14px rgba(125,141,255,.35);
+}
+.bulk-check:indeterminate::after,
+.bulk-mod input:indeterminate::after,
+.bulk-select input:indeterminate::after{
+  content:"–";color:#fff;font-size:13px;font-weight:800;line-height:1;
+  transform:translateY(-1px);
+}
+@media (forced-colors:active){
+  .bulk-check,.bulk-mod input,.bulk-select input{appearance:auto;width:auto;height:auto}
+  .bulk-check::after,.bulk-mod input::after,.bulk-select input::after{content:none}
+}
+.bulkbar{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-s);padding:.6rem .9rem;margin-bottom:1rem}
+.bulkbar-side{margin:0 0 .7rem;padding:.55rem .7rem}
+.bulk-select{display:flex;gap:.45rem;align-items:center;font-size:.85rem;cursor:pointer}
+.bulk-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:auto}
+.bulk-mod{display:inline-flex;align-items:center;cursor:pointer;margin-right:.15rem}
+.mod>h2 .bulk-mod{margin-right:.5rem}
+.tnode>summary .bulk-mod{margin-right:.1rem}
 .tnode{margin:.15rem 0;border-left:2px solid var(--border);padding-left:.55rem}
 .tnode>summary{cursor:pointer;list-style:none;font-weight:600;font-size:.86rem;padding:.35rem .4rem;border-radius:8px;display:flex;gap:.45rem;align-items:baseline;flex-wrap:wrap}
 .tnode>summary::-webkit-details-marker{display:none}

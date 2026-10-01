@@ -357,7 +357,7 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
     rootLabel = rr?.label || c.root_path || "";
   } catch {}
 
-  res.send(layout({ title: c.title, user: u, active: "library", body: `
+  res.send(layout({ title: c.title, user: u, active: "library", extraScript: `<script src="/js/bulk-complete.js?v=2" defer></script>`, body: `
   <div class="wrap">
     <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/library">library</a> / <span>${esc(c.title)}</span></nav>
     <section class="chead">
@@ -369,12 +369,13 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
       ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"} →</a>` : ""}</div></div>
     </section>
     ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} learned · ${comp.items_done}/${comp.items_total} items</p></div><span class="seal">◆ 100%</span></div>` : ""}
+    ${flatLessons.length ? bulkBarHTML("card") : ""}
     ${p.total === 0 ? emptyState("No lessons indexed", "The course folder has no recognised video, reading or resource files yet.") : renderDetailTree(tree)}
   </div>` }));
 });
 
 function lessonRow(l) {
-  return `<li><a href="/learn/video/${l.id}"><span class="n mono">▸</span><span class="t">${esc(l.title)}</span>${l.done ? `<span class="done" aria-label="completed">✓</span>` : (l.pos ? `<span class="pct dim mono">${fmtClock(l.pos)}</span>` : "")}</a></li>`;
+  return `<li class="bulk-row" data-bulk-row="${esc(l.id)}"><input type="checkbox" class="bulk-check" value="${esc(l.id)}" aria-label="Select ${esc(l.title)}"><a href="/learn/video/${l.id}"><span class="n mono">▸</span><span class="t">${esc(l.title)}</span>${l.done ? `<span class="done" aria-label="completed">✓</span>` : (l.pos ? `<span class="pct dim mono">${fmtClock(l.pos)}</span>` : "")}</a></li>`;
 }
 function pageRow(pg) {
   return `<li><a href="/learn/reading/${pg.id}"><span class="n mono">▸</span><span class="t">${esc(pg.title)}</span>${pg.done ? `<span class="done">✓</span>` : `<span class="pct dim mono">${Math.round((pg.scroll_pct || 0) * 100)}%</span>`}</a></li>`;
@@ -383,8 +384,28 @@ function resourceRow(r, lessonById) {
   const link = r.lesson_id && lessonById.get(r.lesson_id) ? ` → ${esc(lessonById.get(r.lesson_id).title)}` : "";
   return `<li class="res"><a href="/media/${r.course_id}/resource/${r.id}"><span class="pill res">${esc(r.kind)}</span><span class="t">${esc(r.title)}</span><span class="dim small mono">${esc(link)}</span></a></li>`;
 }
+// Bulk mark-watched bar (videos only): shared by the course page and the
+// learn sidebar. bulk-complete.js binds to [data-bulk-bar] + .bulk-check.
+function bulkBarHTML(variant = "card") {
+  return `<div class="bulkbar bulkbar-${variant}" data-bulk-bar>
+    <label class="bulk-select"><input type="checkbox" data-bulk-select-all> <span>Select all</span></label>
+    <span class="mono dim small" data-bulk-count aria-live="polite">0 selected</span>
+    <span class="bulk-actions">
+      <button class="btn xs primary" type="button" data-bulk-done disabled>Mark as watched</button>
+      <button class="btn xs" type="button" data-bulk-undone disabled>Mark as unwatched</button>
+      <button class="btn xs" type="button" data-bulk-clear disabled>Clear</button>
+    </span>
+  </div>`;
+}
 // Full recursive detail tree. Depth is display-only (Module/Submodule/Section);
 // the model itself is a generic parent/child hierarchy.
+function subtreeHasVideos(node) {
+  if (node.lessons?.length) return true;
+  return (node.children || []).some(subtreeHasVideos);
+}
+function modCheckHTML(label) {
+  return `<label class="bulk-mod" title="Select all videos in this module"><input type="checkbox" data-bulk-mod aria-label="Select all videos in ${esc(label)}"></label>`;
+}
 function renderDetailTree(node, lessonById = null) {
   if (!lessonById) {
     lessonById = new Map();
@@ -398,7 +419,7 @@ function renderDetailTree(node, lessonById = null) {
       child.pages.length ? `${child.pages.length} pages` : "",
       child.resources.length ? `${child.resources.length} files` : "",
     ].filter(Boolean).join(" · ");
-    html += `<section class="mod tdepth-${Math.min(g.depth, 4)}"><h2><span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(g.title)}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</h2>`;
+    html += `<section class="mod tdepth-${Math.min(g.depth, 4)}"><h2>${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(g.title)}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</h2>`;
     if (child.lessons.length) html += `<ol class="llist">${child.lessons.map(lessonRow).join("")}</ol>`;
     if (child.pages.length) html += `<ol class="llist">${child.pages.map(pageRow).join("")}</ol>`;
     if (child.resources.length) html += `<ol class="llist small">${child.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol>`;
@@ -412,6 +433,8 @@ function renderDetailTree(node, lessonById = null) {
   return html + (node.group ? "" : renderRootItems(node, lessonById));
 }
 // Compact recursive sidebar: group labels nest, lessons + pages link.
+// Video lessons get a multi-select checkbox (bulk mark watched); reading
+// pages stay single-toggle and render link-only.
 function renderSideTree(node, currentId) {
   let html = "";
   const items = [
@@ -419,16 +442,18 @@ function renderSideTree(node, currentId) {
     ...node.pages.map((p) => ({ t: "reading", id: p.id, title: p.title, done: p.done })),
   ];
   if (items.length) {
-    html += `<ol class="llist small">${items.map((s) => `<li><a href="/learn/${s.t}/${s.id}" class="${s.id === currentId ? "on" : ""}" title="${esc(s.title)}"><span class="n mono">▸</span><span class="t">${esc(s.title)}</span>${s.done ? `<span class="done">✓</span>` : ""}</a></li>`).join("")}</ol>`;
+    html += `<ol class="llist small">${items.map((s) => s.t === "video"
+      ? `<li class="bulk-row" data-bulk-row="${esc(s.id)}"><input type="checkbox" class="bulk-check" value="${esc(s.id)}" aria-label="Select ${esc(s.title)}"><a href="/learn/${s.t}/${s.id}" class="${s.id === currentId ? "on" : ""}" title="${esc(s.title)}"><span class="n mono">▸</span><span class="t">${esc(s.title)}</span>${s.done ? `<span class="done">✓</span>` : ""}</a></li>`
+      : `<li><a href="/learn/${s.t}/${s.id}" class="${s.id === currentId ? "on" : ""}" title="${esc(s.title)}"><span class="n mono">▸</span><span class="t">${esc(s.title)}</span>${s.done ? `<span class="done">✓</span>` : ""}</a></li>`).join("")}</ol>`;
   }
   for (const child of node.children) {
-    html += `<details class="tnode" open><summary><span class="mono dim small">${esc(depthLabel(child.group.depth))}</span> ${esc(child.group.title)}</summary>${renderSideTree(child, currentId)}</details>`;
+    html += `<details class="tnode" open><summary>${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="mono dim small">${esc(depthLabel(child.group.depth))}</span> ${esc(child.group.title)}</summary>${renderSideTree(child, currentId)}</details>`;
   }
   return html;
 }
 function renderRootItems(node, lessonById) {  // Ungrouped (flat-course) items render without fake group headers.
   let html = "";
-  if (node.lessons.length) html += `<section class="mod"><h2>Lessons</h2><ol class="llist">${node.lessons.map(lessonRow).join("")}</ol></section>`;
+  if (node.lessons.length) html += `<section class="mod"><h2>${modCheckHTML("Lessons")}<span>Lessons</span></h2><ol class="llist">${node.lessons.map(lessonRow).join("")}</ol></section>`;
   if (node.pages.length) html += `<section class="mod"><h2>Reading</h2><ol class="llist">${node.pages.map(pageRow).join("")}</ol></section>`;
   if (node.resources.length) html += `<section class="mod"><h2>Files</h2><ol class="llist small">${node.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol></section>`;
   return html;
@@ -450,10 +475,11 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
   const subs = attached.filter((a) => a.kind === "subtitle");
   const files = attached.filter((a) => a.kind !== "subtitle");
 
-  res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script>`, body: `
+  res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script><script src="/js/bulk-complete.js?v=2" defer></script>`, body: `
   <div class="learn" data-lesson="${l.id}" data-course="${l.course_id}" data-pos="${prog?.position_secs || 0}" data-autoplay="${settings?.autoplay ?? 1}" data-speed="${+settings?.playback_speed || 1}" data-threshold="${config.videoCompletionThreshold}">
     <aside class="side" id="side"><div class="side-h"><a href="/courses/${l.course_id}">← ${esc(l.course)}</a>
       <button class="iconbtn" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>
+      ${bulkBarHTML("side")}
       ${renderSideTree(tree, l.id)}
     </aside>
     <div class="stage">
