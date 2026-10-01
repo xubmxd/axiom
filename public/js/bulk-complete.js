@@ -1,7 +1,8 @@
 // Bulk mark-watched: multi-select video lessons on the course page and the
 // learn sidebar, then mark all selected as watched / unwatched in one call.
 // Supports per-module checkboxes ([data-bulk-mod]) that select all videos in
-// that module's section (course page: section.mod, sidebar: details.tnode).
+// that module's container (course page: section.mod/details.mod,
+// sidebar: details.tnode).
 (() => {
   const bars = [...document.querySelectorAll("[data-bulk-bar]")];
   const boxes = [...document.querySelectorAll(".bulk-check")];
@@ -10,7 +11,7 @@
   const tzOffset = new Date().getTimezoneOffset();
 
   const selected = () => boxes.filter((b) => b.checked).map((b) => b.value);
-  const scopeOf = (mod) => mod.closest("section.mod, details.tnode");
+  const scopeOf = (mod) => mod.closest("section.mod, details.mod, details.tnode");
   const boxesIn = (scope) => scope ? [...scope.querySelectorAll(".bulk-check")] : [];
 
   function sync() {

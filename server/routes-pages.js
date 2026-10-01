@@ -419,11 +419,11 @@ function renderDetailTree(node, lessonById = null) {
       child.pages.length ? `${child.pages.length} pages` : "",
       child.resources.length ? `${child.resources.length} files` : "",
     ].filter(Boolean).join(" · ");
-    html += `<section class="mod tdepth-${Math.min(g.depth, 4)}"><h2>${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(g.title)}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</h2>`;
+    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(g.title)}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</summary>`;
     if (child.lessons.length) html += `<ol class="llist">${child.lessons.map(lessonRow).join("")}</ol>`;
     if (child.pages.length) html += `<ol class="llist">${child.pages.map(pageRow).join("")}</ol>`;
     if (child.resources.length) html += `<ol class="llist small">${child.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol>`;
-    html += renderDetailTree(child, lessonById) + `</section>`;
+    html += renderDetailTree(child, lessonById) + `</details>`;
   }
   // renderRootItems is ROOT-ONLY: a group node's own lessons/pages/resources
   // were already rendered by its parent loop above. Appending them here
@@ -434,7 +434,14 @@ function renderDetailTree(node, lessonById = null) {
 }
 // Compact recursive sidebar: group labels nest, lessons + pages link.
 // Video lessons get a multi-select checkbox (bulk mark watched); reading
-// pages stay single-toggle and render link-only.
+// pages stay single-toggle and render link-only. Groups render collapsed
+// except ancestors of the current item, which stay open for orientation.
+function subtreeHasCurrent(node, currentId) {
+  if (!currentId) return false;
+  if ((node.lessons || []).some((l) => l.id === currentId)) return true;
+  if ((node.pages || []).some((p) => p.id === currentId)) return true;
+  return (node.children || []).some((c) => subtreeHasCurrent(c, currentId));
+}
 function renderSideTree(node, currentId) {
   let html = "";
   const items = [
@@ -447,7 +454,7 @@ function renderSideTree(node, currentId) {
       : `<li><a href="/learn/${s.t}/${s.id}" class="${s.id === currentId ? "on" : ""}" title="${esc(s.title)}"><span class="n mono">▸</span><span class="t">${esc(s.title)}</span>${s.done ? `<span class="done">✓</span>` : ""}</a></li>`).join("")}</ol>`;
   }
   for (const child of node.children) {
-    html += `<details class="tnode" open><summary>${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="mono dim small">${esc(depthLabel(child.group.depth))}</span> ${esc(child.group.title)}</summary>${renderSideTree(child, currentId)}</details>`;
+    html += `<details class="tnode"${subtreeHasCurrent(child, currentId) ? " open" : ""}><summary>${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="mono dim small">${esc(depthLabel(child.group.depth))}</span> ${esc(child.group.title)}</summary>${renderSideTree(child, currentId)}</details>`;
   }
   return html;
 }

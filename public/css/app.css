@@ -385,6 +385,14 @@ a{color:inherit}
 .tnode:not([open])>summary::before{content:"▸"}
 .tdepth-2>h2{border-left:3px solid var(--accent)}
 .tdepth-3>h2,.tdepth-4>h2{border-left:3px solid var(--violet)}
+/* course modules are collapsed <details>: the summary keeps the old h2 look */
+.mod .modsum{background:var(--bg2);border:1px solid var(--border);padding:.6rem .9rem;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;list-style:none;display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}
+.mod .modsum::-webkit-details-marker{display:none}
+.mod .modsum::marker{content:""}
+.mod .modsum::before{content:"▸";color:var(--muted);font-size:.75rem;flex:none}
+.mod[open]>.modsum::before{content:"▾"}
+.tdepth-2>.modsum{border-left:3px solid var(--accent)}
+.tdepth-3>.modsum,.tdepth-4>.modsum{border-left:3px solid var(--violet)}
 li.res a{gap:.5rem}
 .attach{margin-top:.4rem}
 .complete{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,rgba(61,214,189,.12),transparent);border:1px solid #1f4d44;border-radius:var(--radius);padding:.9rem 1.2rem;margin-bottom:1.2rem}
