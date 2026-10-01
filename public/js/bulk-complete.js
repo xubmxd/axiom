@@ -11,7 +11,7 @@
   const tzOffset = new Date().getTimezoneOffset();
 
   const selected = () => boxes.filter((b) => b.checked).map((b) => b.value);
-  const scopeOf = (mod) => mod.closest("section.mod, details.mod, details.tnode");
+  const scopeOf = (mod) => mod.closest("section.mod, details.mod, details.tnode, details.smod");
   const boxesIn = (scope) => scope ? [...scope.querySelectorAll(".bulk-check")] : [];
 
   function sync() {

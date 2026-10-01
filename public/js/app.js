@@ -96,6 +96,83 @@ document.addEventListener("DOMContentLoaded", () => {
     // collapsed/expanded state itself is never altered by resize/orientation.
     mq.addEventListener?.("change", sync);
   } else if (st && learn) st.onclick = () => learn.classList.toggle("side-hidden");
+  // Learn sidebar v2: Select mode, Expand all, lesson search. Navigation-first:
+  // checkboxes + bulk toolbar stay hidden until selection is actually used.
+  (() => {
+    const side = document.getElementById("side");
+    if (!side || !side.classList.contains("side-new")) return;
+    const selectBtn = side.querySelector("[data-side-select]");
+    const expandBtn = side.querySelector("[data-side-expand]");
+    const search = side.querySelector("#sideSearch");
+    const setSelecting = (on) => {
+      side.dataset.selecting = on ? "on" : "off";
+      selectBtn?.setAttribute("aria-pressed", String(on));
+      if (selectBtn) selectBtn.textContent = on ? "Done" : "Select";
+      side.querySelectorAll(".bulk-check").forEach((b) => { b.tabIndex = on ? 0 : -1; });
+      if (!on) {
+        let changed = false;
+        side.querySelectorAll(".bulk-check:checked").forEach((b) => { b.checked = false; changed = true; });
+        side.querySelectorAll("[data-bulk-mod]").forEach((m) => { m.checked = false; m.indeterminate = false; });
+        if (changed) side.querySelector(".bulk-check")?.dispatchEvent(new Event("change", { bubbles: true }));
+      } else {
+        side.querySelector(".side-selbar [data-bulk-select-all]")?.focus?.({ preventScroll: true });
+      }
+    };
+    selectBtn?.addEventListener("click", () => setSelecting(side.dataset.selecting !== "on"));
+    const mods = () => [...side.querySelectorAll("details.smod")];
+    const syncExpandLabel = () => {
+      if (!expandBtn) return;
+      const anyClosed = mods().some((d) => !d.open);
+      expandBtn.textContent = anyClosed ? "Expand all" : "Collapse all";
+    };
+    expandBtn?.addEventListener("click", () => {
+      const all = mods();
+      const anyClosed = all.some((d) => !d.open);
+      if (anyClosed) all.forEach((d) => { d.open = true; });
+      else all.forEach((d) => { d.open = d.hasAttribute("data-active-child"); });
+      syncExpandLabel();
+    });
+    side.querySelector(".side-scroll")?.addEventListener("toggle", (e) => {
+      if (e.target?.matches?.("details.smod")) syncExpandLabel();
+    }, true);
+    syncExpandLabel();
+    // Client-side lesson filter: matches bubble up so ancestors stay visible.
+    if (search) {
+      let empty = side.querySelector(".side-empty");
+      if (!empty) {
+        empty = document.createElement("p");
+        empty.className = "side-empty";
+        empty.textContent = "No lessons match your search.";
+        side.querySelector(".side-scroll")?.appendChild(empty);
+      }
+      const applyFilter = () => {
+        const q = search.value.trim().toLowerCase();
+        const on = q.length > 0;
+        side.dataset.searching = on ? "on" : "off";
+        if (!on) {
+          side.querySelectorAll("[data-match]").forEach((el) => el.removeAttribute("data-match"));
+          side.querySelectorAll("details.smod").forEach((d) => { if (!d.hasAttribute("data-active-child")) d.open = false; else d.open = true; });
+          side.dataset.nomatch = "off";
+          syncExpandLabel();
+          return;
+        }
+        let matches = 0;
+        // leaves first (reverse DOM = deepest first), then ancestors inherit
+        const all = [...side.querySelectorAll("details.smod, .sles-row")].reverse();
+        side.querySelectorAll("[data-match]").forEach((el) => el.removeAttribute("data-match"));
+        for (const el of all) {
+          const self = (el.dataset.title || "").includes(q);
+          const desc = el.querySelector?.("[data-match]") ? true : false;
+          if (self || desc) { el.setAttribute("data-match", ""); if (el.classList.contains("sles-row")) matches++; }
+          if (el.matches?.("details.smod") && (self || desc)) el.open = true;
+        }
+        // count group-title matches too for the empty-state decision
+        if (!matches) matches = side.querySelectorAll("details.smod[data-match]").length;
+        side.dataset.nomatch = matches ? "off" : "on";
+      };
+      search.addEventListener("input", applyFilter);
+    }
+  })();
   const bf = document.getElementById("btnFocus");
   if (bf && learn) bf.onclick = () => { learn.classList.toggle("focus"); bf.textContent = learn.classList.contains("focus") ? "Exit focus" : "Focus mode"; };
   // Ctrl/⌘+K focuses the topbar search from anywhere (except while typing).

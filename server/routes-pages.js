@@ -432,31 +432,76 @@ function renderDetailTree(node, lessonById = null) {
   // ungrouped, so only they need the fallback section.
   return html + (node.group ? "" : renderRootItems(node, lessonById));
 }
-// Compact recursive sidebar: group labels nest, lessons + pages link.
-// Video lessons get a multi-select checkbox (bulk mark watched); reading
-// pages stay single-toggle and render link-only. Groups render collapsed
-// except ancestors of the current item, which stay open for orientation.
+// Compact recursive sidebar: navigation-first, premium minimal hierarchy.
+// Module → section → lesson is communicated with indentation + typography,
+// not boxed cards. Video lessons keep bulk checkboxes (hidden unless
+// selection mode); reading pages stay link-only. Groups open only when they
+// contain the current item.
 function subtreeHasCurrent(node, currentId) {
   if (!currentId) return false;
   if ((node.lessons || []).some((l) => l.id === currentId)) return true;
   if ((node.pages || []).some((p) => p.id === currentId)) return true;
   return (node.children || []).some((c) => subtreeHasCurrent(c, currentId));
 }
-function renderSideTree(node, currentId) {
+// Aggregate watched/total for every descendant lesson + page.
+function nodeStats(node) {
+  let done = 0, total = 0;
+  for (const l of node.lessons || []) { total++; if (l.done) done++; }
+  for (const p of node.pages || []) { total++; if (p.done) done++; }
+  for (const c of node.children || []) {
+    const s = nodeStats(c);
+    done += s.done; total += s.total;
+  }
+  return { done, total };
+}
+// Small circular progress ring: empty outline → partial arc → filled check.
+function ringSVG(done, total) {
+  const t = Math.max(0, total || 0), d = Math.max(0, Math.min(done || 0, t || 0));
+  const frac = t > 0 ? d / t : 0;
+  const doneAll = t > 0 && d === t;
+  const r = 7, c = 2 * Math.PI * r;
+  const arc = (c * frac).toFixed(1);
+  return `<span class="ring${doneAll ? " full" : frac > 0 ? " part" : ""}" aria-hidden="true"><svg viewBox="0 0 20 20" width="20" height="20"><circle cx="10" cy="10" r="${r}" class="ring-bg"/><circle cx="10" cy="10" r="${r}" class="ring-fg" stroke-dasharray="${arc} ${c.toFixed(1)}" transform="rotate(-90 10 10)"/>${doneAll ? `<path d="M7 10.2 9.2 12.4 13.2 7.8" class="ring-tick"/>` : ""}</svg></span>`;
+}
+function renderSideTree(node, currentId, depth = 0) {
   let html = "";
   const items = [
     ...node.lessons.map((l) => ({ t: "video", id: l.id, title: l.title, done: l.done })),
     ...node.pages.map((p) => ({ t: "reading", id: p.id, title: p.title, done: p.done })),
   ];
   if (items.length) {
-    html += `<ol class="llist small">${items.map((s) => s.t === "video"
-      ? `<li class="bulk-row" data-bulk-row="${esc(s.id)}"><input type="checkbox" class="bulk-check" value="${esc(s.id)}" aria-label="Select ${esc(s.title)}"><a href="/learn/${s.t}/${s.id}" class="${s.id === currentId ? "on" : ""}" title="${esc(s.title)}"><span class="n mono">▸</span><span class="t">${esc(s.title)}</span>${s.done ? `<span class="done">✓</span>` : ""}</a></li>`
-      : `<li><a href="/learn/${s.t}/${s.id}" class="${s.id === currentId ? "on" : ""}" title="${esc(s.title)}"><span class="n mono">▸</span><span class="t">${esc(s.title)}</span>${s.done ? `<span class="done">✓</span>` : ""}</a></li>`).join("")}</ol>`;
+    html += `<ol class="sles">${items.map((s) => {
+      const on = s.id === currentId;
+      const dot = `<span class="cdot${s.done ? " done" : ""}" aria-hidden="true"></span>`;
+      if (s.t === "video") {
+        return `<li class="sles-row bulk-row" data-bulk-row="${esc(s.id)}" data-title="${esc(s.title.toLowerCase())}"><input type="checkbox" class="bulk-check" value="${esc(s.id)}" aria-label="Select ${esc(s.title)}" tabindex="-1"><a href="/learn/${s.t}/${s.id}" class="sles-a${on ? " on" : ""}" title="${esc(s.title)}"${on ? ` aria-current="page"` : ""}><span class="sles-ic" aria-hidden="true">${on ? "▶" : "▸"}</span><span class="sles-t">${esc(s.title)}</span>${dot}</a></li>`;
+      }
+      return `<li class="sles-row" data-title="${esc(s.title.toLowerCase())}"><a href="/learn/${s.t}/${s.id}" class="sles-a${on ? " on" : ""}" title="${esc(s.title)}"${on ? ` aria-current="page"` : ""}><span class="sles-ic" aria-hidden="true">${on ? "▶" : "▸"}</span><span class="sles-t">${esc(s.title)}</span>${dot}</a></li>`;
+    }).join("")}</ol>`;
   }
   for (const child of node.children) {
-    html += `<details class="tnode"${subtreeHasCurrent(child, currentId) ? " open" : ""}><summary>${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="mono dim small">${esc(depthLabel(child.group.depth))}</span> ${esc(child.group.title)}</summary>${renderSideTree(child, currentId)}</details>`;
+    const st = nodeStats(child);
+    const open = subtreeHasCurrent(child, currentId);
+    const gdepth = Math.min(child.group.depth || 1, 4);
+    html += `<details class="smod sdepth-${gdepth}"${open ? " open" : ""}${open ? ` data-active-child` : ""} data-title="${esc((child.group.title || "").toLowerCase())}"><summary class="smod-sum">${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="smod-t">${esc(child.group.title)}</span><span class="smod-meta"><span class="mono smod-count">${st.done}/${st.total}</span>${ringSVG(st.done, st.total)}</span></summary><div class="smod-body">${renderSideTree(child, currentId, depth + 1)}</div></details>`;
   }
   return html;
+}
+// Learn sidebar shell: prominent course title, secondary % + bar, search,
+// COURSE CONTENT header with Select + Expand all, contextual bulk toolbar
+// (visible only in selection mode), independently scrollable tree.
+function learnSidebar({ courseId, courseTitle, pct, tree, currentId, after = "" }) {
+  const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
+  return `<aside class="side side-new" id="side" data-selecting="off">`
+    + `<div class="side-top"><div class="side-course-row"><a class="side-back" href="/courses/${esc(courseId)}"><span class="side-back-arrow" aria-hidden="true">←</span><span class="side-course-t">${esc(courseTitle)}</span></a>`
+    + `<button class="iconbtn side-collapse" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>`
+    + `<p class="mono side-pct">${p}% complete</p>`
+    + `<div class="side-pbar"><div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="Course progress"><i style="width:${p}%"></i></div></div>`
+    + `<div class="side-search"><span class="side-search-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span><input id="sideSearch" type="search" placeholder="Search lessons…" aria-label="Search lessons" autocomplete="off"></div>`
+    + `<div class="side-chead"><span class="mono side-chead-t">Course content</span><span class="side-chead-actions"><button type="button" class="side-linkbtn" data-side-select aria-pressed="false">Select</button><button type="button" class="side-linkbtn" data-side-expand>Expand all</button></span></div>`
+    + `<div class="side-selbar" data-bulk-bar><div class="side-sel-top"><label class="bulk-select"><input type="checkbox" data-bulk-select-all> <span>Select all</span></label><span class="mono side-sel-count" data-bulk-count aria-live="polite">0 selected</span></div>`
+    + `<div class="side-sel-actions"><button class="btn xs primary" type="button" data-bulk-done disabled>Mark watched</button><button class="btn xs" type="button" data-bulk-undone disabled>Mark unwatched</button><button class="btn xs" type="button" data-bulk-clear disabled>Clear</button></div></div></div>`
+    + `<div class="side-scroll"><div class="side-tree">${renderSideTree(tree, currentId)}</div>${after}</div></aside>`;
 }
 function renderRootItems(node, lessonById) {  // Ungrouped (flat-course) items render without fake group headers.
   let html = "";
@@ -477,18 +522,16 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
   const prev = sibs[idx - 1], next = sibs[idx + 1];
   const tree = await courseTree(l.course_id, u.id);
   const chain = await groupChain(l.group_id);
+  const courseRow = await get(`SELECT * FROM courses WHERE id=?`, [l.course_id]);
+  const cprog = courseRow ? await courseProgress(u.id, courseRow) : { pct: 0 };
   const settings = await get(`SELECT * FROM user_settings WHERE user_id=?`, [u.id]);
   const attached = await all(`SELECT * FROM resources WHERE lesson_id=? AND is_active=1 ORDER BY file_name ASC`, [l.id]);
   const subs = attached.filter((a) => a.kind === "subtitle");
   const files = attached.filter((a) => a.kind !== "subtitle");
 
-  res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script><script src="/js/bulk-complete.js?v=2" defer></script>`, body: `
+  res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
   <div class="learn" data-lesson="${l.id}" data-course="${l.course_id}" data-pos="${prog?.position_secs || 0}" data-autoplay="${settings?.autoplay ?? 1}" data-speed="${+settings?.playback_speed || 1}" data-threshold="${config.videoCompletionThreshold}">
-    <aside class="side" id="side"><div class="side-h"><a href="/courses/${l.course_id}">← ${esc(l.course)}</a>
-      <button class="iconbtn" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>
-      ${bulkBarHTML("side")}
-      ${renderSideTree(tree, l.id)}
-    </aside>
+    ${learnSidebar({ courseId: l.course_id, courseTitle: l.course, pct: cprog.pct, tree, currentId: l.id })}
     <div class="stage">
       ${crumbs({ id: l.course_id, title: l.course }, chain, l.title)}
       <h1 class="ltitle">${esc(l.title)}</h1>
@@ -634,14 +677,11 @@ pages.get("/learn/reading/:id", needAuth, async (req, res) => {
   const prev = sibs[idx - 1], next = sibs[idx + 1];
   const tree = await courseTree(p.course_id, u.id);
   const chain = await groupChain(p.group_id);
+  const cprogR = course ? await courseProgress(u.id, course) : { pct: 0 };
 
-  res.send(layout({ title: p.title, user: u, active: "library", extraScript: `<script src="/js/reader.js" defer></script>`, body: `
+  res.send(layout({ title: p.title, user: u, active: "library", extraScript: `<script src="/js/reader.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
   <div class="learn reading" data-page="${p.id}" data-course="${p.course_id}" data-scroll="${prog?.scroll_px || 0}" data-threshold="${config.readingCompletionThreshold}">
-    <aside class="side" id="side"><div class="side-h"><a href="/courses/${p.course_id}">← ${esc(p.course)}</a><button class="iconbtn" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>
-      <p class="mono dim small">IN THIS COURSE</p>
-      ${renderSideTree(tree, p.id)}
-      ${headings.length ? `<p class="mono dim small">ON THIS PAGE</p><ol class="llist small ghost">${headings.slice(0, 12).map((h) => `<li><a href="#${h.id}">${esc(h.text)}</a></li>`).join("")}</ol>` : ""}
-    </aside>
+    ${learnSidebar({ courseId: p.course_id, courseTitle: p.course, pct: cprogR.pct, tree, currentId: p.id, after: headings.length ? `<p class="mono side-onpage">On this page</p><ol class="sles small ghost">${headings.slice(0, 12).map((h) => `<li class="sles-row"><a class="sles-a" href="#${h.id}"><span class="sles-t">${esc(h.text)}</span></a></li>`).join("")}</ol>` : "" })}
     <div class="stage read-stage">
       ${crumbs({ id: p.course_id, title: p.course }, chain, p.title)}
       <div class="readbar"><div class="pbar" id="readProgress"><i style="width:${Math.round((prog?.scroll_pct || 0) * 100)}%"></i></div></div>
