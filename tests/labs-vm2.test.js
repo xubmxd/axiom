@@ -27,8 +27,8 @@ describe("vm2 definition", () => {
     assert.equal(vm2.def.machineName, "VM #2");
     assert.equal(vm2.def.labNumber, 2);
     const p = normalizePlacement(vm2.def);
-    assert.equal(p.courseSlug, "core");
-    assert.equal(p.courseTitle, "Core");
+    assert.equal(p.courseSlug, "oscp");
+    assert.equal(p.courseTitle, "OSCP");
     assert.equal(p.moduleNumber, 6);
     assert.equal(p.moduleTitle, "Information Gathering");
     assert.equal(p.section, "6.2.1");
@@ -280,9 +280,9 @@ describe("vm2 service (sqlite)", () => {
 
   it("course and module progress include Lab 2 automatically", async () => {
     const cp = await svc.courseProgress(userId, lab.course_id);
-    assert.equal(cp.total, 3);
+    assert.equal(cp.total, 4);
     const mp = await svc.moduleProgress(userId, lab.course_id, 6);
-    assert.equal(mp.total, 3);
+    assert.equal(mp.total, 4);
   });
 });
 

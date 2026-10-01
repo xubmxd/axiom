@@ -20,5 +20,16 @@
     "cookie-parser": "^1.4.7",
     "express": "^4.22.3",
     "pg": "^8.13.1"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xubmxd/axiom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xubmxd/axiom/issues"
+  },
+  "homepage": "https://github.com/xubmxd/axiom#readme"
 }

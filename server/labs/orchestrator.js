@@ -385,7 +385,31 @@ const localProvider = {
   },
 };
 
-function providers() { return { docker: dockerProvider, local: localProvider }; }
+// ---------------------------------------------------------------- external research
+// Browser-based OSINT exercises (e.g. 6.2.2 Google Hacking) have no target
+// infrastructure: the learner works on the live public web. Provisioning
+// only records a logical session (progress, submissions, notes, hints) and
+// destroy is a no-op. Never a container, never a fake IP.
+export function isOsintLab(lab) {
+  return lab?.environment_type === "osint";
+}
+
+const externalResearchProvider = {
+  name: "external-research",
+  async provision(lab, instance) {
+    return {
+      networkName: "", networkCidr: "",
+      targetIp: "", targetPort: 0,
+      hostEndpoint: "", providerReference: `external-research:${instance.id || "none"}`,
+    };
+  },
+  async destroy(instance) { /* nothing to tear down */ },
+  endpointOf(instance) {
+    return { host: "", port: 0 };
+  },
+};
+
+function providers() { return { docker: dockerProvider, local: localProvider, osint: externalResearchProvider, "external-research": externalResearchProvider }; }
 export function providerFor(name) {
   const p = providers()[name];
   if (!p) throw new Error(`Unknown lab provider: ${name}`);
@@ -424,6 +448,9 @@ export async function runTerminalCommand(instance, raw, lab = null) {
   const argv = input.match(/"[^"]*"|'[^']*'|\S+/g)?.map((t) => t.replace(/^["']|["']$/g, "")) || [];
   const cmd = (argv[0] || "").toLowerCase();
   const args = argv.slice(1);
+  // OSINT exercises have no network target: the terminal is a convenience
+  // wrapper over the same deterministic corpus behind the Search tab.
+  if (lab?.environment_type === "osint") return terminalOsint(cmd, args);
   const domain = lab ? labDomain(lab.slug ?? lab) : LAB_DOMAIN;
   const zone = lab ? labZone(lab.slug ?? lab) : ZONE;
   switch (cmd) {
@@ -457,6 +484,33 @@ function helpText(domain) {
 }
 
 const HELP_TEXT = helpText(LAB_DOMAIN);
+
+// OSINT terminal: this is a browser-based research exercise, so the
+// terminal offers no network tooling — only session helpers. Research
+// happens on the live web via the Research tab links.
+async function terminalOsint(cmd, args) {
+  switch (cmd) {
+    case "help":
+      return {
+        output: [
+          "Lab terminal — this is a browser-based OSINT exercise (no target network).",
+          "",
+          "  Research happens in your browser: Google, the MegaCorp One",
+          "  public site, and social-media search (see the Research tab).",
+          "",
+          "  targets          show this lab's environment",
+          "  echo <text>      print text",
+          "  clear            clear the terminal",
+        ].join("\n"),
+      };
+    case "clear": return { output: "", clear: true };
+    case "echo": return { output: args.join(" ").slice(0, 2000) };
+    case "targets":
+      return { output: ["NAME     External Research", "ACCESS   Live public web (browser-based)", "NETWORK  none — no target VM for this exercise"].join("\n") };
+    default:
+      return { output: `Command not available in this OSINT exercise: ${cmd}\nResearch is browser-based — see the Research tab. Available: help, targets, echo, clear` };
+  }
+}
 
 async function targetSummary(instance, lab = null) {
   let name = "VM #1";
@@ -537,6 +591,9 @@ export async function reconcileOnBoot() {
   const actives = await allActiveInstances().catch(() => []);
   for (const inst of actives) {
     try {
+      if (inst.provider === "osint" || inst.provider === "external-research") {
+        continue; // research-backed exercise: no runtime to die with the app
+      }
       if (inst.provider === "docker" && await dockerAvailable()) {
         const cname = inst.provider_reference;
         let alive = false;

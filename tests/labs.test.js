@@ -48,7 +48,7 @@ describe("lab definitions", () => {
   it("discovers and validates the first lab (VM #2 lives alongside it)", async () => {
     const { loadAllDefinitions, validateDefinition } = await import("../server/labs/definitions.js");
     const all = loadAllDefinitions(path.join(REPO, "labs"));
-    assert.equal(all.length, 3);
+    assert.equal(all.length, 4);
     const bySlug = Object.fromEntries(all.map((l) => [l.def.slug, l]));
     assert.equal(bySlug["m6-6-2-1-whois-vm1"].def.title, "6.2.1 Whois Enumeration");
     assert.ok(bySlug["m6-6-2-1-whois-vm2"], "VM #2 definition must be discovered");
@@ -146,7 +146,7 @@ describe("lab service (sqlite)", () => {
     assert.equal(p.objectiveDone, 2);
     assert.ok(p.complete);
     const mod = await svc.moduleProgress(userId, lab.course_id, 6);
-    assert.deepEqual(mod, { total: 3, completed: 1 }); // VM #2 + VM #3 share Module 6
+    assert.deepEqual(mod, { total: 4, completed: 1 }); // VM #2 + VM #3 + 6.2.2 share Module 6
   });
 
   it("repeat correct submissions stay idempotent", async () => {

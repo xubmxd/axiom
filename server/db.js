@@ -162,7 +162,7 @@ export async function migrate() {
     )`,
     // ---- Cyber Range ----
     // Dual-engine compatible: TEXT keys, no sequences, no PG-only features.
-    // lab_courses are training paths (Core, Extra, …). They are deliberately
+    // lab_courses are training paths (OSCP, Extra, …). They are deliberately
     // separate from the scanner-owned `courses` table: a filesystem rescan
     // must never cascade-delete lab runtime state and progress.
     `CREATE TABLE IF NOT EXISTS lab_courses(
@@ -365,6 +365,19 @@ async function migrateLabCourses() {
   } catch { /* never block boot on migration */ }
   try {
     if (await tableExists("labs") && !(await columnExists("labs", "section_name"))) await execRaw(`ALTER TABLE labs ADD COLUMN section_name TEXT NOT NULL DEFAULT ''`);
+  } catch { /* never block boot on migration */ }
+  // Training-path rename (Core → OSCP): definitions now seed slug "oscp".
+  // Existing installs carry a "core" course row — rename it in place so
+  // instances, progress, notes, and hints survive. Idempotent.
+  try {
+    if (await tableExists("lab_courses")) {
+      const hasCore = await get(`SELECT id FROM lab_courses WHERE slug=?`, ["core"]);
+      const hasOscp = await get(`SELECT id FROM lab_courses WHERE slug=?`, ["oscp"]);
+      if (hasCore && !hasOscp) {
+        await run(`UPDATE lab_courses SET slug=?, title=?, subtitle=?, updated_at=? WHERE slug=?`,
+          ["oscp", "OSCP", "Offensive Security Certified Professional", nowIso(), "core"]);
+      }
+    }
   } catch { /* never block boot on migration */ }
 }
 // Multiple course libraries: one row per root directory. The default root

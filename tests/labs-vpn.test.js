@@ -189,7 +189,7 @@ describe("vpn http routes", () => {
   });
 
   it("lab page renders the VPN-off panel without keys", async () => {
-    const r = await get("/labs/core/m6-6-2-1-whois-vm3");
+    const r = await get("/labs/oscp/m6-6-2-1-whois-vm3");
     assert.equal(r.status, 200);
     const html = await r.text();
     assert.ok(html.includes("From your own Kali (VPN)"));

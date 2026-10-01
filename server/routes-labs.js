@@ -244,6 +244,9 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
   // Each lab queries its own domain (VM #1: megacorpone.com,
   // VM #2: offensive-security.com). Falls back to VM #1's domain.
   const domain = labDomain(lab.slug);
+  // OSINT exercises (e.g. 6.2.2 Google Hacking) have no network target:
+  // research happens on the live public web via the Research tab links.
+  const isOsint = lab.environment_type === "osint";
   const targetIp = inst?.targetIp || "<TARGET-IP>";
   const withIp = (s) => esc(String(s).replaceAll("<TARGET-IP>", targetIp).replaceAll("<target-ip>", targetIp));
 
@@ -257,7 +260,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
     title: lab.title, user: u, active: "labs",
     extraScript: `<script src="/js/lab.js" defer></script>`,
     body: `
-  <div class="wrap labwrap" data-lab="${esc(lab.id)}" data-slug="${esc(lab.slug)}"
+  <div class="wrap labwrap" data-lab="${esc(lab.id)}" data-slug="${esc(lab.slug)}" data-env="${esc(lab.environment_type)}"
        data-status="${esc(inst?.status || "stopped")}" data-started-at="${esc(inst?.startedAt || "")}"
        data-target-ip="${esc(inst?.targetIp || "")}">
     <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/labs">cyber range</a> / <a href="/labs/${esc(course.slug)}">${esc(course.title)}</a> / <a href="/labs/${esc(course.slug)}">Module ${esc(String(lab.module_number))}</a> / <span>${esc(lab.section_number)} ${esc(extra.sectionName || lab.section_name)}</span> / <span>Lab ${esc(String(lab.lab_number))}</span></nav>
@@ -273,7 +276,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
     <div class="labgrid">
       <div class="labmain">
         <div class="tabs" role="tablist" aria-label="Lab workspace">
-          ${["instructions", "hints", "connection", "notes", "more"].map((t, i) => `<button role="tab" id="tab-${t}" aria-controls="panel-${t}" aria-selected="${i === 0 ? "true" : "false"}" tabindex="${i === 0 ? "0" : "-1"}" data-tab="${t}">${t[0].toUpperCase() + t.slice(1)}${t === "hints" ? ` (${hints.length})` : ""}</button>`).join("")}
+          ${(isOsint ? ["instructions", "hints", "research", "connection", "notes", "more"] : ["instructions", "hints", "connection", "notes", "more"]).map((t, i) => `<button role="tab" id="tab-${t}" aria-controls="panel-${t}" aria-selected="${i === 0 ? "true" : "false"}" tabindex="${i === 0 ? "0" : "-1"}" data-tab="${t}">${t[0].toUpperCase() + t.slice(1)}${t === "hints" ? ` (${hints.length})` : ""}</button>`).join("")}
         </div>
 
         <section class="card tabpanel" role="tabpanel" id="panel-instructions" aria-labelledby="tab-instructions" tabindex="0">
@@ -290,8 +293,38 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
             : `<p class="dim">No hints configured for this lab. Work the objective — the target has everything you need.</p>`}
         </section>
 
+        ${isOsint ? `
+        <section class="card tabpanel" role="tabpanel" id="panel-research" aria-labelledby="tab-research" tabindex="0" hidden>
+          <h2>External Research</h2>
+          <p class="dim small">This exercise uses the live public web — the same surface the original investigation used. Each link opens in a new browser tab; nothing is embedded here. Perform the searches yourself, then return to Axiom to submit what you find.</p>
+          <div class="lrow">
+            <a class="btn primary" href="https://www.google.com" target="_blank" rel="noopener">Open Google Search ↗</a>
+            <a class="btn" href="https://www.megacorpone.com" target="_blank" rel="noopener">Open MegaCorp One ↗</a>
+            <a class="btn" href="https://github.com/megacorpone/megacorpone.com" target="_blank" rel="noopener">Open MegaCorp One GitHub ↗</a>
+          </div>
+          <h3>Suggested workflow</h3>
+          <p class="dim small">Constrain Google to the target domain with <code class="mono">site:megacorpone.com</code>, refine with the role title and <code class="mono">intext:</code>, and follow the trail to the company's public contact page. For the third objective, pivot to social-media and general web search for people connected to MegaCorp One.</p>
+          <h3>Fallback</h3>
+          <p class="dim small">If the live company site is unreachable, use the public mirror/source above (MegaCorp One GitHub) — it is the same public material, clearly identified as a fallback, not a substitute dataset.</p>
+        </section>` : ""}
+
         <section class="card tabpanel" role="tabpanel" id="panel-connection" aria-labelledby="tab-connection" tabindex="0" hidden>
           <h2>Connection</h2>
+          ${isOsint ? `
+          <div class="conn-grid" data-conn>
+            <div><p class="mono dim small">ENVIRONMENT</p><p><b>External Reconnaissance</b></p></div>
+            <div><p class="mono dim small">TARGET</p><p>None — this exercise needs no VM</p></div>
+            <div><p class="mono dim small">PRIMARY TOOLS</p><p>Google · Public web · Social-media search</p></div>
+            <div><p class="mono dim small">ACCESS</p><p>Research tab links (new browser tabs)</p></div>
+          </div>
+          <h3>Research links</h3>
+          <div class="lrow">
+            <a class="btn primary" href="https://www.google.com" target="_blank" rel="noopener">Open Google ↗</a>
+            <a class="btn" href="https://www.megacorpone.com" target="_blank" rel="noopener">Open MegaCorp One ↗</a>
+            <a class="btn" href="https://github.com/megacorpone/megacorpone.com" target="_blank" rel="noopener">Open MegaCorp One GitHub ↗</a>
+          </div>
+          <p class="dim small">No target IP, port, or container exists for this exercise. If the live site is unreachable, the GitHub link above is the documented public-mirror fallback.</p>
+          ` : `
           <div class="conn-grid" data-conn>
             <div><p class="mono dim small">TARGET</p><p><b>${esc(primary.name || "VM #1")}</b> <span class="dim">· ${esc(primary.os || "Linux")}</span></p></div>
             <div><p class="mono dim small">TARGET IP</p><p class="mono conn-ip">${esc(targetIp)} ${inst?.targetIp ? `<button class="iconbtn xs" data-copy="${esc(inst.targetIp)}" aria-label="Copy target IP">⧉</button>` : ""}</p></div>
@@ -303,6 +336,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
           <div class="cmdrow"><code class="mono">whois ${esc(domain)} -h ${esc(targetIp)}</code>${inst?.targetIp ? `<button class="iconbtn xs" data-copy="whois ${esc(domain)} -h ${esc(inst.targetIp)}" aria-label="Copy command">⧉</button>` : ""}</div>
           ${inst?.hostEndpoint ? `<h3>From this machine's shell</h3><div class="cmdrow"><code class="mono">whois ${esc(domain)} -h ${esc(inst.hostEndpoint.replace(":", " -p "))}</code><button class="iconbtn xs" data-copy="whois ${esc(domain)} -h ${esc(inst.hostEndpoint.replace(":", " -p "))}" aria-label="Copy command">⧉</button></div><p class="dim small">Loopback mapping of your isolated target — unique to your session.</p>` : `<p class="dim small">Start the lab to get connection details.</p>`}
           ${vpnPanel(vpn, domain, targetIp, u.username)}
+          `}
         </section>
 
         <section class="card tabpanel" role="tabpanel" id="panel-notes" aria-labelledby="tab-notes" tabindex="0" hidden>
@@ -327,8 +361,8 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
 
         <section class="card terminal-card" aria-label="Integrated terminal">
           <div class="sech"><h2><span class="h-ic" aria-hidden="true">▸</span> Lab Terminal</h2><span class="mono dim small">scoped · no host shell</span></div>
-          <div class="term-out" id="termOut" role="log" aria-label="Terminal output" tabindex="0"><div class="dim">Type <b>help</b> to see available commands. Runs inside your isolated lab environment.</div></div>
-          <form class="term-in" id="termForm"><span class="mono term-ps" aria-hidden="true">lab ❯</span><input id="termInput" autocomplete="off" spellcheck="false" aria-label="Terminal input" placeholder="whois ${esc(domain)} -h ${esc(targetIp)}" ${inst ? "" : "disabled"}><button class="btn primary xs" type="submit" ${inst ? "" : "disabled"}>Run</button></form>
+          <div class="term-out" id="termOut" role="log" aria-label="Terminal output" tabindex="0"><div class="dim">${isOsint ? "Type <b>help</b> to see available commands. Research for this exercise is browser-based — see the Research tab." : "Type <b>help</b> to see available commands. Runs inside your isolated lab environment."}</div></div>
+          <form class="term-in" id="termForm"><span class="mono term-ps" aria-hidden="true">lab ❯</span><input id="termInput" autocomplete="off" spellcheck="false" aria-label="Terminal input" placeholder="${isOsint ? "help — research is browser-based" : `whois ${esc(domain)} -h ${esc(targetIp)}`}" ${inst ? "" : "disabled"}><button class="btn primary xs" type="submit" ${inst ? "" : "disabled"}>Run</button></form>
         </section>
       </div>
 
@@ -336,11 +370,18 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
         <section class="card" aria-label="Lab status">
           <div class="sech"><h2>Lab Status</h2><span data-status-pill>${statusPill(inst?.status || "stopped")}</span></div>
           <p class="mono lab-elapsed" data-elapsed>${inst?.startedAt ? "…" : "Not running"}</p>
-          <h3 class="rail-h">Target Information</h3>
+          <h3 class="rail-h">${isOsint ? "Environment" : "Target Information"}</h3>
           <dl class="kv">
+            ${isOsint ? `
+            <div><dt>Environment</dt><dd>External reconnaissance</dd></div>
+            <div><dt>Type</dt><dd>${esc(primary.os || "Public Web")}${primary.target_type ? ` (${esc(primary.target_type)})` : ""}</dd></div>
+            <div><dt>Tools</dt><dd>Google · Public web · Social media</dd></div>
+            <div><dt>Target IP</dt><dd class="mono">— <span class="dim">none for this exercise</span></dd></div>
+            ` : `
             <div><dt>Target IP</dt><dd class="mono" data-target-ip>${esc(inst?.targetIp || "—")} ${inst?.targetIp ? `<button class="iconbtn xs" data-copy="${esc(inst.targetIp)}" aria-label="Copy target IP">⧉</button>` : ""}</dd></div>
             <div><dt>Type</dt><dd>${esc(primary.os || "Linux")}${primary.target_type ? ` (${esc(primary.target_type)})` : ""}</dd></div>
             <div><dt>Network</dt><dd>Isolated Lab Network${inst?.networkCidr ? ` <span class="mono dim">${esc(inst.networkCidr)}</span>` : ""}</dd></div>
+            `}
             <div><dt>Difficulty</dt><dd>${esc(lab.difficulty)}</dd></div>
           </dl>
           <div class="lrow lab-actions" data-actions>
@@ -366,7 +407,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
           <h2>Lab Progress</h2>
           <p class="mono dim small" data-progress-count>${progress.done} / ${progress.total} completed · ${progress.pct}%</p>
           <ol class="checklist" data-checklist>
-            <li class="check-item${progress.started ? " done" : ""}"><span class="check-box" aria-hidden="true">${progress.started ? "✓" : "○"}</span><span>Start the lab</span></li>
+            <li class="check-item${progress.started ? " done" : ""}"><span class="check-box" aria-hidden="true">${progress.started ? "✓" : "○"}</span><span>${isOsint ? "Start the exercise" : "Start the lab"}</span></li>
             ${objSteps}
           </ol>
           <h3 class="rail-h">Module Progress</h3>
@@ -485,9 +526,13 @@ labApi.post("/labs/:id/start", ah(async (req, res) => {
   return withLabLock(`${req.user.id}:${lab.id}`, async () => {
   const existing = await svc.activeInstance(req.user.id, lab.id);
   if (existing) return res.json({ ok: true, reused: true, instance: pubInstance(existing), progress: await svc.labProgress(req.user.id, lab.id) });
-  let provider;
-  try { provider = await selectProvider(); }
-  catch (e) { log("lab.start.noprovider", { lab: lab.id, error: String(e?.message || e).slice(0, 200) }); return res.status(500).json({ error: "Lab infrastructure unavailable. Contact your administrator." }); }
+  // External-research exercises need no target VM: activating the workspace
+  // only records a logical session (progress, submissions, notes, hints).
+  let provider = "external-research";
+  if (lab.environment_type !== "osint") {
+    try { provider = await selectProvider(); }
+    catch (e) { log("lab.start.noprovider", { lab: lab.id, error: String(e?.message || e).slice(0, 200) }); return res.status(500).json({ error: "Lab infrastructure unavailable. Contact your administrator." }); }
+  }
   let inst = await svc.createInstance({ userId: req.user.id, labId: lab.id, provider });
   log("lab.start", { user: req.user.id, lab: lab.id, provider });
   try {
@@ -620,8 +665,7 @@ labApi.put("/labs/:id/notes", ah(async (req, res) => {
   res.json({ ok: true, updatedAt: saved.updated_at });
 }));
 
-labApi.post("/labs/:id/terminal", ah(async (req, res) => {
-  const lab = await resolveLab(req.params.id);
+labApi.post("/labs/:id/terminal", ah(async (req, res) => {  const lab = await resolveLab(req.params.id);
   if (!lab) return res.status(404).json({ error: "Lab not found." });
   const inst = await svc.activeInstance(req.user.id, lab.id);
   if (!inst || !ownOrAdmin(req, inst)) return res.status(409).json({ error: "Start the lab to use the terminal." });

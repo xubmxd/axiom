@@ -22,15 +22,15 @@ describe("vm3 definition", () => {
   it("loads under the existing 6.2.1 exercise (not a new module/section)", async () => {
     const { loadAllDefinitions, normalizePlacement } = await import("../server/labs/definitions.js");
     const all = loadAllDefinitions(path.join(REPO, "labs"));
-    assert.equal(all.length, 3);
+    assert.equal(all.length, 4);
     const vm3 = all.find((l) => l.def.slug === VM3_SLUG);
     assert.ok(vm3, "vm-03/lab.json must be discovered");
     assert.equal(vm3.def.title, "6.2.1 Whois Enumeration");
     assert.equal(vm3.def.machineName, "VM #3");
     assert.equal(vm3.def.labNumber, 3);
     const p = normalizePlacement(vm3.def);
-    assert.equal(p.courseSlug, "core");
-    assert.equal(p.courseTitle, "Core");
+    assert.equal(p.courseSlug, "oscp");
+    assert.equal(p.courseTitle, "OSCP");
     assert.equal(p.moduleNumber, 6);
     assert.equal(p.moduleTitle, "Information Gathering");
     assert.equal(p.section, "6.2.1");
@@ -273,9 +273,9 @@ describe("vm3 service (sqlite)", () => {
 
   it("course and module progress include Lab 3 automatically", async () => {
     const cp = await svc.courseProgress(userId, lab.course_id);
-    assert.equal(cp.total, 3);
+    assert.equal(cp.total, 4);
     const mp = await svc.moduleProgress(userId, lab.course_id, 6);
-    assert.equal(mp.total, 3);
+    assert.equal(mp.total, 4);
   });
 });
 

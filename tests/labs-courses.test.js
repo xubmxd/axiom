@@ -18,9 +18,9 @@ describe("course placement in definitions", () => {
     const def = JSON.parse(fs.readFileSync(path.join(REPO, "labs/module-06/6.2.1-whois/vm-01/lab.json"), "utf8"));
     assert.deepEqual(validateDefinition(def), []);
     const p = normalizePlacement(def);
-    assert.equal(p.courseSlug, "core");
-    assert.equal(p.courseTitle, "Core");
-    assert.equal(p.courseSubtitle, "Core Certified Professional");
+    assert.equal(p.courseSlug, "oscp");
+    assert.equal(p.courseTitle, "OSCP");
+    assert.equal(p.courseSubtitle, "Offensive Security Certified Professional");
     assert.equal(p.moduleNumber, 6);
     assert.equal(p.moduleTitle, "Information Gathering");
     assert.equal(p.section, "6.2.1");
@@ -28,14 +28,14 @@ describe("course placement in definitions", () => {
   it("still accepts the legacy flat keys", async () => {
     const { normalizePlacement, validateDefinition } = await import("../server/labs/definitions.js");
     const legacy = {
-      slug: "legacy-lab", title: "Legacy", courseSlug: "core",
+      slug: "legacy-lab", title: "Legacy", courseSlug: "oscp",
       moduleNumber: 7, moduleName: "Scanning", section: "7.1",
       targets: [{ name: "VM #1" }],
       objectives: [{ key: "q", expectedHash: "a".repeat(64) }],
     };
     assert.deepEqual(validateDefinition(legacy), []);
     const p = normalizePlacement(legacy);
-    assert.equal(p.courseSlug, "core");
+    assert.equal(p.courseSlug, "oscp");
     assert.equal(p.moduleNumber, 7);
     assert.equal(p.moduleTitle, "Scanning");
   });
@@ -60,17 +60,17 @@ describe("course catalog service", () => {
     const u = await createUser({ username: "coursetester", email: "c@test.local", displayName: "C", password: "password12345" });
     userId = u.id;
     const r = await svc.seedFromDefinitions(path.join(REPO, "labs"));
-    assert.equal(r.labs, 3);
+    assert.equal(r.labs, 4);
     assert.equal(r.courses, 1);
     await svc.seedFromDefinitions(path.join(REPO, "labs")); // idempotent
     const courses = await svc.listLabCourses();
     assert.equal(courses.length, 1);
-    assert.equal(courses[0].slug, "core");
-    assert.equal(courses[0].title, "Core");
+    assert.equal(courses[0].slug, "oscp");
+    assert.equal(courses[0].title, "OSCP");
     courseId = courses[0].id;
   });
 
-  it("assigns the lab to Core with module/section names", async () => {
+  it("assigns the lab to OSCP with module/section names", async () => {
     const lab = await svc.getLab("slug", "m6-6-2-1-whois-vm1");
     assert.equal(lab.course_id, courseId);
     assert.equal(lab.module_number, 6);
@@ -83,11 +83,16 @@ describe("course catalog service", () => {
     assert.equal(modules.length, 1);
     assert.equal(modules[0].number, 6);
     assert.equal(modules[0].title, "Information Gathering");
-    assert.equal(modules[0].sections.length, 1);
+    assert.equal(modules[0].sections.length, 2);
     assert.equal(modules[0].sections[0].section, "6.2.1");
     assert.equal(modules[0].sections[0].labs.length, 3);
     assert.deepEqual(modules[0].sections[0].labs.map((l) => l.lab.lab_number), [1, 2, 3]);
     assert.equal(modules[0].sections[0].labs[0].state, "not-started");
+    // 6.2.2 Google Hacking is a separate exercise, not folded into 6.2.1
+    assert.equal(modules[0].sections[1].section, "6.2.2");
+    assert.equal(modules[0].sections[1].title, "Google Hacking");
+    assert.equal(modules[0].sections[1].labs.length, 1);
+    assert.equal(modules[0].sections[1].labs[0].lab.slug, "m6-6-2-2-google-hacking");
   });
 
   it("tracks lab state: running reflects a live instance only", async () => {
@@ -114,9 +119,9 @@ describe("course catalog service", () => {
 
   it("aggregates course + module progress from existing progress rows", async () => {
     const cp = await svc.courseProgress(userId, courseId);
-    assert.deepEqual(cp, { total: 3, completed: 1, inProgress: 0, running: 0, notStarted: 2, pct: 33 });
+    assert.deepEqual(cp, { total: 4, completed: 1, inProgress: 0, running: 0, notStarted: 3, pct: 25 });
     const mp = await svc.moduleProgress(userId, courseId, 6);
-    assert.deepEqual(mp, { total: 3, completed: 1 });
+    assert.deepEqual(mp, { total: 4, completed: 1 });
     const empty = await svc.moduleProgress(userId, courseId, 999);
     assert.deepEqual(empty, { total: 0, completed: 0 });
   });
@@ -128,7 +133,7 @@ describe("course catalog service", () => {
     await db.run(`INSERT INTO labs(id, slug, title, course_id, module_number, module_name, lab_number, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?)`,
       ["lab_other", "other-lab", "Other", "lc_other", 6, "Other Module", 1, now, now]);
     const mp = await svc.moduleProgress(userId, courseId, 6);
-    assert.deepEqual(mp, { total: 3, completed: 1 });
+    assert.deepEqual(mp, { total: 4, completed: 1 });
     await db.run(`DELETE FROM labs WHERE id=?`, ["lab_other"]);
     await db.run(`DELETE FROM lab_courses WHERE id=?`, ["lc_other"]);
   });
@@ -178,21 +183,24 @@ describe("course routes (http)", () => {
     assert.equal(r.status, 200);
     const html = await r.text();
     assert.ok(html.includes("Choose a training path"));
-    assert.ok(html.includes("Core"));
+    assert.ok(html.includes("OSCP"));
     assert.ok(!html.includes("m6-6-2-1-whois-vm1"), "catalog must not link individual labs");
   });
 
-  it("/labs/core shows Module 6 → 6.2.1 → Lab 1 + Lab 2 + Lab 3", async () => {
-    const r = await get("/labs/core");
+  it("/labs/oscp shows Module 6 → 6.2.1 → Lab 1 + Lab 2 + Lab 3, plus 6.2.2 separately", async () => {
+    const r = await get("/labs/oscp");
     assert.equal(r.status, 200);
     const html = await r.text();
     assert.ok(html.includes("Module 6"));
     assert.ok(html.includes("Information Gathering"));
     assert.ok(html.includes("6.2.1"));
-    assert.ok(html.includes("/labs/core/m6-6-2-1-whois-vm1"));
-    assert.ok(html.includes("/labs/core/m6-6-2-1-whois-vm2"), "Lab 2 must appear under the same exercise");
-    assert.ok(html.includes("/labs/core/m6-6-2-1-whois-vm3"), "Lab 3 must appear under the same exercise");
+    assert.ok(html.includes("/labs/oscp/m6-6-2-1-whois-vm1"));
+    assert.ok(html.includes("/labs/oscp/m6-6-2-1-whois-vm2"), "Lab 2 must appear under the same exercise");
+    assert.ok(html.includes("/labs/oscp/m6-6-2-1-whois-vm3"), "Lab 3 must appear under the same exercise");
     assert.ok(html.includes("3 exercises"));
+    assert.ok(html.includes("6.2.2"), "Google Hacking must appear as its own exercise");
+    assert.ok(html.includes("Google Hacking"));
+    assert.ok(html.includes("/labs/oscp/m6-6-2-2-google-hacking"), "Google Hacking must link to its own lab");
   });
 
   it("unknown course is a 404 page, not a crash", async () => {
@@ -204,20 +212,20 @@ describe("course routes (http)", () => {
   it("legacy lab URL redirects to the canonical course URL", async () => {
     const r = await get("/labs/m6-6-2-1-whois-vm1");
     assert.equal(r.status, 302);
-    assert.equal(r.headers.get("location"), "/labs/core/m6-6-2-1-whois-vm1");
+    assert.equal(r.headers.get("location"), "/labs/oscp/m6-6-2-1-whois-vm1");
   });
 
   it("canonical detail page keeps full breadcrumbs + workspace", async () => {
-    const r = await get("/labs/core/m6-6-2-1-whois-vm1");
+    const r = await get("/labs/oscp/m6-6-2-1-whois-vm1");
     assert.equal(r.status, 200);
     const html = await r.text();
-    for (const crumb of ["cyber range", "Core", "Module 6", "6.2.1", "Lab 1"]) assert.ok(html.includes(crumb), `missing crumb: ${crumb}`);
-    assert.ok(html.includes("/labs/core"), "breadcrumb links back to the course");
+    for (const crumb of ["cyber range", "OSCP", "Module 6", "6.2.1", "Lab 1"]) assert.ok(html.includes(crumb), `missing crumb: ${crumb}`);
+    assert.ok(html.includes("/labs/oscp"), "breadcrumb links back to the course");
     for (const marker of ["Lab Terminal", "Submit Answer", "Lab Progress", "Target Information"]) assert.ok(html.includes(marker));
   });
 
   it("unknown lab under a valid course is a 404", async () => {
-    const r = await get("/labs/core/no-such-lab");
+    const r = await get("/labs/oscp/no-such-lab");
     assert.equal(r.status, 404);
   });
 
@@ -226,18 +234,18 @@ describe("course routes (http)", () => {
     assert.equal(r.status, 200);
     const { courses } = await r.json();
     assert.equal(courses.length, 1);
-    assert.equal(courses[0].slug, "core");
-    r = await get("/api/labs/courses/core", { headers: { Cookie: cookie, Accept: "application/json" } });
+    assert.equal(courses[0].slug, "oscp");
+    r = await get("/api/labs/courses/oscp", { headers: { Cookie: cookie, Accept: "application/json" } });
     assert.equal(r.status, 200);
     const body = await r.json();
     assert.equal(body.modules.length, 1);
-    assert.equal(body.modules[0].sections[0].labs[0].url, "/labs/core/m6-6-2-1-whois-vm1");
+    assert.equal(body.modules[0].sections[0].labs[0].url, "/labs/oscp/m6-6-2-1-whois-vm1");
     r = await get("/api/labs/courses/nope", { headers: { Cookie: cookie, Accept: "application/json" } });
     assert.equal(r.status, 404);
     r = await get("/api/labs", { headers: { Cookie: cookie, Accept: "application/json" } });
     const { labs } = await r.json();
-    assert.equal(labs[0].courseSlug, "core");
-    assert.equal(labs[0].url, "/labs/core/m6-6-2-1-whois-vm1");
+    assert.equal(labs[0].courseSlug, "oscp");
+    assert.equal(labs[0].url, "/labs/oscp/m6-6-2-1-whois-vm1");
   });
 
   it("lab API requires auth", async () => {
@@ -278,7 +286,7 @@ describe("course routes (http)", () => {
     assert.ok(done.results["third-nameserver"].correct && done.results["registrar-whois"].correct);
     assert.ok(done.progress.complete);
     // course page now shows the lab completed
-    const coursePage = await (await get("/labs/core")).text();
+    const coursePage = await (await get("/labs/oscp")).text();
     assert.ok(coursePage.includes("Completed"));
     // reset + stop clean up
     r = await post(`/api/labs/${labId}/reset`);

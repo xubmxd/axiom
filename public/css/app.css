@@ -733,14 +733,6 @@ dialog.confirm p{margin:.3rem 0}
 .check-item:not(.done) .check-box{color:var(--muted)}
 /* terminal */
 .terminal-card{border-color:#23404a}
-/* controlled OSINT search results */
-[data-osint-results]{display:grid;gap:.6rem;margin-top:.7rem}
-.osint-hit{display:grid;gap:.2rem;text-align:left;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.7rem .9rem;font:inherit;color:var(--text);cursor:pointer;width:100%}
-.osint-hit:hover{border-color:var(--accent-line)}
-.osint-hit b{font-size:.92rem}
-.osint-hit .link{overflow-wrap:anywhere}
-.osint-doc{margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem}
-.osint-doc p{white-space:pre-wrap;line-height:1.65}
 .term-out{background:#05070a;border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem;height:260px;overflow-y:auto;font-family:var(--mono);font-size:.8rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .term-line{margin:0 0 .3rem;color:#c9d4e2}
 .term-echo{color:#8b9bff}
