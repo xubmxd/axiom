@@ -61,7 +61,7 @@ export async function migrate() {
     `CREATE TABLE IF NOT EXISTS courses(
       id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, slug TEXT NOT NULL,
       dir_name TEXT NOT NULL, has_icon INTEGER NOT NULL DEFAULT 0,
-      total_seconds INTEGER NOT NULL DEFAULT 0, lesson_count INTEGER NOT NULL DEFAULT 0,
+      total_seconds BIGINT NOT NULL DEFAULT 0, lesson_count INTEGER NOT NULL DEFAULT 0,
       page_count INTEGER NOT NULL DEFAULT 0,
       last_scanned_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`,
@@ -79,7 +79,7 @@ export async function migrate() {
       group_id TEXT REFERENCES content_groups(id) ON DELETE SET NULL,
       title TEXT NOT NULL, path_key TEXT NOT NULL, file_name TEXT NOT NULL DEFAULT '',
       position INTEGER NOT NULL DEFAULT 0, sort_key TEXT NOT NULL DEFAULT '',
-      duration_secs INTEGER, file_size INTEGER NOT NULL DEFAULT 0,
+      duration_secs BIGINT, file_size BIGINT NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`,
@@ -88,7 +88,7 @@ export async function migrate() {
       group_id TEXT REFERENCES content_groups(id) ON DELETE SET NULL,
       title TEXT NOT NULL, path_key TEXT NOT NULL,
       position INTEGER NOT NULL DEFAULT 0, sort_key TEXT NOT NULL DEFAULT '',
-      word_count INTEGER NOT NULL DEFAULT 0, file_size INTEGER NOT NULL DEFAULT 0,
+      word_count BIGINT NOT NULL DEFAULT 0, file_size BIGINT NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`,
@@ -97,7 +97,7 @@ export async function migrate() {
       group_id TEXT REFERENCES content_groups(id) ON DELETE SET NULL,
       lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL,
       title TEXT NOT NULL, path_key TEXT NOT NULL, file_name TEXT NOT NULL DEFAULT '',
-      kind TEXT NOT NULL DEFAULT 'other', file_size INTEGER NOT NULL DEFAULT 0,
+      kind TEXT NOT NULL DEFAULT 'other', file_size BIGINT NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     )`,
@@ -279,6 +279,59 @@ export async function migrate() {
       created_at TEXT NOT NULL,
       PRIMARY KEY(instance_id, objective_key)
     )`,
+    // Axiom vulnerability-scanner jobs (Module 7.2). One row per student
+    // scan with its configuration; findings and sitemap pages hang off the
+    // job. All rows are keyed to the owning instance and wiped on
+    // stop/reset, so no scan state survives across sessions.
+    `CREATE TABLE IF NOT EXISTS lab_scan_jobs(
+      id TEXT PRIMARY KEY,
+      instance_id TEXT NOT NULL,
+      lab_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT '',
+      template TEXT NOT NULL DEFAULT 'basic',
+      targets_json TEXT NOT NULL DEFAULT '[]',
+      ports_json TEXT NOT NULL DEFAULT '[]',
+      auth_user TEXT NOT NULL DEFAULT '',
+      assessment_json TEXT NOT NULL DEFAULT '{}',
+      plugin_filter TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'queued',
+      progress REAL NOT NULL DEFAULT 0,
+      error TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_scan_findings(
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL,
+      instance_id TEXT NOT NULL,
+      plugin_id TEXT NOT NULL DEFAULT '',
+      plugin_name TEXT NOT NULL DEFAULT '',
+      family TEXT NOT NULL DEFAULT '',
+      severity TEXT NOT NULL DEFAULT '',
+      target_ip TEXT NOT NULL DEFAULT '',
+      port INTEGER NOT NULL DEFAULT 0,
+      protocol TEXT NOT NULL DEFAULT 'tcp',
+      title TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      evidence TEXT NOT NULL DEFAULT '',
+      details_json TEXT NOT NULL DEFAULT '{}',
+      remediation TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS lab_sitemap_pages(
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL,
+      instance_id TEXT NOT NULL,
+      target_ip TEXT NOT NULL DEFAULT '',
+      port INTEGER NOT NULL DEFAULT 0,
+      url TEXT NOT NULL DEFAULT '',
+      path TEXT NOT NULL DEFAULT '',
+      status INTEGER NOT NULL DEFAULT 0,
+      title TEXT NOT NULL DEFAULT '',
+      links_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    )`,
     // Student VPN clients (one WireGuard identity per user, HTB/THM-style).
     // Server-generated keypair so the pack is a one-click download; the
     // private key is shown only to its owner via the pack endpoint and is
@@ -327,6 +380,7 @@ export async function migrate() {
   await migrateLegacyModules();
   await migrateLabCourses();
   await migrateCourseRoots();
+  await migrateBigintFileSizes();
   // App default timezone is Asia/Kolkata: fresh rows pick it up from the
   // column default; installs created before the switch still say UTC.
   try { await run(`UPDATE users SET timezone='Asia/Kolkata' WHERE timezone='UTC'`); } catch {}
@@ -432,6 +486,38 @@ async function migrateCourseRoots() {
     try { await execRaw(`CREATE UNIQUE INDEX IF NOT EXISTS uq_root_path ON course_roots(path)`); } catch {}
   } catch { /* never block boot on migration */ }
 }
+// File sizes (stat.size bytes) exceed pg INTEGER (int4, max 2147483647)
+// for any video over ~2.1 GiB — e.g. a 2823003825-byte lesson aborts the
+// scan with `value "2823003825" is out of range for type integer`.
+// Fresh installs get BIGINT from CREATE TABLE above; this alters existing
+// Postgres installs in place. SQLite INTEGER is already 64-bit (no-op).
+// Idempotent; safe to run on every boot; never blocks boot on failure.
+async function migrateBigintFileSizes() {
+  if (!usePg) return;
+  const targets = [
+    ["courses", "total_seconds"],
+    ["lessons", "duration_secs"],
+    ["lessons", "file_size"],
+    ["reading_pages", "word_count"],
+    ["reading_pages", "file_size"],
+    ["resources", "file_size"],
+  ];
+  try {
+    for (const [table, col] of targets) {
+      try {
+        if (!(await tableExists(table))) continue;
+        if (!(await columnExists(table, col))) continue;
+        const r = await get(
+          `SELECT data_type FROM information_schema.columns WHERE table_name=? AND column_name=?`,
+          [table, col]
+        );
+        if (String(r?.data_type || "").toLowerCase() === "integer") {
+          await execRaw(`ALTER TABLE ${table} ALTER COLUMN ${col} TYPE BIGINT`);
+        }
+      } catch { /* per-column best-effort: keep booting */ }
+    }
+  } catch { /* never block boot on migration */ }
+}
 // One-way, idempotent port from the legacy flat `modules` model to recursive
 // `content_groups`. Group row IDs are preserved (same ids as old modules) and
 // lessons keep their own IDs, so all video/reading progress survives untouched.
@@ -445,7 +531,7 @@ async function migrateLegacyModules() {
     }
     if (!(await columnExists("lessons", "group_id"))) await execRaw(`ALTER TABLE lessons ADD COLUMN group_id TEXT`);
     if (!(await columnExists("reading_pages", "group_id"))) await execRaw(`ALTER TABLE reading_pages ADD COLUMN group_id TEXT`);
-    if (!(await columnExists("reading_pages", "file_size"))) await execRaw(`ALTER TABLE reading_pages ADD COLUMN file_size INTEGER NOT NULL DEFAULT 0`);
+    if (!(await columnExists("reading_pages", "file_size"))) await execRaw(`ALTER TABLE reading_pages ADD COLUMN file_size BIGINT NOT NULL DEFAULT 0`);
     for (const m of legacy) {
       const exists = await get(`SELECT id FROM content_groups WHERE id=?`, [m.id]);
       if (!exists) {
