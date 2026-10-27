@@ -1,7 +1,7 @@
 {
-  "name": "axiom-learn",
+  "name": "carnosec-learn",
   "version": "1.0.0",
-  "description": "Axiom — premium self-hosted learning platform",
+  "description": "CarnoSec — premium self-hosted learning platform",
   "type": "module",
   "main": "server/index.js",
   "scripts": {

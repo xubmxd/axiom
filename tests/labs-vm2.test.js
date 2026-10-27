@@ -117,11 +117,11 @@ describe("vm2 whois dataset", () => {
 });
 
 describe("runtime flags", () => {
-  it("mints unique Axiom-namespaced flags", async () => {
+  it("mints unique CarnoSec-namespaced flags", async () => {
     const svc = await import("../server/labs/service.js");
     const a = svc.mintFlagValue();
     const b = svc.mintFlagValue();
-    assert.match(a, /^AXIOM\{[0-9a-f]{32}\}$/);
+    assert.match(a, /^CARNOSEC\{[0-9a-f]{32}\}$/);
     assert.notEqual(a, b);
   });
 

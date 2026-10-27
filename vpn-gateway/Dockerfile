@@ -1,6 +1,6 @@
-# Axiom student VPN gateway: WireGuard endpoint that lab networks attach to.
+# CarnoSec student VPN gateway: WireGuard endpoint that lab networks attach to.
 # Lets personal Kali VMs reach their own lab targets directly (HTB/THM-style).
-# Minimal image: wireguard-tools + iptables only. The Axiom app drives this
+# Minimal image: wireguard-tools + iptables only. The CarnoSec app drives this
 # container via `docker exec` (wg peer management, per-student firewall rules)
 # exactly like it already drives lab networks through the Docker socket.
 FROM debian:bookworm-slim

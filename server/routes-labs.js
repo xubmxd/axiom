@@ -3,7 +3,7 @@
 // Pages (mounted at /):  GET /labs, GET /labs/:slug
 // API  (mounted at /api): /api/labs… (see below), /api/admin/lab-instances…
 //
-// Auth: all lab routes require an Axiom session (existing system — no new
+// Auth: all lab routes require a CarnoSec session (existing system — no new
 // login). Users may only control their own instances; admin-only ops are
 // explicitly gated. The browser is never trusted: every state change and
 // every submission is validated server-side, and runtime secrets
@@ -76,7 +76,7 @@ function readDefExtra(lab) {  try {
 // render byte-identically. Only https links are honored.
 function readDefResearch(lab) {
   const fallback = {
-    intro: "This exercise uses the live public web — the same surface the original investigation used. Each link opens in a new browser tab; nothing is embedded here. Perform the searches yourself, then return to Axiom to submit what you find.",
+    intro: "This exercise uses the live public web — the same surface the original investigation used. Each link opens in a new browser tab; nothing is embedded here. Perform the searches yourself, then return to CarnoSec to submit what you find.",
     links: [
       { label: "Open Google Search ↗", short: "Open Google ↗", url: "https://www.google.com", primary: true },
       { label: "Open MegaCorp One ↗", short: "Open MegaCorp One ↗", url: "https://www.megacorpone.com" },
@@ -322,7 +322,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
   // output: the Connection tab says so plainly instead of showing a fake
   // target, and no terminal card is rendered (there is nothing to run).
   const isTheory = lab.environment_type === "theory";
-  // Scanner labs (7.2.x) run the Axiom vulnerability scanner from the web
+  // Scanner labs (7.2.x) run the CarnoSec vulnerability scanner from the web
   // console: no attacker shell, no terminal card. 7.2.1 is theory-style and
   // 7.2.2 is the console without a range; the rest own a target range.
   const isScanner = lab.environment_type === "scanner";
@@ -414,7 +414,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
         ${isScanner ? `
         <section class="card tabpanel" role="tabpanel" id="panel-scanner" aria-labelledby="tab-scanner" tabindex="0" hidden>
           <h2>Vulnerability Scanner</h2>
-          <p class="dim small">The Axiom scanner (a purpose-built lab scanner, not Nessus). Configure scans below; results, findings, and sitemap pages appear here as scans complete.</p>
+          <p class="dim small">The CarnoSec scanner (a purpose-built lab scanner, not Nessus). Configure scans below; results, findings, and sitemap pages appear here as scans complete.</p>
           <div data-scanner="${esc(lab.id)}">
             <h3>Scan templates</h3>
             <div data-scanner-templates><p class="dim small">Start the lab to load templates.</p></div>
@@ -455,7 +455,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
           <p class="dim small">Answer from the scenarios and the course material. If the environment ever misbehaves, use Reset Lab in the status panel — it re-activates this workspace.</p>
           ` : isScanner ? `
           <div class="conn-grid" data-conn>
-            <div><p class="mono dim small">ENVIRONMENT</p><p><b>Axiom scanner range</b></p></div>
+            <div><p class="mono dim small">ENVIRONMENT</p><p><b>CarnoSec scanner range</b></p></div>
             <div><p class="mono dim small">NETWORK</p><p class="mono">${esc(inst?.networkCidr || "—")} <span class="dim">isolated lab network</span></p></div>
             <div><p class="mono dim small">ACCESS</p><p>Scanner tab (web console — no shell)</p></div>
           </div>
@@ -569,7 +569,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
             <div><p class="mono dim small">TYPE</p><p class="mono">${esc(lab.environment_type)}</p></div>
           </div>
           <h3>Report a problem</h3>
-          <p class="dim small">If the target misbehaves, reset the lab first (it rebuilds the environment). Still broken? Contact your Axiom administrator.</p>
+          <p class="dim small">If the target misbehaves, reset the lab first (it rebuilds the environment). Still broken? Contact your CarnoSec administrator.</p>
         </section>
 
         ${isTheory || isScanner ? "" : `
@@ -733,7 +733,7 @@ function ownOrAdmin(req, inst) {
 // Serialize lifecycle ops per user+lab. Docker calls take tens of seconds
 // and concurrent start/stop/reset on one instance interleaved into
 // Illegal-transition 500s ("fails once, works on retry"). Queued ops run
-// one at a time instead; single-process scope is sufficient for Axiom.
+// one at a time instead; single-process scope is sufficient for CarnoSec.
 const labLocks = new Map();
 export async function withLabLock(key, fn) {
   const prev = labLocks.get(key) || Promise.resolve();
@@ -902,7 +902,7 @@ labApi.post("/labs/:id/terminal", ah(async (req, res) => {  const lab = await re
   res.json({ ok: true, ...r });
 }));
 
-// ---------- Axiom vulnerability scanner (Module 7.2) ----------
+// ---------- CarnoSec vulnerability scanner (Module 7.2) ----------
 // Owner-scoped JSON API over the scanner engine. Findings expose genuine
 // evidence (that IS the exercise); validation metadata (expected hashes,
 // runtime secrets, answer fields) is never serialized here.

@@ -134,12 +134,12 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
   const navItem = (n) => `<li><a href="${n.href}" title="${n.label}" class="${active === n.id ? "on" : ""}"${active === n.id ? ` aria-current="page"` : ""}><span class="ni" aria-hidden="true">${n.icon}</span><span class="nl">${n.label}</span></a></li>`;
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Axiom</title>
-<meta name="description" content="Axiom — your calm, self-hosted learning workspace.">
-<meta property="og:title" content="${esc(title)} · Axiom">
-<link rel="icon" href="/img/logo.png" type="image/png">
-<link rel="apple-touch-icon" href="/img/logo.png">
-<meta property="og:image" content="/img/logo.png">
+<title>${esc(title)} · CarnoSec</title>
+<meta name="description" content="CarnoSec — your calm, self-hosted learning workspace.">
+<meta property="og:title" content="${esc(title)} · CarnoSec">
+<link rel="icon" href="/img/carno-sec.png" type="image/png">
+<link rel="apple-touch-icon" href="/img/carno-sec.png">
+<meta property="og:image" content="/img/carno-sec.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/app.css">
@@ -157,7 +157,7 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <div class="app">
 ${user ? `<aside class="appnav" id="appnav" aria-label="Primary">
 <div class="appnav-h">
-<a class="brand" href="/" aria-label="Axiom home" title="Axiom — Workspace"><img class="brand-logo" src="/img/logo.png" alt="" width="28" height="28" loading="eager" decoding="async"><span class="brand-name">Axiom</span></a>
+<a class="brand" href="/" aria-label="CarnoSec home" title="CarnoSec — Workspace"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="28" height="28" loading="eager" decoding="async"><span class="brand-name">CarnoSec</span></a>
 <button class="iconbtn appnav-collapse" id="appnavToggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="appnav">⟨</button>
 </div>
 <p class="brand-path mono" aria-hidden="true">learn &gt; practice &gt; progress</p>
@@ -167,7 +167,7 @@ ${wsNav.map(navItem).join("")}
 <nav aria-label="Account"><p class="nav-group mono" style="font-size:12px">Account</p><ul>
 ${acctNav.map(navItem).join("")}
 </ul></nav>
-<div class="appnav-foot"><p class="mono side-ver"><span class="sys" style="font-size:12px"><i aria-hidden="true"></i>systems online</span></p><p class="mono dim side-ver" style="font-size:12px">axiom · self-hosted · v1.0</p></div>
+<div class="appnav-foot"><p class="mono side-ver"><span class="sys" style="font-size:12px"><i aria-hidden="true"></i>systems online</span></p><p class="mono dim side-ver" style="font-size:12px">carno-sec · self-hosted · v1.0</p></div>
 </aside>` : ""}
 <div class="appmain">
 ${user ? `<header class="topbar"><div class="topbar-in">

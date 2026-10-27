@@ -114,7 +114,7 @@ pages.get("/login", (req, res) => {
   if (req.user) return res.redirect("/");
   res.send(layout({ title: "Sign in", user: null, body: `
   <div class="authwrap"><div class="authcard">
-    <div class="brand big"><img class="brand-logo" src="/img/logo.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">Axiom</span></div>
+    <div class="brand big"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">CarnoSec</span></div>
     <h1>Welcome back</h1><p class="dim">Sign in to your private learning workspace.</p>
     ${req.query.err ? `<div class="alert" role="alert">${esc(req.query.err)}</div>` : ""}
     <form method="post" action="/login" class="form">
@@ -133,7 +133,7 @@ pages.get("/invite/:token", async (req, res) => {
   const bad = !inv || inv.used_at || new Date(inv.expires_at) < new Date();
   res.send(layout({ title: "Accept invitation", user: null, body: `
   <div class="authwrap"><div class="authcard">
-    <div class="brand big"><img class="brand-logo" src="/img/logo.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">Axiom</span></div>
+    <div class="brand big"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">CarnoSec</span></div>
     ${bad ? `<h1>Invitation invalid</h1><p class="dim">This link is expired, already used, or never existed. Ask an admin for a fresh one.</p><a class="btn" href="/login">Back to sign in</a>`
     : `<h1>Create your account</h1><p class="dim">You've been invited${inv.email_hint ? ` as <b>${esc(inv.email_hint)}</b>` : ""} · role: <b>${esc(inv.role)}</b></p>
     ${req.query.err ? `<div class="alert">${esc(req.query.err)}</div>` : ""}
@@ -815,14 +815,14 @@ pages.get("/settings", needAuth, async (req, res) => {
     <button class="btn primary" type="submit">Save preferences</button></form>
   <section class="card sess" aria-labelledby="sessH">
     <h3 id="sessH">Session security</h3>
-    <p class="dim small sess-sub">You are currently signed in. Ending the session signs you out of Axiom on this browser.</p>
+    <p class="dim small sess-sub">You are currently signed in. Ending the session signs you out of CarnoSec on this browser.</p>
     <form method="post" action="/logout" id="signoutForm">
       <button class="btn danger" type="submit" id="signoutBtn">Sign out</button>
     </form>
     <p class="mono dim small sess-note">ends this session · you'll sign in again next visit</p>
     <dialog class="confirm" id="signoutDialog" aria-labelledby="soT">
       <h3 id="soT">Sign out?</h3>
-      <p class="dim small">You'll be signed out of Axiom and returned to the sign-in page.</p>
+      <p class="dim small">You'll be signed out of CarnoSec and returned to the sign-in page.</p>
       <div class="confirm-row">
         <button class="btn" type="button" id="soCancel">Cancel</button>
         <button class="btn danger" type="button" id="soConfirm">Sign out</button>

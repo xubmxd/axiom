@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const t = document.getElementById("navToggle"), m = document.getElementById("mobileNav");
   if (t && m) t.onclick = () => { const open = m.classList.toggle("open"); t.setAttribute("aria-expanded", String(open)); };
   // Desktop sidebar collapse. One toggle lives in the sidebar header in both
-  // states, so the Axiom mark stays a visible home anchor even collapsed.
+  // states, so the CarnoSec mark stays a visible home anchor even collapsed.
   // Preference persists per browser (no backend needed).
   const nt = document.getElementById("appnavToggle");
   if (nt) {

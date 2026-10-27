@@ -8,11 +8,11 @@ web
 
 ## Users
 
-Primarily a private cohort of invited learners being trained by the operator: they sign in through single-use admin invites, work through the operator's video and reading courses, and complete Cyber Range labs, sometimes from a Kali machine over the student WireGuard VPN. The operator also uses the platform themselves as an admin learner.
+Primarily a private cohort of invited learners being trained by the operator: they sign in through single-use admin invites, work through the operator's video and reading courses, and complete CarnoSec labs, sometimes from a Kali machine over the student WireGuard VPN. The operator also uses the platform themselves as an admin learner.
 
 ## Product Purpose
 
-Axiom is a self-hosted learning workspace that turns the operator's own downloaded course libraries into tracked learning: honest watch time and active reading time, per-lesson progress, streaks, and a contribution graph, plus an attached Cyber Range of isolated hands-on labs with objective/flag validation. Success means learners actually finish courses and labs, and every number the platform reports about that is genuine.
+CarnoSec is a self-hosted learning workspace that turns the operator's own downloaded course libraries into tracked learning: honest watch time and active reading time, per-lesson progress, streaks, and a contribution graph, plus an attached Cyber Range of isolated hands-on labs with objective/flag validation. Success means learners actually finish courses and labs, and every number the platform reports about that is genuine.
 
 ## Positioning
 
@@ -24,7 +24,7 @@ The curriculum is plain folders on the operator's disk, scanned into a private i
 - Accounts exist only via single-use, expiring admin invite links; roles are `admin` and `user`.
 - Learners study in a browser over home/LAN networks; lab targets run on isolated Docker networks (`LAB_PROVIDER=docker`, `local` for dev) or are reached through optional WireGuard packs so Kali can connect to lab subnets.
 - Deployment is local SQLite for zero-config runs or Docker Compose + PostgreSQL in production; environment variables configure ports, paths, thresholds, and VPN endpoints.
-- The repository folder is named `ctf-platform`, while the package, UI, and GitHub repository (`xubmxd/axiom`) use the name Axiom.
+- The repository folder is named `ctf-platform`, while the package, UI, and GitHub repository (`xubmxd/carnosec`) use the name CarnoSec.
 
 ## Capabilities and Constraints
 
@@ -35,17 +35,17 @@ The curriculum is plain folders on the operator's disk, scanned into a private i
 - Cyber Range: declarative `lab.json` definitions (`labs/`) placed into training paths/modules; lab workspace with instructions, graded hints, in-browser terminal and scanner tabs, notes, and objective submission with validation; new labs require only a definition file plus restart.
 - Optional student VPN (WireGuard) for reaching lab networks from Kali.
 - Constraints that must be preserved: self-hosted only (no cloud SaaS assumptions), invite-only access (no open registration), LAN/VPN-capable operation.
-- Open decision: the product name is not confirmed as a binding commitment — README/package/GitHub say "Axiom", the folder says "ctf-platform".
+- Open decision: the product name is not confirmed as a binding commitment — README/package/GitHub say "CarnoSec", the folder says "ctf-platform".
 
 ## Brand Commitments
 
-None confirmed as binding. "Axiom" is the current working name (README, `package.json`, GitHub `xubmxd/axiom`) with a logo asset at `logo.png`, but the user did not pin the name as a commitment; treat renaming as an open question rather than an invariant.
+None confirmed as binding. "CarnoSec" is the current working name (README, `package.json`, GitHub `xubmxd/carnosec`) with a logo asset at `carno-sec.png`, but the user did not pin the name as a commitment; treat renaming as an open question rather than an invariant.
 
 ## Evidence on Hand
 
 - Real course content: `courses/video/` and `courses/reading/`.
 - Seventeen complete lab definitions with targets, objectives, hints, and UI copy: `labs/module-06/` (OSINT/recon: whois, Google hacking, Netcraft, DNS, port scanning, nmap, SMB, SMTP, SNMP) and `labs/module-07/` (vulnerability scanning with Nessus), plus Docker build files in `lab-images/`.
-- Logo asset: `logo.png`.
+- Logo asset: `carno-sec.png`.
 - `README.md` documenting quick start, Docker deploy, configuration, and architecture.
 - Automated tests: `npm test` (scanner ordering, sanitizer/XSS, traversal guard, timezone day split, adaptive bands).
 - Absences future work must not fabricate: no DESIGN.md, no testimonials, customers, press, benchmarks, or pricing.

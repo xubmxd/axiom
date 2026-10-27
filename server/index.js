@@ -97,7 +97,7 @@ app.use("/", labPages);
 app.use("/", pages);
 
 app.use((req, res) => {
-  res.status(404).send("<!doctype html><title>Not found · Axiom</title><h1>Not found</h1><p>The page you requested doesn't exist.</p><a href='/'>Back home</a>");
+  res.status(404).send("<!doctype html><title>Not found · CarnoSec</title><h1>Not found</h1><p>The page you requested doesn't exist.</p><a href='/'>Back home</a>");
 });
 
 // error handler — never leak stacks

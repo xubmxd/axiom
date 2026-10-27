@@ -279,7 +279,7 @@ export async function migrate() {
       created_at TEXT NOT NULL,
       PRIMARY KEY(instance_id, objective_key)
     )`,
-    // Axiom vulnerability-scanner jobs (Module 7.2). One row per student
+    // CarnoSec vulnerability-scanner jobs (Module 7.2). One row per student
     // scan with its configuration; findings and sitemap pages hang off the
     // job. All rows are keyed to the owning instance and wiped on
     // stop/reset, so no scan state survives across sessions.

@@ -1,9 +1,9 @@
-/* Axiom design system — emerald instrument.
+/* CarnoSec design system — emerald instrument.
    Dark-mode-native, border-defined depth, mono technical labels.
    Direction: Supabase-inspired. No gradients, no glow, no decorative glyphs. */
 @import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap');
 :root{
-  /* surfaces — data-terminal mapped, Axiom branding where needed */
+  /* surfaces — data-terminal mapped, CarnoSec branding where needed */
   --bg:#171719;   /* data-terminal --ground */
   --bg2:#121212;  /* keep existing */
   --surface:#131217;  /* data-terminal */
@@ -18,7 +18,7 @@
   --text2:#8a8c92;  /* data-terminal --muted, better contrast */
   --muted:#8a8c92;  /* data-terminal */
   --muted2:#b4b4b4; /* data-terminal: passes 4.5:1 contrast on #171719 */
-  /* brand — Axiom's emerald accent (face choice: replaces style's blue) */
+  /* brand — CarnoSec's emerald accent (face choice: replaces style's blue) */
   --accent:#3ecf8e;   /* already correct */
   --accent-strong:#2fae76; /* keep existing */
   --accent-ink:#0f0f0f; /* keep existing */

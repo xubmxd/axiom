@@ -345,7 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// ---------- Axiom vulnerability scanner console (Module 7.2) ----------
+// ---------- CarnoSec vulnerability scanner console (Module 7.2) ----------
 // No-dependency renderer over the owner-scoped scanner API. Everything
 // below only runs when the server rendered a [data-scanner] shell.
 (() => {

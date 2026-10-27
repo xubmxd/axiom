@@ -1,6 +1,6 @@
 #!/bin/sh
-# Axiom VPN gateway entrypoint: bring up wg0, enforce a default-drop
-# forwarding policy, then idle. The Axiom app manages WireGuard peers and
+# CarnoSec VPN gateway entrypoint: bring up wg0, enforce a default-drop
+# forwarding policy, then idle. The CarnoSec app manages WireGuard peers and
 # per-student ACCEPT rules at runtime via `docker exec` (rules carry the
 # `axiom-vpn:` comment marker so they can be listed and purged safely).
 set -eu
@@ -56,7 +56,7 @@ fi
 
 # Default-drop forwarding inside this netns; return traffic always allowed.
 # Per-student rules are appended by the app: -i wg0 -s <client/32>
-# -d <own-target/32> (-p tcp / -p udp / -p icmp), tagged axiom-vpn:<user>.
+# -d <own-target/32> (-p tcp / -p udp / -p icmp), tagged carno-vpn:<user>.
 iptables -P FORWARD DROP 2>/dev/null || true
 iptables -C FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || \
   iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true

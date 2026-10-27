@@ -1,4 +1,4 @@
-# Axiom — Self-Hosted Learning Platform
+# CarnoSec — Self-Hosted Learning Platform
 
 A calm, premium, self-hosted learning workspace for your downloaded video & reading courses.
 Dark-first original design, custom video player, platform-native HTML reader, real learning
