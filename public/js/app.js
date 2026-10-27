@@ -64,9 +64,10 @@ document.addEventListener("DOMContentLoaded", () => {
       reopen.setAttribute("aria-expanded", String(!hidden));
       reopen.setAttribute("aria-label", hidden ? "Show course modules" : "Hide course modules");
     };
-    // Apply the post-selection collapsed state on mobile loads only; the
-    // initial visit (no stored intent) stays expanded.
-    try { if (isMobile() && read() === "hidden") learn.classList.add("side-hidden"); } catch {}
+    // Mobile starts collapsed so the lesson itself is above the fold; the
+    // breadcrumb "Modules" button reopens the tree. A stored "open" intent
+    // is respected on later loads.
+    try { if (isMobile() && read() !== "open") learn.classList.add("side-hidden"); } catch {}
     sync();
     st.onclick = () => {
       learn.classList.toggle("side-hidden");

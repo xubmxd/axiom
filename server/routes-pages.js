@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
-import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, emptyState, iconArt, PLAYER_ICONS } from "./views.js";
+import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, monthCalendarHtml, emptyState, iconArt, PLAYER_ICONS } from "./views.js";
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
@@ -114,7 +114,7 @@ pages.get("/login", (req, res) => {
   if (req.user) return res.redirect("/");
   res.send(layout({ title: "Sign in", user: null, body: `
   <div class="authwrap"><div class="authcard">
-    <div class="brand big"><span class="brand-mark">◈</span><span class="brand-name">Axiom</span></div>
+    <div class="brand big"><img class="brand-logo" src="/img/logo.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">Axiom</span></div>
     <h1>Welcome back</h1><p class="dim">Sign in to your private learning workspace.</p>
     ${req.query.err ? `<div class="alert" role="alert">${esc(req.query.err)}</div>` : ""}
     <form method="post" action="/login" class="form">
@@ -133,7 +133,7 @@ pages.get("/invite/:token", async (req, res) => {
   const bad = !inv || inv.used_at || new Date(inv.expires_at) < new Date();
   res.send(layout({ title: "Accept invitation", user: null, body: `
   <div class="authwrap"><div class="authcard">
-    <div class="brand big"><span class="brand-mark">◈</span><span class="brand-name">Axiom</span></div>
+    <div class="brand big"><img class="brand-logo" src="/img/logo.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">Axiom</span></div>
     ${bad ? `<h1>Invitation invalid</h1><p class="dim">This link is expired, already used, or never existed. Ask an admin for a fresh one.</p><a class="btn" href="/login">Back to sign in</a>`
     : `<h1>Create your account</h1><p class="dim">You've been invited${inv.email_hint ? ` as <b>${esc(inv.email_hint)}</b>` : ""} · role: <b>${esc(inv.role)}</b></p>
     ${req.query.err ? `<div class="alert">${esc(req.query.err)}</div>` : ""}
@@ -191,8 +191,8 @@ pages.get("/", needAuth, async (req, res) => {
   const progCount = inProg.length;
 
   const statDelta = delta === null
-    ? `<small class="mono dim">this week · ${fmtDur(weekVideo)} video · ${fmtDur(weekReading)} reading</small>`
-    : `<small><span class="${delta >= 0 ? "up" : "down"}">↑ ${Math.abs(delta)}%</span><span class="mono dim"> vs last week · ${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</span></small>`;
+    ? `<small class="mono">${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</small>`
+    : `<small><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> <span class="mono">${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</span></small>`;
 
   // ONE resume point: the single last-accessed item (or the empty state).
   // Completed items are never substituted — the action becomes "Revisit",
@@ -219,54 +219,61 @@ pages.get("/", needAuth, async (req, res) => {
   <div class="wrap ws">
     <section class="ws-head">
       <div class="ws-welcome">
-        <p class="eyebrow mono">Welcome back,</p>
+        <p class="eyebrow">Workspace</p>
         <h1>Good to see you, <span class="hl">${firstName}</span>.</h1>
-        <p class="dim ws-msg">${esc(msg)}</p>
+        <p class="ws-msg">${esc(msg)}</p>
       </div>
-      <div class="ws-date"><p class="mono dim"><span aria-hidden="true">◷</span> ${esc(todayLabel)}</p><p class="mono dim small">Keep going.</p></div>
+      <div class="ws-date"><p class="mono dim">${esc(todayLabel)}</p><p class="mono dim small">keep going</p></div>
     </section>
 
     <div class="ws-grid" data-cont="${contCount}" data-prog="${progCount}">
       <div class="ws-main">
         <div class="statrow" role="list" aria-label="Learning statistics">
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Learning Time</span><span class="stat-glyph" aria-hidden="true">▤</span></div><b>${fmtDur(weekSecs)}${delta !== null ? ` <span class="${delta >= 0 ? "up" : "down"} small">↑ ${Math.abs(delta)}%</span>` : ""}</b>${statDelta}</div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Current Streak</span><span class="stat-glyph" aria-hidden="true">◉</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small class="mono dim">Best: ${st.longest} day${st.longest === 1 ? "" : "s"}</small></div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Completed</span><span class="stat-glyph" aria-hidden="true">◆</span></div><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small class="mono dim">Out of ${courses.length}</small></div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono dim stat-label">Total Progress</span><span class="stat-glyph" aria-hidden="true">▅</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small class="mono dim">${allDone}/${allTotal} items</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Learning time</span></div><b>${fmtDur(weekSecs)}</b>${statDelta}</div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Current streak</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small class="mono">Best: ${st.longest} day${st.longest === 1 ? "" : "s"}</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Completed</span></div><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small class="mono">Out of ${courses.length}</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Total progress</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small class="mono">${allDone}/${allTotal} items</small></div>
         </div>
 
-  <section class="card act-card" aria-label="Activity">
-          <div class="act-head"><div><h2><span class="h-ic" aria-hidden="true">◐</span> Activity</h2><p class="dim small act-sub">Your learning activity over the last ${weeks} weeks.</p></div>
+        <section class="card act-card" aria-label="Activity">
+          <div class="act-head"><div><h2>Activity</h2><p class="act-sub mono dim">daily learning time</p></div>
           <form class="range" action="/" method="get"><select name="range" onchange="this.form.submit()" aria-label="Activity range">${[12, 26, 52].map((w) => `<option value="${w}" ${weeks === w ? "selected" : ""}>Last ${w} weeks</option>`).join("")}</select></form></div>
           <div class="act">
             <div class="act-main">${graphHtml(rows, bands, weeks)}</div>
             <aside class="act-side" aria-label="This week summary">
-              <p class="eyebrow mono">This week</p>
+              <p class="eyebrow">This week</p>
               <div class="act-stats">
-                <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">↑ ${Math.abs(delta)}%</em>` : ""}</b></div>
-                <div class="act-stat"><span class="mono dim">active days</span><b>${weekActive} / 7</b></div>
-                <div class="act-stat"><span class="mono dim">most active day</span><b>${mostActive}${bestSecs ? ` <em class="mono dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
+                <div class="act-stat"><span class="mono">learned</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
+                <div class="act-stat"><span class="mono">active days</span><b>${weekActive} / 7</b></div>
+                <div class="act-stat"><span class="mono">most active day</span><b>${mostActive}${bestSecs ? ` <em class="mono dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
               </div>
-              <p class="mono dim small act-quote">“Progress, not perfection.”</p>
+              <p class="mono dim small act-quote">progress, not perfection</p>
             </aside>
           </div>
         </section>
 
-        <section aria-label="In progress"><div class="sech"><h2><span class="h-ic" aria-hidden="true">◑</span> In Progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
+        <section aria-label="In progress"><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
         ${inProg.length ? `<div class="coursegrid" data-n="${Math.min(inProg.length, 6)}">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? "Something new is waiting in the library." : ""}</div>`}</section>
 
-        <section class="mantra" aria-hidden="true"><div><p class="mantra-a">A more capable you.</p><p class="mantra-b">One lesson at a time.</p></div><div class="mantra-r mono"><span>Consistency</span><span>creates excellence</span><i></i></div></section>
+        <a class="range-cta" href="/labs">
+          <div class="range-cta-body">
+            <p class="eyebrow">Cyber range</p>
+            <h2>Practice what you just learned.</h2>
+            <p>Isolated hands-on labs — start a target, interrogate it like a real engagement, submit what you find.</p>
+          </div>
+          <span class="range-cta-arrow" aria-hidden="true">→</span>
+        </a>
       </div>
 
       <div class="ws-rail">
-        <section class="card rail-card" aria-label="Continue learning"><div class="sech rail-head"><h2><span class="h-ic" aria-hidden="true">▣</span> Continue Learning</h2><a class="link" href="/library" aria-label="Browse library">→</a></div>
+        <section class="card rail-card" aria-label="Continue learning"><div class="sech rail-head"><h2>Continue learning</h2><a class="link" href="/library" aria-label="Browse library">→</a></div>
         ${continueRail}</section>
 
-        <section class="card rail-card" aria-label="Quick actions"><div class="sech rail-head"><h2><span class="h-ic" aria-hidden="true">▤</span> Quick Actions</h2></div>
+        <section class="card rail-card" aria-label="Quick actions"><div class="sech rail-head"><h2>Quick actions</h2></div>
         <div class="qal">
-          <a href="/library"><span><b>Browse Library</b><small class="mono dim">${courses.length} courses</small></span><span aria-hidden="true">→</span></a>
+          <a href="/library"><span><b>Browse library</b><small class="mono dim">${courses.length} courses</small></span><span aria-hidden="true">→</span></a>
           ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span><b>Resume learning</b><small class="mono dim">${esc(cont[0].title.slice(0, 34))}</small></span><span aria-hidden="true">→</span></a>` : ""}
-          ${u.role === "admin" ? `<a href="/admin"><span><b>Open Admin Console</b><small class="mono dim">system &amp; scanner</small></span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span><b>View Profile</b><small class="mono dim">stats &amp; activity</small></span><span aria-hidden="true">→</span></a>`}
+          ${u.role === "admin" ? `<a href="/admin"><span><b>Open admin console</b><small class="mono dim">system &amp; scanner</small></span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span><b>View profile</b><small class="mono dim">stats &amp; activity</small></span><span aria-hidden="true">→</span></a>`}
         </div></section>
       </div>
     </div>
@@ -275,12 +282,12 @@ pages.get("/", needAuth, async (req, res) => {
 
 function courseCard({ c, done, total, pct, lessons, pages }) {
   const kind = lessons > 0 && pages > 0 ? "mixed" : c.kind;
-  const code = esc(String(c.dir_name || c.kind || "").toUpperCase().replace(/[-_]+/g, " ").slice(0, 18) || kind);
+  const counts = [lessons ? `${lessons} lesson${lessons === 1 ? "" : "s"}` : "", pages ? `${pages} page${pages === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") || `${total} items`;
   return `<a class="ccard" href="/courses/${c.id}">
-    <div class="ccard-art">${iconArt(c, 56)}</div>
-    <div class="ccard-b"><div class="ccard-t"><span class="mono dim small ccard-code">${code}</span><span class="pill ${kind}">${kind}</span></div>
+    <div class="ccard-art">${iconArt(c, 48)}</div>
+    <div class="ccard-b"><div class="ccard-t"><span class="mono ccard-code">${esc(kind)} course</span><span class="pill ${kind}">${kind}</span></div>
     <h3>${esc(c.title)}</h3>
-    ${progressBar(pct, c.title)}<p class="mono dim small ccard-meta"><span>${Math.round(pct)}%</span><span>${done} / ${total} items</span></p></div></a>`;
+    ${progressBar(pct, c.title)}<p class="mono ccard-meta"><span>${Math.round(pct)}%</span><span>${counts}</span></p></div></a>`;
 }
 
 // ---------- Library ----------
@@ -314,17 +321,34 @@ pages.get("/library", needAuth, async (req, res) => {
   else if (sort === "progress") list.sort((a, b) => b.pct - a.pct);
   else list.sort((a, b) => (a.c.updated_at < b.c.updated_at ? 1 : -1));
 
+  // Filter links keep the other dimensions intact (search, type, sort).
+  const qs = (over = {}) => {
+    const params = new URLSearchParams();
+    const merged = { q: req.query.q || "", f, kind, sort, ...over };
+    for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
+    const s = params.toString();
+    return s ? `/library?${s}` : "/library";
+  };
+
   res.send(layout({ title: "Library", user: u, active: "library", body: `
   <div class="wrap">
-    <div class="sech"><div><p class="eyebrow mono">library · ${list.length} courses</p><h1>Course library</h1></div></div>
+    <div class="sech"><div><p class="eyebrow">library · ${list.length} courses</p><h1>Course library</h1></div></div>
     <form class="toolbar" method="get" action="/library">
       <input class="search" name="q" placeholder="Search courses, lessons, pages…" value="${esc(req.query.q || "")}">
-      <div class="chips">
-        ${["all", "progress", "todo", "done"].map((x) => `<button name="f" value="${x}" class="chip ${f === x ? "on" : ""}">${{ all: "All", progress: "In progress", todo: "Not started", done: "Completed" }[x]}</button>`).join("")}
-        <span class="sep"></span>
-        ${["all", "video", "reading"].map((x) => `<button name="kind" value="${x}" class="chip ${kind === x ? "on" : ""}">${x === "all" ? "Both" : x[0].toUpperCase() + x.slice(1)}</button>`).join("")}
-        <input type="hidden" name="sort" value="${esc(sort)}">
+      <div class="filter-group"><span class="filter-label">status</span>
+        ${["all", "progress", "todo", "done"].map((x) => `<a href="${qs({ f: x })}" class="chip ${f === x ? "on" : ""}"${f === x ? ` aria-current="true"` : ""}>${{ all: "All", progress: "In progress", todo: "Not started", done: "Completed" }[x]}</a>`).join("")}
       </div>
+      <div class="filter-group"><span class="filter-label">type</span>
+        ${["all", "video", "reading"].map((x) => `<a href="${qs({ kind: x })}" class="chip ${kind === x ? "on" : ""}"${kind === x ? ` aria-current="true"` : ""}>${x === "all" ? "All types" : x[0].toUpperCase() + x.slice(1)}</a>`).join("")}
+      </div>
+      <label class="sortwrap"><span class="filter-label">sort</span>
+        <select name="sort" onchange="this.form.submit()" aria-label="Sort courses">
+          <option value="recent" ${sort === "recent" ? "selected" : ""}>Recent</option>
+          <option value="name" ${sort === "name" ? "selected" : ""}>Name</option>
+          <option value="progress" ${sort === "progress" ? "selected" : ""}>Progress</option>
+        </select>
+      </label>
+      <input type="hidden" name="f" value="${esc(f)}"><input type="hidden" name="kind" value="${esc(kind)}">
     </form>
     ${list.length ? `<div class="coursegrid">${list.map(courseCard).join("")}</div>`
       : emptyState(q ? "No courses found" : "Your library is empty", q ? "Try another search or clear the filters." : "Add courses to the configured course directory and they'll appear here.")}
@@ -368,7 +392,7 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
       <div class="crow"><div class="cfill">${progressBar(p.pct, c.title)}<span class="dim small">${Math.round(p.pct)}% · ${p.done}/${p.total}</span></div>
       ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"} →</a>` : ""}</div></div>
     </section>
-    ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} learned · ${comp.items_done}/${comp.items_total} items</p></div><span class="seal">◆ 100%</span></div>` : ""}
+    ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} learned · ${comp.items_done}/${comp.items_total} items</p></div><span class="seal">100% complete</span></div>` : ""}
     ${flatLessons.length ? bulkBarHTML("card") : ""}
     ${p.total === 0 ? emptyState("No lessons indexed", "The course folder has no recognised video, reading or resource files yet.") : renderDetailTree(tree)}
   </div>` }));
@@ -574,7 +598,7 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
         ${next ? `<a class="btn primary" id="nextLink" href="/learn/video/${next.id}">${esc(next.title.slice(0, 28))} →</a>` : `<span></span>`}
       </div>
       ${files.length ? `<div class="attach"><p class="mono dim small">ATTACHED FILES</p><div class="lrow">${files.map((f) => `<a class="btn xs" href="/media/${l.course_id}/resource/${f.id}">⧉ ${esc(f.title)} <span class="dim">· ${esc(f.kind)}</span></a>`).join("")}</div></div>` : ""}
-      <p class="dim small mono" data-next-id="${next?.id || ""}" data-prev-id="${prev?.id || ""}">space/k play · ←/→ 5s · f fullscreen · m mute · p PiP · resume saves automatically</p>
+      <p class="dim small mono keys-hint" data-next-id="${next?.id || ""}" data-prev-id="${prev?.id || ""}">space/k play · ←/→ 5s · f fullscreen · m mute · p PiP · resume saves automatically</p>
     </div>
   </div>` }));
 });
@@ -710,6 +734,7 @@ pages.get("/profile", needAuth, async (req, res) => {
   const u = req.user;
   const tot = await totals(u.id);
   const st = await streaks(u.id, req.tzOffset);
+  const totalCourses = (await get(`SELECT COUNT(*) AS n FROM courses`))?.n || 0;
   const rows = await yearActivity(u.id);
   const bands = intensityLevels(rows);
   // Profile activity is scoped to the current month (user timezone).
@@ -725,7 +750,7 @@ pages.get("/profile", needAuth, async (req, res) => {
   const monthBestSecs = monthBest ? ((monthBest.video_secs || 0) + (monthBest.reading_secs || 0)) : 0;
   const monthMeta = `${monthName} · ${fmtDur(monthSecs)} learned · ${monthActive} active day${monthActive === 1 ? "" : "s"} · ${fmtDur(monthVideo)} video · ${fmtDur(monthReading)} reading`;
   const profActivity = rows.length ? `<div class="act">
-      <div class="act-main">${graphHtml(rows, bands, "month")}</div>
+      <div class="act-main">${monthCalendarHtml(rows, bands)}</div>
       <aside class="act-side" aria-label="This month summary">
         <p class="eyebrow mono">This month</p>
         <div class="act-stats">
@@ -740,13 +765,13 @@ pages.get("/profile", needAuth, async (req, res) => {
   <div><h1>${esc(u.display_name)}</h1><p class="dim mono small">@${esc(u.username)} · ${esc(u.email)} · ${esc(u.role)}</p></div>
   <a class="btn" href="/settings">Settings</a></div>
   <div class="statrow">
-    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Total learned</span><span class="stat-glyph" aria-hidden="true">▤</span></div><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b><small class="mono dim">${fmtDur(tot.videoSecs)} video · ${fmtDur(tot.readingSecs)} reading</small></div>
-    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Current streak</span><span class="stat-glyph" aria-hidden="true">◉</span></div><b>${st.current}d</b><small class="mono dim">longest ${st.longest}d</small></div>
-    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Courses done</span><span class="stat-glyph" aria-hidden="true">◆</span></div><b>${tot.coursesCompleted}</b></div>
-    <div class="stat"><div class="stat-top"><span class="mono dim stat-label">Lessons done</span><span class="stat-glyph" aria-hidden="true">✓</span></div><b>${tot.completions}</b></div>
+    <div class="stat"><div class="stat-top"><span class="mono stat-label">Total learned</span></div><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b><small class="mono">${fmtDur(tot.videoSecs)} video · ${fmtDur(tot.readingSecs)} reading</small></div>
+    <div class="stat"><div class="stat-top"><span class="mono stat-label">Current streak</span></div><b>${st.current}d</b><small class="mono">longest ${st.longest}d</small></div>
+    <div class="stat"><div class="stat-top"><span class="mono stat-label">Courses done</span></div><b>${tot.coursesCompleted}</b><small class="mono">of ${totalCourses}</small></div>
+    <div class="stat"><div class="stat-top"><span class="mono stat-label">Lessons done</span></div><b>${tot.completions}</b><small class="mono">all time</small></div>
   </div>
   <section class="card act-card prof-act" aria-label="Activity">
-    <div class="act-head"><div><h2><span class="h-ic" aria-hidden="true">◐</span> Activity</h2><p class="dim small act-sub mono">${monthMeta}</p></div></div>
+    <div class="act-head"><div><h2>Activity</h2><p class="act-sub mono dim">${monthMeta}</p></div></div>
     ${profActivity}
   </section>
   </div>` }));
@@ -886,13 +911,13 @@ pages.get("/admin", needAdmin, async (req, res) => {
     <td class="nowrap"><button class="btn xs" data-root-toggle="${r.id}">${r.is_active ? "Pause" : "Enable"}</button> <button class="btn xs danger" data-root-del="${r.id}" data-label="${esc(r.label || r.path)}">Remove</button></td></tr>`).join("");
   res.send(layout({ title: "Admin", user: req.user, active: "admin", body: `<div class="wrap wide">
   <p class="eyebrow mono">admin console</p><h1>System overview</h1>
-  <div class="statrow">
-    <div class="stat"><span class="mono dim">users</span><b>${tu.n}</b></div>
-    <div class="stat"><span class="mono dim">courses</span><b>${tc.n}</b></div>
-    <div class="stat"><span class="mono dim">libraries</span><b>${roots.length}</b></div>
-    <div class="stat"><span class="mono dim">items</span><b>${tl.n || 0}</b></div>
-    <div class="stat"><span class="mono dim">learned</span><b>${fmtDur(tt.s || 0)}</b></div>
-    <div class="stat"><span class="mono dim">storage</span><b>${esc(storage)}</b></div>
+  <div class="statrow six">
+    <div class="stat"><span class="mono stat-label">users</span><b>${tu.n}</b></div>
+    <div class="stat"><span class="mono stat-label">courses</span><b>${tc.n}</b></div>
+    <div class="stat"><span class="mono stat-label">libraries</span><b>${roots.length}</b></div>
+    <div class="stat"><span class="mono stat-label">items</span><b>${tl.n || 0}</b></div>
+    <div class="stat"><span class="mono stat-label">learned</span><b>${fmtDur(tt.s || 0)}</b></div>
+    <div class="stat"><span class="mono stat-label">storage</span><b>${esc(storage)}</b></div>
   </div>
   <div class="admin-grid">
   <section class="card"><div class="sech"><h2>Scanner</h2><span class="pill ${scan.last_status === "ok" ? "reading" : "video"}">${esc(scan.last_status)}</span></div>
@@ -915,7 +940,7 @@ pages.get("/admin", needAdmin, async (req, res) => {
     <td>${x.id !== req.user.id ? `<button class="btn xs" data-act="${x.status === "active" ? "disable" : "enable"}" data-id="${x.id}">${x.status === "active" ? "Disable" : "Enable"}</button>` : `<span class="dim small">you</span>`}</td></tr>`).join("")}
     </tbody></table></div>
     <h3>Invitations</h3>
-    <form id="invForm" class="lrow"><input name="email_hint" placeholder="email hint (optional)"><select name="role"><option>user</option><option>admin</option></select><button class="btn primary">Generate invitation</button></form>
+    <form id="invForm" class="lrow invform"><input name="email_hint" placeholder="email hint (optional)"><select name="role"><option>user</option><option>admin</option></select><button class="btn primary">Generate invitation</button></form>
     <div id="invOut"></div>
     <ul class="llist small">${invs.map((i) => `<li><span class="mono small">${esc(i.id.slice(0, 12))}… · ${esc(i.role)} · ${i.used_at ? "used" : "open"} · exp ${esc(i.expires_at.slice(0, 10))}</span></li>`).join("")}</ul></section>
   </div>

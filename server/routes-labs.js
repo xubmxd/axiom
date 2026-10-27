@@ -135,21 +135,35 @@ labPages.get("/labs", needAuthPage, ah(async (req, res) => {
   }
   res.send(layout({
     title: "Cyber Range", user: u, active: "labs",
-    body: `<div class="wrap narrow">
-      <p class="eyebrow mono">cyber range</p>
-      <h1>Practical cybersecurity training environments.</h1>
-      <p class="dim" style="max-width:70ch">Choose a training path. Isolated hands-on labs — start a target, interrogate it like a real engagement, submit what you find.</p>
-      ${enriched.length ? `<div class="courselist">${enriched.map(({ course, moduleCount, progress }) => `
-        <a class="ccard coursecard" href="/labs/${esc(course.slug)}">
-          <div class="ccard-art">${labCourseArt(course, 56)}</div>
-          <div class="ccard-b">
-            <div class="ccard-t"><span class="mono dim small ccard-code">training path</span><span class="mono dim small">${progress.completed}/${progress.total} completed</span></div>
-            <h3>${esc(course.title)}</h3>
-            ${course.subtitle ? `<p class="dim small lab-desc">${esc(course.subtitle)}</p>` : ""}
-            <div class="pbar" role="progressbar" aria-valuenow="${progress.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(course.title)} progress"><i style="width:${progress.pct}%"></i></div>
-            <p class="mono dim small ccard-meta"><span>${moduleCount} module${moduleCount === 1 ? "" : "s"} · ${progress.total} lab${progress.total === 1 ? "" : "s"}</span><span class="link">View Labs →</span></p>
-          </div></a>`).join("")}</div>`
-        : emptyState("No training paths yet", "Labs appear here once definitions are registered.", u.role === "admin" ? `<a class="btn primary" href="/admin">Open Admin</a>` : "")}
+    body: `<div class="wrap range-landing">
+      <header class="range-hero">
+        <p class="eyebrow">cyber range</p>
+        <h1>Practical cybersecurity training environments.</h1>
+        <p class="range-lede">Choose a training path. Isolated hands-on labs — start a target, interrogate it like a real engagement, submit what you find.</p>
+        <p class="range-meta mono">isolated networks · real targets · flag validation</p>
+      </header>
+      <div class="range-grid">
+        <section class="range-paths" aria-label="Training paths">
+          <div class="sech"><h2>Training paths</h2><span class="mono dim small">${enriched.length} available</span></div>
+          ${enriched.length ? `<div class="courselist">${enriched.map(({ course, moduleCount, progress }) => `
+            <a class="ccard coursecard" href="/labs/${esc(course.slug)}">
+              <div class="ccard-art">${labCourseArt(course, 56)}</div>
+              <div class="ccard-b">
+                <div class="ccard-t"><span class="mono ccard-code">training path</span><span class="mono dim small">${progress.completed}/${progress.total} completed</span></div>
+                <h3>${esc(course.title)}</h3>
+                ${course.subtitle ? `<p class="dim small lab-desc">${esc(course.subtitle)}</p>` : ""}
+                <div class="pbar" role="progressbar" aria-valuenow="${progress.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(course.title)} progress"><i style="width:${progress.pct}%"></i></div>
+                <p class="mono ccard-meta"><span>${moduleCount} module${moduleCount === 1 ? "" : "s"} · ${progress.total} lab${progress.total === 1 ? "" : "s"}</span><span class="link">View labs →</span></p>
+              </div></a>`).join("")}</div>`
+            : emptyState("No training paths yet", "Labs appear here once definitions are registered.", u.role === "admin" ? `<a class="btn primary" href="/admin">Open Admin</a>` : "")}
+        </section>
+        <aside class="range-how" aria-label="How the range works">
+          <p class="eyebrow">How it works</p>
+          <div class="range-step"><span class="mono">01</span><div><h3>Start a target</h3><p>Launch an isolated lab network, scoped to your account and separate from every other student.</p></div></div>
+          <div class="range-step"><span class="mono">02</span><div><h3>Interrogate it</h3><p>Use the built-in terminal to enumerate, exploit, and capture evidence. No host shell, no shared state.</p></div></div>
+          <div class="range-step"><span class="mono">03</span><div><h3>Submit the flag</h3><p>Prove the finding. A correct flag completes the lab and feeds your range progress.</p></div></div>
+        </aside>
+      </div>
     </div>`,
   }));
 }));
@@ -369,7 +383,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
       <aside class="labrail" aria-label="Lab status and progress">
         <section class="card" aria-label="Lab status">
           <div class="sech"><h2>Lab Status</h2><span data-status-pill>${statusPill(inst?.status || "stopped")}</span></div>
-          <p class="mono lab-elapsed" data-elapsed>${inst?.startedAt ? "…" : "Not running"}</p>
+          <p class="mono lab-elapsed${inst?.startedAt ? " running" : " stopped"}" data-elapsed>${inst?.startedAt ? "…" : "Not running"}</p>
           <h3 class="rail-h">${isOsint ? "Environment" : "Target Information"}</h3>
           <dl class="kv">
             ${isOsint ? `

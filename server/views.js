@@ -75,7 +75,7 @@ export function labCourseArt(course, size = 56) {
   let hit = null;
   try { hit = course?.slug ? findLabCourseIcon(course.slug) : null; } catch { hit = null; }
   if (hit) return `<img class="art" src="/media/lab-course/${esc(course.slug)}" alt="" width="${size}" height="${size}" loading="lazy">`;
-  return `<div class="art art-fallback lab-art" aria-hidden="true"><span>◈</span></div>`;
+  return `<div class="art art-fallback lab-art" aria-hidden="true"><span>&gt;_</span></div>`;
 }
 
 const ICONS = {
@@ -137,16 +137,18 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <title>${esc(title)} · Axiom</title>
 <meta name="description" content="Axiom — your calm, self-hosted learning workspace.">
 <meta property="og:title" content="${esc(title)} · Axiom">
-<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/img/logo.png" type="image/png">
+<link rel="apple-touch-icon" href="/img/logo.png">
+<meta property="og:image" content="/img/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/app.css">${extraHead}</head>
 <body data-user-tz="${esc(user?.timezone || "UTC")}">
 <a class="skip" href="#main">Skip to content</a>
 <div class="app">
 ${user ? `<aside class="appnav" id="appnav" aria-label="Primary">
 <div class="appnav-h">
-<a class="brand" href="/" aria-label="Axiom home" title="Axiom — Workspace"><span class="brand-mark" aria-hidden="true">◈</span><span class="brand-name">Axiom</span></a>
+<a class="brand" href="/" aria-label="Axiom home" title="Axiom — Workspace"><img class="brand-logo" src="/img/logo.png" alt="" width="28" height="28" loading="eager" decoding="async"><span class="brand-name">Axiom</span></a>
 <button class="iconbtn appnav-collapse" id="appnavToggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="appnav">⟨</button>
 </div>
 <p class="brand-path mono" aria-hidden="true">learn &gt; practice &gt; progress</p>
@@ -156,14 +158,14 @@ ${wsNav.map(navItem).join("")}
 <nav aria-label="Account"><p class="nav-group mono">Account</p><ul>
 ${acctNav.map(navItem).join("")}
 </ul></nav>
-<div class="appnav-foot"><p class="side-quote">“Disciplined learning<br>builds freedom.”<span>— Axiom</span></p><p class="mono dim side-ver">axiom · self-hosted · v1.0</p></div>
+<div class="appnav-foot"><p class="mono side-ver"><span class="sys"><i aria-hidden="true"></i>systems online</span></p><p class="mono dim side-ver">axiom · self-hosted · v1.0</p></div>
 </aside>` : ""}
 <div class="appmain">
-<header class="topbar"><div class="topbar-in">
-${user ? `<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button></div>
+${user ? `<header class="topbar"><div class="topbar-in">
+<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button></div>
 <form class="tsearch" action="/library" method="get" role="search">
 <span class="ts-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span>
-<input name="q" placeholder="Search courses, topics, or notes…" aria-label="Search courses, lessons, pages" autocomplete="off">
+<input name="q" placeholder="Search the library…" aria-label="Search courses, lessons, pages" autocomplete="off">
 <kbd title="Focus search">Ctrl K</kbd>
 </form>
 <div class="top-actions">
@@ -176,12 +178,12 @@ ${user ? `<div class="topbar-left"><button class="iconbtn only-mobile" id="navTo
 <form method="post" action="/logout"><button type="submit">Sign out</button></form>
 </div>
 </details>
-</div>` : `<a class="brand" href="/" aria-label="Axiom home"><span class="brand-mark" aria-hidden="true">◈</span><span class="brand-name">Axiom</span></a>`}
 </div>
-${user ? `<nav class="mobilenav" id="mobileNav" aria-label="Mobile">${allNav.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<form method="post" action="/logout"><button>Sign out</button></form></nav>` : ""}
-</header>
+</div>
+<nav class="mobilenav" id="mobileNav" aria-label="Mobile">${allNav.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<form method="post" action="/logout"><button>Sign out</button></form></nav>
+</header>` : ""}
 <main id="main" class="main">${body}</main>
-<footer class="foot"><span class="mono dim">axiom · v1.0 · self-hosted</span><span class="mono sys"><i aria-hidden="true"></i>All systems online</span></footer>
+<footer class="foot"><span class="mono dim">axiom · v1.0 · self-hosted</span></footer>
 </div>
 </div>
 <div id="toasts" aria-live="polite"></div>
@@ -254,7 +256,37 @@ export function graphHtml(rows, bands, range = 52) {
 }
 
 export function emptyState(title, hint, cta = "") {
-  return `<div class="empty"><div class="empty-mark" aria-hidden="true">◇</div><h3>${esc(title)}</h3><p>${esc(hint)}</p>${cta}</div>`;
+  return `<div class="empty"><div class="empty-mark" aria-hidden="true">&gt;_</div><h3>${esc(title)}</h3><p>${esc(hint)}</p>${cta}</div>`;
+}
+
+// Month view: a real 7-column calendar with day numbers. The week-strip
+// heatmap is great for a year, but a single month renders as a tiny cluster
+// of columns — a calendar reads better and fills the card.
+export function monthCalendarHtml(rows, bands) {
+  const today = new Date();
+  const y = today.getUTCFullYear(), m = today.getUTCMonth();
+  const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const startPad = new Date(Date.UTC(y, m, 1)).getUTCDay();
+  const monthName = new Date(Date.UTC(y, m, 1)).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const byDay = new Map(rows.map((r) => [r.day, (r.video_secs || 0) + (r.reading_secs || 0)]));
+  const comp = new Map(rows.map((r) => [r.day, r.completions || 0]));
+  const vids = new Map(rows.map((r) => [r.day, r.video_secs || 0]));
+  const reads = new Map(rows.map((r) => [r.day, r.reading_secs || 0]));
+  const WD = ["S", "M", "T", "W", "T", "F", "S"];
+  let html = `<div class="cal" role="img" aria-label="Learning activity, ${esc(monthName)}"><div class="cal-head" aria-hidden="true">${WD.map((d) => `<span>${d}</span>`).join("")}</div><div class="cal-grid">`;
+  for (let i = 0; i < startPad; i++) html += `<span class="cal-pad" aria-hidden="true"></span>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+    const tot = byDay.get(iso) || 0;
+    const lv = levelFor(tot, bands);
+    const dt = new Date(iso + "T12:00:00Z").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    const tipLines = [`${fmtDur(tot)} learned`, `${fmtDur(vids.get(iso) || 0)} video · ${fmtDur(reads.get(iso) || 0)} reading`];
+    if (comp.get(iso)) tipLines.push(`${comp.get(iso)} completed`);
+    const tip = `${dt}\n${tipLines.join("\n")}`;
+    html += `<span class="cal-cell lv${lv}" data-tip="${esc(tip)}" tabindex="0"><b>${d}</b></span>`;
+  }
+  html += `</div><div class="graph-legend mono"><span>Less</span><span class="cal-dot lv0"></span><span class="cal-dot lv1"></span><span class="cal-dot lv2"></span><span class="cal-dot lv3"></span><span class="cal-dot lv4"></span><span>More</span></div></div>`;
+  return html;
 }
 
 export { iconArt };
