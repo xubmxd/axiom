@@ -408,3 +408,99 @@ export async function allActiveInstances() {
   const ph = ACTIVE_STATUSES.map(() => "?").join(",");
   return all(`SELECT li.*, l.slug lab_slug, l.title lab_title, lc.slug lab_course_slug, u.username FROM lab_instances li JOIN labs l ON l.id=li.lab_id LEFT JOIN lab_courses lc ON lc.id=l.course_id JOIN users u ON u.id=li.user_id WHERE li.status IN (${ph}) ORDER BY li.updated_at DESC`, [...ACTIVE_STATUSES]);
 }
+
+// ---------- vulnerability-scanner state (Module 7.2) ----------
+// Scan jobs, findings, and sitemap pages are per-instance runtime state:
+// created by scan runs, read back through the owner-scoped scanner API,
+// and wiped on stop/reset. Findings carry student-observable evidence
+// only — never validator answers or runtime secrets.
+export async function createScanJob({ instanceId, labId, userId, name, template, targets, ports, authUser, assessment, pluginFilter }) {
+  const now = nowIso();
+  const id = uid("sj");
+  await run(`INSERT INTO lab_scan_jobs(id, instance_id, lab_id, user_id, name, template, targets_json, ports_json, auth_user, assessment_json, plugin_filter, status, progress, error, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, instanceId, labId, userId, String(name || "").slice(0, 80), template || "basic",
+      JSON.stringify(targets || []), JSON.stringify(ports || []), String(authUser || "").slice(0, 80),
+      JSON.stringify(assessment || {}), String(pluginFilter || "").slice(0, 120), "queued", 0, "", now, now]);
+  return getScanJob(id);
+}
+
+export async function getScanJob(id) {
+  return get(`SELECT * FROM lab_scan_jobs WHERE id=?`, [id]);
+}
+
+export async function listScanJobs(instanceId) {
+  return all(`SELECT * FROM lab_scan_jobs WHERE instance_id=? ORDER BY created_at DESC`, [instanceId]);
+}
+
+export async function updateScanJob(id, patch) {
+  const job = await getScanJob(id);
+  if (!job) return null;
+  const next = {
+    status: patch.status ?? job.status,
+    progress: patch.progress ?? job.progress,
+    error: patch.error ?? job.error,
+  };
+  await run(`UPDATE lab_scan_jobs SET status=?, progress=?, error=?, updated_at=? WHERE id=?`,
+    [next.status, next.progress, next.error, nowIso(), id]);
+  return getScanJob(id);
+}
+
+export async function addScanFinding(jobId, instanceId, f) {
+  const now = nowIso();
+  const id = uid("sf");
+  await run(`INSERT INTO lab_scan_findings(id, job_id, instance_id, plugin_id, plugin_name, family, severity, target_ip, port, protocol, title, description, evidence, details_json, remediation, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, jobId, instanceId, f.pluginId || "", f.pluginName || "", f.family || "", f.severity || "",
+      f.targetIp || "", f.port || 0, f.protocol || "tcp", f.title || "", f.description || "",
+      f.evidence || "", JSON.stringify(f.details || {}), f.remediation || "", now]);
+  return get(`SELECT * FROM lab_scan_findings WHERE id=?`, [id]);
+}
+
+export async function listScanFindings(jobId) {
+  return all(`SELECT * FROM lab_scan_findings WHERE job_id=? ORDER BY severity DESC, target_ip ASC, port ASC`, [jobId]);
+}
+
+export async function getScanFinding(id) {
+  return get(`SELECT * FROM lab_scan_findings WHERE id=?`, [id]);
+}
+
+export async function addSitemapPage(jobId, instanceId, p) {
+  const now = nowIso();
+  const id = uid("sp");
+  await run(`INSERT INTO lab_sitemap_pages(id, job_id, instance_id, target_ip, port, url, path, status, title, links_json, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, jobId, instanceId, p.targetIp || "", p.port || 0, String(p.url || "").slice(0, 500),
+      String(p.path || "").slice(0, 200), p.status || 0, String(p.title || "").slice(0, 200),
+      JSON.stringify(p.links || []), now]);
+  return get(`SELECT * FROM lab_sitemap_pages WHERE id=?`, [id]);
+}
+
+export async function listSitemapPages(jobId) {
+  return all(`SELECT id, job_id, instance_id, target_ip, port, url, path, status, title, links_json FROM lab_sitemap_pages WHERE job_id=? ORDER BY target_ip ASC, path ASC`, [jobId]);
+}
+
+export async function clearScannerState(instanceId) {
+  if (!instanceId) return;
+  await run(`DELETE FROM lab_sitemap_pages WHERE instance_id=?`, [instanceId]);
+  await run(`DELETE FROM lab_scan_findings WHERE instance_id=?`, [instanceId]);
+  await run(`DELETE FROM lab_scan_jobs WHERE instance_id=?`, [instanceId]);
+}
+
+// Per-instance SSH password for authenticated scans (7.2.5). Minted once
+// per instance in the runtime-secret store under a non-objective key
+// (never validated as an answer), shown only in the owner's Connection
+// tab, cleared with the instance. Deliberately NOT flag-formatted so it
+// can never be mistaken for a submittable flag.
+export async function ensureSshPassword({ instanceId, labId = "", userId = "" }) {
+  const ex = await getRuntimeFlag(instanceId, "ssh-password");
+  if (ex?.flag_value) return ex.flag_value;
+  const password = `scan-${crypto.randomBytes(8).toString("hex")}`;
+  const now = nowIso();
+  const cols = `(instance_id, objective_key, lab_id, user_id, flag_value, flag_hash, created_at)`;
+  const vals = [instanceId, "ssh-password", labId, userId, password, hashAnswer(password, "exact"), now];
+  if (isPg()) {
+    await run(`INSERT INTO lab_runtime_flags${cols} VALUES(?,?,?,?,?,?,?) ON CONFLICT (instance_id, objective_key) DO NOTHING`, vals);
+  } else {
+    await run(`INSERT OR IGNORE INTO lab_runtime_flags${cols} VALUES(?,?,?,?,?,?,?)`, vals);
+  }
+  const row = await getRuntimeFlag(instanceId, "ssh-password");
+  return row?.flag_value || "";
+}

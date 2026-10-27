@@ -1,0 +1,1121 @@
+{
+ "url": "http://127.0.0.1:3200/",
+ "at": "2026-10-27T08:48:05.574Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.74,
+    0.75
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 1056,
+     "screens": 1.2,
+     "words": 210,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 8,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 34,
+     "vw": 2.3,
+     "font": "Public Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 111,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "lines": 1,
+     "size": 33.6,
+     "font": "Public Sans"
+    },
+    "headings": [
+     {
+      "text": "Good to see you, vortex.",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "Public Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.24,
+      "top": 111,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Public Sans",
+       "share": 0.53,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.47,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      24,
+      34
+     ],
+     "sizeCount": 11,
+     "notLoaded": [],
+     "body": {
+      "font": "Public Sans",
+      "size": 13.4,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 5.5
+     },
+     "measureChars": 91,
+     "max": {
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "Public Sans",
+      "text": "Good to see you, ."
+     },
+     "monoShare": 0.47,
+     "monoProseShare": 0.47,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "learn > practice > progress",
+      "Workspace",
+      "Account",
+      "systems online",
+      "axiom · self-hosted · v1.0",
+      "vortezxd · admin"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.03,
+     "smallText": 18
+    },
+    "eyebrows": [
+     {
+      "text": "Workspace",
+      "above": "Good to see you, vortex.",
+      "upper": false,
+      "tracked": false,
+      "mono": true,
+      "pill": false,
+      "size": 10.2,
+      "top": 89
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#171719",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 0.04,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#8a8c92",
+       "share": 0.61
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.24
+      },
+      {
+       "color": "#b4b4b4",
+       "share": 0.1
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.03
+      },
+      {
+       "color": "#0f0f0f",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#3ecf8e",
+      "hsl": {
+       "h": 153,
+       "s": 0.6,
+       "l": 0.53
+      },
+      "fg": "#0f0f0f"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 7,
+     "inHero": 7,
+     "radius": 6,
+     "height": 41,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Workspace",
+      "Library",
+      "Cyber Range",
+      "Profile",
+      "Settings"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.2) 0px 12px 28px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "aside#appnav.appnav 252px",
+      "header.topbar 1188px",
+      "a 303px",
+      "a 303px",
+      "footer.foot 1188px"
+     ],
+     "outlinedBoxes": 7,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 7,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 200
+      },
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 201
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 1,
+     "fixed": true,
+     "height": 900,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "source code pro",
+     "public sans"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 1056,
+    "margins": {
+     "left": 19,
+     "right": 39
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Good to see you, vortex.",
+      "size": 34,
+      "top": 111,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 284,
+      "n": 2
+     },
+     {
+      "x": 304,
+      "n": 2
+     },
+     {
+      "x": 1087,
+      "n": 2
+     },
+     {
+      "x": 533,
+      "n": 1
+     },
+     {
+      "x": 1104,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.08,
+    "voidBox": {
+     "x": 480,
+     "y": 480,
+     "w": 360,
+     "h": 300
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#171719",
+    "sidebar": {
+     "w": 252,
+     "tag": "aside",
+     "links": 8,
+     "share": 0.18
+    },
+    "topbar": {
+     "h": 62
+    },
+    "canvas": {
+     "left": 32,
+     "right": 32
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 34,
+     "vw": 2.3,
+     "font": "Public Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 111,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 2,
+    "layout": {
+     "panels": 6,
+     "firstScreen": 6,
+     "ragged": [
+      {
+       "diff": 73,
+       "top": 200
+      }
+     ],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 11,
+     "radii": [
+      [
+       10,
+       6
+      ],
+      [
+       0,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#3fd18e on #1f1f1f (8.42:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.45,
+     "tiny": 2,
+     "tinySamples": [
+      "Workspace 10px",
+      "axiom · v1.0 · self-host 9px"
+     ],
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      24,
+      34
+     ]
+    },
+    "title": {
+     "text": "Good to see you, vortex.",
+     "size": 34,
+     "top": 111
+    },
+    "colourShare": 0.01
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 3,
+   "filled": [
+    0.79,
+    0.89,
+    0.78
+   ],
+   "motion": {
+    "elements": 89,
+    "css": 0,
+    "transitions": 89,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 2000,
+     "screens": 2.4,
+     "words": 178,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 8,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 24,
+     "vw": 6.2,
+     "font": "Public Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "lines": 1,
+     "size": 24,
+     "font": "Public Sans"
+    },
+    "headings": [
+     {
+      "text": "Good to see you, vortex.",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Public Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.64,
+      "top": 107,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "0s",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Public Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.36,
+      "top": 296,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "0 days",
+      "words": 2,
+      "chars": 6,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Public Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.36,
+      "top": 296,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "1 course",
+      "words": 2,
+      "chars": 8,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Public Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.36,
+      "top": 402,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "97%",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "Public Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.36,
+      "top": 402,
+      "tag": "b",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 5,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 2,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Public Sans",
+       "share": 0.54,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.46,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      24
+     ],
+     "sizeCount": 9,
+     "notLoaded": [],
+     "body": {
+      "font": "Public Sans",
+      "size": 13.4,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 5.5
+     },
+     "measureChars": 47,
+     "max": {
+      "size": 24,
+      "vw": 6.2,
+      "font": "Public Sans",
+      "text": "Good to see you, ."
+     },
+     "monoShare": 0.46,
+     "monoProseShare": 0.46,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "vortezxd · admin",
+      "Workspace",
+      "Tue, Oct 27, 2026",
+      "keep going",
+      "Learning time",
+      "0s vid · 0s read"
+     ],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.04,
+     "smallText": 15
+    },
+    "eyebrows": [
+     {
+      "text": "Workspace",
+      "above": "Good to see you, vortex.",
+      "upper": false,
+      "tracked": false,
+      "mono": true,
+      "pill": false,
+      "size": 10.2,
+      "top": 85
+     },
+     {
+      "text": "Learning time",
+      "above": "0s",
+      "upper": false,
+      "tracked": false,
+      "mono": true,
+      "pill": false,
+      "size": 12,
+      "top": 269
+     },
+     {
+      "text": "Current streak",
+      "above": "0 days",
+      "upper": false,
+      "tracked": false,
+      "mono": true,
+      "pill": false,
+      "size": 12,
+      "top": 269
+     },
+     {
+      "text": "Completed",
+      "above": "1 course",
+      "upper": false,
+      "tracked": false,
+      "mono": true,
+      "pill": false,
+      "size": 12,
+      "top": 376
+     },
+     {
+      "text": "Total progress",
+      "above": "97%",
+      "upper": false,
+      "tracked": false,
+      "mono": true,
+      "pill": false,
+      "size": 12,
+      "top": 376
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#171719",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 0.04,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#131217",
+       "top": 819,
+       "hsl": {
+        "h": 252,
+        "s": 0.12,
+        "l": 0.08
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#8a8c92",
+       "share": 0.63
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.26
+      },
+      {
+       "color": "#b4b4b4",
+       "share": 0.07
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.02
+      },
+      {
+       "color": "#0f0f0f",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#3ecf8e",
+      "hsl": {
+       "h": 153,
+       "s": 0.6,
+       "l": 0.53
+      },
+      "fg": "#0f0f0f"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 1,
+     "inHero": 1,
+     "radius": "pill",
+     "height": 46,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Revisit →"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.2) 0px 12px 28px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "header.topbar 390px",
+      "aside.act-side 318px",
+      "a 321px",
+      "a 321px",
+      "footer.foot 390px"
+     ],
+     "outlinedBoxes": 8,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 8,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 255
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 0,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "source code pro",
+     "public sans"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 2000,
+    "margins": {
+     "left": 16,
+     "right": 23
+    },
+    "sections": [
+     {
+      "sel": "section.ws-head",
+      "tag": "section",
+      "top": 85,
+      "height": 147,
+      "words": 17,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Good to see you,",
+       "size": 24,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 130,
+      "textLeft": 16,
+      "textRight": 130,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.ws-grid",
+      "tag": "div",
+      "top": 254,
+      "height": 1647,
+      "words": 140,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "0s",
+       "size": 24,
+       "tag": "b"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 16,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Good to see you, vortex.",
+      "size": 24,
+      "top": 107,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 35,
+      "n": 4
+     },
+     {
+      "x": 16,
+      "n": 2
+     },
+     {
+      "x": 52,
+      "n": 1
+     },
+     {
+      "x": 194,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#171719",
+    "sidebar": null,
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 16,
+     "right": 23
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 24,
+     "vw": 6.2,
+     "font": "Public Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 2,
+    "layout": {
+     "panels": 6,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 12,
+     "radii": [
+      [
+       10,
+       7
+      ],
+      [
+       0,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#3fd18e on #1f1f1f (8.42:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.46,
+     "tiny": 2,
+     "tinySamples": [
+      "Workspace 10px",
+      "axiom · v1.0 · self-host 9px"
+     ],
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      24
+     ]
+    },
+    "title": {
+     "text": "Good to see you, vortex.",
+     "size": 24,
+     "top": 107
+    },
+    "colourShare": 0.042
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "ragged-row",
+   "width": 1440,
+   "message": "1 pair(s) of cards in one row end at different heights (by 73px).",
+   "fix": "Cards that share a row share a bottom edge: balance them by their content (the same number of rows, a block of similar height beside it), or stack them. In testing, ragged rows were marked down every time."
+  },
+  {
+   "level": "WARN",
+   "id": "tiny-text",
+   "width": 390,
+   "message": "46% of the text is under 13px.",
+   "fix": "Data and labels read at 13–14px; keep 11–12px for sublines and axis ticks."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/inspect/home/desktop-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/inspect/home/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/inspect/home/mobile-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/inspect/home/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

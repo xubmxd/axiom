@@ -3,6 +3,8 @@
 // Supported validation types:
 //   exact                 — trimmed, case-sensitive (flags, tokens)
 //   case-insensitive-exact— trimmed + lowercased (hostnames, domains)
+//   comma-list            — whitespace removed + lowercased (port lists like
+//                           "53, 88" vs "53,88"; commas trimmed at the edges)
 //   flag                  — alias of exact (per-instance/runtime flags)
 //
 // Normalization: trim leading/trailing whitespace, collapse internal
@@ -10,9 +12,12 @@
 // revealed to the learner; expected values live server-side as hashes.
 import crypto from "node:crypto";
 
-export const VALIDATION_TYPES = new Set(["exact", "case-insensitive-exact", "flag"]);
+export const VALIDATION_TYPES = new Set(["exact", "case-insensitive-exact", "comma-list", "flag"]);
 
 export function normalizeAnswer(raw, validationType = "case-insensitive-exact") {
+  if (coerceValidationType(validationType) === "comma-list") {
+    return String(raw ?? "").replace(/\s+/g, "").replace(/^,+/, "").replace(/,+$/, "").toLowerCase();
+  }
   let s = String(raw ?? "").trim().replace(/\s+/g, " ");
   if (validationType === "case-insensitive-exact") s = s.toLowerCase();
   return s;

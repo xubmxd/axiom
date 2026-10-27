@@ -1,0 +1,1014 @@
+{
+ "url": "http://127.0.0.1:3200/library",
+ "at": "2026-10-27T07:31:04.207Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.36
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 900,
+     "screens": 1,
+     "words": 77,
+     "img": 4,
+     "video": 0,
+     "canvas": 0,
+     "svg": 7,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Course library",
+     "words": 2,
+     "chars": 14,
+     "lines": 1,
+     "size": 34,
+     "vw": 2.3,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 108,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Course library",
+     "words": 2,
+     "lines": 1,
+     "size": 33.6,
+     "font": "DM Sans"
+    },
+    "headings": [
+     {
+      "text": "Course library",
+      "words": 2,
+      "chars": 14,
+      "lines": 1,
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.14,
+      "top": 108,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Source Code Pro",
+       "share": 0.52,
+       "mono": true
+      },
+      {
+       "family": "DM Sans",
+       "share": 0.48,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      9,
+      10,
+      11,
+      13,
+      14,
+      15,
+      19,
+      34
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": null,
+     "measureChars": null,
+     "max": {
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "DM Sans",
+      "text": "Course library"
+     },
+     "monoShare": 0.52,
+     "monoProseShare": 0.51,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "learn > practice > progress",
+      "Workspace",
+      "Account",
+      "systems online",
+      "axiom · self-hosted · v1.0",
+      "vortezxd · admin"
+     ],
+     "microLabels": 5,
+     "microLabelShare": 0.139,
+     "microSamples": [
+      "learn > practice > progress",
+      "library · 2 courses",
+      "status",
+      "type",
+      "sort"
+     ],
+     "upperShare": 0.26,
+     "centerShare": 0.06,
+     "smallText": 8
+    },
+    "eyebrows": [
+     {
+      "text": "library · 2 courses",
+      "above": "Course library",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 10.2,
+      "top": 85
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#171717",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#b4b4b4",
+       "share": 0.41
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.25
+      },
+      {
+       "color": "#6b6b6b",
+       "share": 0.13
+      },
+      {
+       "color": "#898989",
+       "share": 0.12
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.08
+      }
+     ],
+     "button": null,
+     "lowContrast": [
+      {
+       "text": "status",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 9.3,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "type",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 9.3,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "sort",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 9.3,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "learn > practice > progress",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      },
+      {
+       "text": "Workspace",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      },
+      {
+       "text": "Account",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 6,
+     "radius": 6,
+     "height": 41,
+     "withShadow": 1,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Workspace",
+      "Library",
+      "Cyber Range",
+      "Profile",
+      "Settings"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.5) 0px 10px 30px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 3,
+     "hairlineSamples": [
+      "aside#appnav.appnav 252px",
+      "header.topbar 1188px",
+      "footer.foot 1188px"
+     ],
+     "outlinedBoxes": 3,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 3,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 1,
+     "fixed": true,
+     "height": 900,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "source code pro"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 900,
+    "margins": {
+     "left": 19,
+     "right": 47
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Course library",
+      "size": 34,
+      "top": 108,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 284,
+      "n": 1
+     },
+     {
+      "x": 362,
+      "n": 1
+     },
+     {
+      "x": 741,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 3,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.49,
+    "voidBox": {
+     "x": 120,
+     "y": 360,
+     "w": 1320,
+     "h": 480
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#171717",
+    "sidebar": {
+     "w": 252,
+     "tag": "aside",
+     "links": 8,
+     "share": 0.18
+    },
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 32,
+     "right": 39
+    },
+    "hero": {
+     "text": "Course library",
+     "words": 2,
+     "chars": 14,
+     "lines": 1,
+     "size": 34,
+     "vw": 2.3,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 108,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 3,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 3,
+     "radii": [
+      [
+       10,
+       2
+      ],
+      [
+       0,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 2,
+     "tabularShare": 0,
+     "kpiMax": 11.2
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.59,
+     "tiny": 16,
+     "tinySamples": [
+      "learn > practice > progr 10px",
+      "Workspace 10px",
+      "Account 10px",
+      "systems online 10px"
+     ],
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      19,
+      34
+     ]
+    },
+    "title": {
+     "text": "Course library",
+     "size": 34,
+     "top": 108
+    },
+    "colourShare": 0.002
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.64
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 844,
+     "screens": 1,
+     "words": 51,
+     "img": 4,
+     "video": 0,
+     "canvas": 0,
+     "svg": 7,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "☰"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Course library",
+     "words": 2,
+     "chars": 14,
+     "lines": 1,
+     "size": 26,
+     "vw": 6.8,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Course library",
+     "words": 2,
+     "lines": 1,
+     "size": 26.4,
+     "font": "DM Sans"
+    },
+    "headings": [
+     {
+      "text": "Course library",
+      "words": 2,
+      "chars": 14,
+      "lines": 1,
+      "size": 26.4,
+      "vw": 6.8,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.41,
+      "top": 107,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.52,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.48,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      8,
+      9,
+      10,
+      11,
+      13,
+      14,
+      15,
+      26
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": null,
+     "measureChars": null,
+     "max": {
+      "size": 26.4,
+      "vw": 6.8,
+      "font": "DM Sans",
+      "text": "Course library"
+     },
+     "monoShare": 0.48,
+     "monoProseShare": 0.48,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "vortezxd · admin",
+      "library · 2 courses",
+      "status",
+      "type",
+      "sort",
+      "reading course"
+     ],
+     "microLabels": 4,
+     "microLabelShare": 0.117,
+     "microSamples": [
+      "library · 2 courses",
+      "status",
+      "type",
+      "sort"
+     ],
+     "upperShare": 0.25,
+     "centerShare": 0.1,
+     "smallText": 5
+    },
+    "eyebrows": [
+     {
+      "text": "library · 2 courses",
+      "above": "Course library",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 10.2,
+      "top": 85
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#171717",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#b4b4b4",
+       "share": 0.39
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.32
+      },
+      {
+       "color": "#898989",
+       "share": 0.16
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.07
+      },
+      {
+       "color": "#6b6b6b",
+       "share": 0.05
+      }
+     ],
+     "button": null,
+     "lowContrast": [
+      {
+       "text": "status",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 9.3,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "type",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 9.3,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "sort",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 9.3,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 0,
+     "inHero": 0,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": []
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.5) 0px 10px 30px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 2,
+     "hairlineSamples": [
+      "header.topbar 390px",
+      "footer.foot 390px"
+     ],
+     "outlinedBoxes": 4,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 4,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 0,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "source code pro"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 844,
+    "margins": {
+     "left": 16,
+     "right": 31
+    },
+    "sections": [
+     {
+      "sel": "form.toolbar",
+      "tag": "form",
+      "top": 153,
+      "height": 216,
+      "words": 13,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": 31,
+      "right": 31,
+      "textLeft": 31,
+      "textRight": 85,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.coursegrid",
+      "tag": "div",
+      "top": 388,
+      "height": 248,
+      "words": 20,
+      "media": 0,
+      "middle": 13,
+      "heading": {
+       "text": "Offsec SOC 100",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 33,
+      "right": 33,
+      "textLeft": 94,
+      "textRight": 33,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Course library",
+      "size": 26,
+      "top": 107,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 94,
+      "n": 2
+     },
+     {
+      "x": 16,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 3,
+    "bodySize": 16,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#171717",
+    "sidebar": null,
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 16,
+     "right": 23
+    },
+    "hero": {
+     "text": "Course library",
+     "words": 2,
+     "chars": 14,
+     "lines": 1,
+     "size": 26,
+     "vw": 6.8,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 3,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 3,
+     "radii": [
+      [
+       10,
+       3
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 2,
+     "tabularShare": 0,
+     "kpiMax": 11.2
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.59,
+     "tiny": 15,
+     "tinySamples": [
+      "learn > practice > progr 10px",
+      "Workspace 10px",
+      "Account 10px",
+      "systems online 10px"
+     ],
+     "sizes": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      19,
+      26
+     ]
+    },
+    "title": {
+     "text": "Course library",
+     "size": 26,
+     "top": 107
+    },
+    "colourShare": 0.007
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "micro-label",
+   "width": 1440,
+   "message": "5 tiny uppercase letter-spaced labels (e.g. \"learn > practice > progress\", \"library · 2 courses\", \"status\", \"type\").",
+   "fix": "Use sentence-case text at a readable size, or delete the label.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "button-fx",
+   "width": 1440,
+   "message": "Buttons with shadow/glow.",
+   "fix": "Flat fill, one colour."
+  },
+  {
+   "level": "WARN",
+   "id": "contrast",
+   "width": 1440,
+   "message": "Low-contrast text: \"status\" 3.3:1 needs 4.5:1; \"type\" 3.3:1 needs 4.5:1; \"sort\" 3.3:1 needs 4.5:1; \"learn > practice > progress\" 3.5:1 needs 4.5:1",
+   "fix": "Darken or lighten the text colour.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "hero-void",
+   "width": 1440,
+   "message": "49% of the first screen is one empty block (1320×480px at 120,360).",
+   "fix": "Place the void on purpose or fill it: move the picture, the film or one fact into it, grow the headline to meet it, or shrink the screen to its content. A void reads as placed only when something closes it on the far side and it is the screen's one rest."
+  },
+  {
+   "level": "FAIL",
+   "id": "tiny-text",
+   "width": 1440,
+   "message": "16 text blocks under 11px: learn > practice > progr 10px, Workspace 10px, Account 10px, systems online 10px.",
+   "fix": "Nothing below 11px; secondary text 12px, data 13–14px.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "emoji",
+   "width": 390,
+   "message": "Emoji in the page: ☰",
+   "fix": "Remove. Use words or real imagery."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/library/desktop-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/library/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/library/mobile-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/library/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

@@ -60,7 +60,7 @@ describe("course catalog service", () => {
     const u = await createUser({ username: "coursetester", email: "c@test.local", displayName: "C", password: "password12345" });
     userId = u.id;
     const r = await svc.seedFromDefinitions(path.join(REPO, "labs"));
-    assert.equal(r.labs, 4);
+    assert.equal(r.labs, 21);
     assert.equal(r.courses, 1);
     await svc.seedFromDefinitions(path.join(REPO, "labs")); // idempotent
     const courses = await svc.listLabCourses();
@@ -80,10 +80,10 @@ describe("course catalog service", () => {
 
   it("groups course → module → section → lab without duplicate modules", async () => {
     const modules = await svc.courseStructure(userId, courseId);
-    assert.equal(modules.length, 1);
+    assert.equal(modules.length, 2);
     assert.equal(modules[0].number, 6);
     assert.equal(modules[0].title, "Information Gathering");
-    assert.equal(modules[0].sections.length, 2);
+    assert.equal(modules[0].sections.length, 10);
     assert.equal(modules[0].sections[0].section, "6.2.1");
     assert.equal(modules[0].sections[0].labs.length, 3);
     assert.deepEqual(modules[0].sections[0].labs.map((l) => l.lab.lab_number), [1, 2, 3]);
@@ -93,6 +93,39 @@ describe("course catalog service", () => {
     assert.equal(modules[0].sections[1].title, "Google Hacking");
     assert.equal(modules[0].sections[1].labs.length, 1);
     assert.equal(modules[0].sections[1].labs[0].lab.slug, "m6-6-2-2-google-hacking");
+    // 6.2.3 Netcraft is likewise its own exercise
+    assert.equal(modules[0].sections[2].section, "6.2.3");
+    assert.equal(modules[0].sections[2].title, "Netcraft");
+    assert.equal(modules[0].sections[2].labs.length, 1);
+    assert.equal(modules[0].sections[2].labs[0].lab.slug, "m6-6-2-3-netcraft");
+    // 6.2.4 Open-Source Code is likewise its own exercise
+    assert.equal(modules[0].sections[3].section, "6.2.4");
+    assert.equal(modules[0].sections[3].title, "Open-Source Code");
+    assert.equal(modules[0].sections[3].labs.length, 1);
+    assert.equal(modules[0].sections[3].labs[0].lab.slug, "m6-6-2-4-open-source-code");
+    // 6.3.1 DNS Enumeration is likewise its own exercise
+    assert.equal(modules[0].sections[4].section, "6.3.1");
+    assert.equal(modules[0].sections[4].title, "DNS Enumeration");
+    assert.equal(modules[0].sections[4].labs.length, 1);
+    assert.equal(modules[0].sections[4].labs[0].lab.slug, "m6-6-3-1-dns-enumeration");
+    // 6.3.2 Port Scanning is likewise its own exercise
+    assert.equal(modules[0].sections[5].section, "6.3.2");
+    assert.equal(modules[0].sections[5].title, "TCP/UDP Port Scanning Theory");
+    assert.equal(modules[0].sections[5].labs.length, 1);
+    assert.equal(modules[0].sections[5].labs[0].lab.slug, "m6-6-3-2-port-scanning");
+    // 6.3.3 Nmap is likewise its own exercise
+    assert.equal(modules[0].sections[6].section, "6.3.3");
+    assert.equal(modules[0].sections[6].title, "Port Scanning with Nmap");
+    assert.equal(modules[0].sections[6].labs.length, 1);
+    assert.equal(modules[0].sections[6].labs[0].lab.slug, "m6-6-3-3-nmap");
+    // Module 7 groups the theory exercises separately from Module 6
+    assert.equal(modules[1].number, 7);
+    assert.equal(modules[1].title, "Vulnerability Scanning");
+    assert.deepEqual(modules[1].sections.map((s) => s.section), ["7.1.1", "7.1.2", "7.1.3", "7.2.1", "7.2.2", "7.2.3", "7.2.4", "7.2.5", "7.2.6"]);
+    assert.deepEqual(modules[1].sections.map((s) => s.labs[0].lab.slug),
+      ["m7-7-1-1-scanner-findings", "m7-7-1-2-scan-types", "m7-7-1-3-scan-impact",
+        "m7-7-2-1-installing-nessus", "m7-7-2-2-nessus-components", "m7-7-2-3-vuln-scan",
+        "m7-7-2-4-analyzing-results", "m7-7-2-5-auth-scan", "m7-7-2-6-nessus-plugins"]);
   });
 
   it("tracks lab state: running reflects a live instance only", async () => {
@@ -119,9 +152,9 @@ describe("course catalog service", () => {
 
   it("aggregates course + module progress from existing progress rows", async () => {
     const cp = await svc.courseProgress(userId, courseId);
-    assert.deepEqual(cp, { total: 4, completed: 1, inProgress: 0, running: 0, notStarted: 3, pct: 25 });
+    assert.deepEqual(cp, { total: 21, completed: 1, inProgress: 0, running: 0, notStarted: 20, pct: 5 });
     const mp = await svc.moduleProgress(userId, courseId, 6);
-    assert.deepEqual(mp, { total: 4, completed: 1 });
+    assert.deepEqual(mp, { total: 12, completed: 1 });
     const empty = await svc.moduleProgress(userId, courseId, 999);
     assert.deepEqual(empty, { total: 0, completed: 0 });
   });
@@ -133,7 +166,7 @@ describe("course catalog service", () => {
     await db.run(`INSERT INTO labs(id, slug, title, course_id, module_number, module_name, lab_number, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?)`,
       ["lab_other", "other-lab", "Other", "lc_other", 6, "Other Module", 1, now, now]);
     const mp = await svc.moduleProgress(userId, courseId, 6);
-    assert.deepEqual(mp, { total: 4, completed: 1 });
+    assert.deepEqual(mp, { total: 12, completed: 1 });
     await db.run(`DELETE FROM labs WHERE id=?`, ["lab_other"]);
     await db.run(`DELETE FROM lab_courses WHERE id=?`, ["lc_other"]);
   });
@@ -187,7 +220,7 @@ describe("course routes (http)", () => {
     assert.ok(!html.includes("m6-6-2-1-whois-vm1"), "catalog must not link individual labs");
   });
 
-  it("/labs/oscp shows Module 6 → 6.2.1 → Lab 1 + Lab 2 + Lab 3, plus 6.2.2 separately", async () => {
+  it("/labs/oscp shows Module 6 → 6.2.1 → Lab 1 + Lab 2 + Lab 3, plus 6.2.2 and 6.2.3 separately", async () => {
     const r = await get("/labs/oscp");
     assert.equal(r.status, 200);
     const html = await r.text();
@@ -201,6 +234,21 @@ describe("course routes (http)", () => {
     assert.ok(html.includes("6.2.2"), "Google Hacking must appear as its own exercise");
     assert.ok(html.includes("Google Hacking"));
     assert.ok(html.includes("/labs/oscp/m6-6-2-2-google-hacking"), "Google Hacking must link to its own lab");
+    assert.ok(html.includes("6.2.3"), "Netcraft must appear as its own exercise");
+    assert.ok(html.includes("Netcraft"));
+    assert.ok(html.includes("/labs/oscp/m6-6-2-3-netcraft"), "Netcraft must link to its own lab");
+    assert.ok(html.includes("6.2.4"), "Open-Source Code must appear as its own exercise");
+    assert.ok(html.includes("Open-Source Code"));
+    assert.ok(html.includes("/labs/oscp/m6-6-2-4-open-source-code"), "Open-Source Code must link to its own lab");
+    assert.ok(html.includes("6.3.1"), "DNS Enumeration must appear as its own exercise");
+    assert.ok(html.includes("DNS Enumeration"));
+    assert.ok(html.includes("/labs/oscp/m6-6-3-1-dns-enumeration"), "DNS Enumeration must link to its own lab");
+    assert.ok(html.includes("6.3.2"), "Port Scanning must appear as its own exercise");
+    assert.ok(html.includes("TCP/UDP Port Scanning Theory"));
+    assert.ok(html.includes("/labs/oscp/m6-6-3-2-port-scanning"), "Port Scanning must link to its own lab");
+    assert.ok(html.includes("6.3.3"), "Nmap must appear as its own exercise");
+    assert.ok(html.includes("Port Scanning with Nmap"));
+    assert.ok(html.includes("/labs/oscp/m6-6-3-3-nmap"), "Nmap must link to its own lab");
   });
 
   it("unknown course is a 404 page, not a crash", async () => {
@@ -238,7 +286,7 @@ describe("course routes (http)", () => {
     r = await get("/api/labs/courses/oscp", { headers: { Cookie: cookie, Accept: "application/json" } });
     assert.equal(r.status, 200);
     const body = await r.json();
-    assert.equal(body.modules.length, 1);
+    assert.equal(body.modules.length, 2);
     assert.equal(body.modules[0].sections[0].labs[0].url, "/labs/oscp/m6-6-2-1-whois-vm1");
     r = await get("/api/labs/courses/nope", { headers: { Cookie: cookie, Accept: "application/json" } });
     assert.equal(r.status, 404);

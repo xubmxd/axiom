@@ -142,7 +142,16 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <meta property="og:image" content="/img/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/app.css">${extraHead}</head>
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  body {font-size: 16px !important;}
+  .acct-chev {font-size: 12px !important;}
+  .stat small {font-size: 12px !important;}
+  .act-stat em {font-size: 12px !important;}
+  .ft {font-size: 12px !important;}
+  .pill.res {font-size: 12px !important;}
+  .pct {font-size: 12px !important;}
+</style>${extraHead}</head>
 <body data-user-tz="${esc(user?.timezone || "UTC")}">
 <a class="skip" href="#main">Skip to content</a>
 <div class="app">
@@ -152,17 +161,17 @@ ${user ? `<aside class="appnav" id="appnav" aria-label="Primary">
 <button class="iconbtn appnav-collapse" id="appnavToggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="appnav">⟨</button>
 </div>
 <p class="brand-path mono" aria-hidden="true">learn &gt; practice &gt; progress</p>
-<nav aria-label="Workspace"><p class="nav-group mono">Workspace</p><ul>
+<nav aria-label="Workspace"><p class="nav-group mono" style="font-size:12px">Workspace</p><ul>
 ${wsNav.map(navItem).join("")}
 </ul></nav>
-<nav aria-label="Account"><p class="nav-group mono">Account</p><ul>
+<nav aria-label="Account"><p class="nav-group mono" style="font-size:12px">Account</p><ul>
 ${acctNav.map(navItem).join("")}
 </ul></nav>
-<div class="appnav-foot"><p class="mono side-ver"><span class="sys"><i aria-hidden="true"></i>systems online</span></p><p class="mono dim side-ver">axiom · self-hosted · v1.0</p></div>
+<div class="appnav-foot"><p class="mono side-ver"><span class="sys" style="font-size:12px"><i aria-hidden="true"></i>systems online</span></p><p class="mono dim side-ver" style="font-size:12px">axiom · self-hosted · v1.0</p></div>
 </aside>` : ""}
 <div class="appmain">
 ${user ? `<header class="topbar"><div class="topbar-in">
-<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button></div>
+<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="2"/><rect x="3" y="12" width="18" height="2"/></svg></button></div>
 <form class="tsearch" action="/library" method="get" role="search">
 <span class="ts-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span>
 <input name="q" placeholder="Search the library…" aria-label="Search courses, lessons, pages" autocomplete="off">
@@ -172,7 +181,7 @@ ${user ? `<header class="topbar"><div class="topbar-in">
 <details class="acct">
 <summary aria-label="Account menu">${avatarHtml(user)}<span class="acct-name">${esc(user.display_name.split(" ")[0] || user.username)}</span><span class="acct-chev" aria-hidden="true">▾</span></summary>
 <div class="acct-menu">
-<p class="mono dim acct-head">${esc(user.username)} · ${esc(user.role)}</p>
+<p class="mono dim acct-head" style="font-size:12px">${esc(user.username)} · ${esc(user.role)}</p>
 <a href="/profile">Profile</a>
 <a href="/settings">Settings</a>
 <form method="post" action="/logout"><button type="submit">Sign out</button></form>

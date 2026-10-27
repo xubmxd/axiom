@@ -1,0 +1,1072 @@
+{
+ "url": "http://127.0.0.1:3200/labs",
+ "at": "2026-10-27T07:31:35.412Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 1,
+   "filled": [
+    0.51
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 900,
+     "screens": 1,
+     "words": 151,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 7,
+     "sections": 1,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Practical cybersecurity training environments.",
+     "words": 4,
+     "chars": 46,
+     "lines": 2,
+     "size": 34,
+     "vw": 2.3,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 109,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Practical cybersecurity training environments.",
+     "words": 4,
+     "lines": 2,
+     "size": 33.6,
+     "font": "DM Sans"
+    },
+    "headings": [
+     {
+      "text": "Practical cybersecurity training environments.",
+      "words": 4,
+      "chars": 46,
+      "lines": 2,
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 109,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.7,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.3,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      9,
+      10,
+      11,
+      13,
+      14,
+      15,
+      18,
+      19,
+      34
+     ],
+     "sizeCount": 9,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 12.8,
+      "leading": 1.55,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 5
+     },
+     "measureChars": 93,
+     "max": {
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "DM Sans",
+      "text": "Practical cybersecurity training environ"
+     },
+     "monoShare": 0.3,
+     "monoProseShare": 0.3,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "learn > practice > progress",
+      "Workspace",
+      "Account",
+      "systems online",
+      "axiom · self-hosted · v1.0",
+      "vortezxd · admin"
+     ],
+     "microLabels": 4,
+     "microLabelShare": 0.108,
+     "microSamples": [
+      "learn > practice > progress",
+      "cyber range",
+      "isolated networks · real targets · flag ",
+      "How it works"
+     ],
+     "upperShare": 0.14,
+     "centerShare": 0.03,
+     "smallText": 14
+    },
+    "eyebrows": [],
+    "numbered": [
+     {
+      "text": "01",
+      "size": 10.2,
+      "top": 370
+     },
+     {
+      "text": "02",
+      "size": 10.2,
+      "top": 463
+     },
+     {
+      "text": "03",
+      "size": 10.2,
+      "top": 577
+     }
+    ],
+    "color": {
+     "bodyBg": "#171717",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#b4b4b4",
+       "share": 0.35
+      },
+      {
+       "color": "#898989",
+       "share": 0.34
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.18
+      },
+      {
+       "color": "#6b6b6b",
+       "share": 0.1
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.03
+      }
+     ],
+     "button": null,
+     "lowContrast": [
+      {
+       "text": "isolated networks · real targets · flag ",
+       "ratio": 3.4,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#171717"
+      },
+      {
+       "text": "learn > practice > progress",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      },
+      {
+       "text": "Workspace",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      },
+      {
+       "text": "Account",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 6,
+     "radius": 6,
+     "height": 41,
+     "withShadow": 1,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Workspace",
+      "Library",
+      "Cyber Range",
+      "Profile",
+      "Settings"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.5) 0px 10px 30px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 6,
+     "hairlineSamples": [
+      "aside#appnav.appnav 252px",
+      "header.topbar 1188px",
+      "header.range-hero 1116px",
+      "div.range-step 314px",
+      "div.range-step 314px"
+     ],
+     "outlinedBoxes": 3,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 3,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 1,
+     "fixed": true,
+     "height": 900,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "source code pro"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 900,
+    "margins": {
+     "left": 19,
+     "right": 54
+    },
+    "sections": [
+     {
+      "sel": "header.range-hero",
+      "tag": "header",
+      "top": 87,
+      "height": 206,
+      "words": 36,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Practical cybersecurity training environments.",
+       "size": 34,
+       "tag": "h1"
+      },
+      "left": 288,
+      "right": 449,
+      "textLeft": 288,
+      "textRight": 449,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.range-grid",
+      "tag": "div",
+      "top": 318,
+      "height": 357,
+      "words": 83,
+      "media": 0,
+      "middle": 284,
+      "heading": {
+       "text": "OSCP",
+       "size": 18,
+       "tag": "h3"
+      },
+      "left": 288,
+      "right": 57,
+      "textLeft": 288,
+      "textRight": 57,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Practical cybersecurity training environments.",
+      "size": 34,
+      "top": 109,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 288,
+      "n": 3
+     },
+     {
+      "x": 1097,
+      "n": 3
+     },
+     {
+      "x": 374,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 7,
+    "bodySize": 13,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.24,
+    "voidBox": {
+     "x": 0,
+     "y": 540,
+     "w": 1020,
+     "h": 300
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#171717",
+    "sidebar": {
+     "w": 252,
+     "tag": "aside",
+     "links": 8,
+     "share": 0.18
+    },
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 36,
+     "right": 39
+    },
+    "hero": {
+     "text": "Practical cybersecurity training environments.",
+     "words": 4,
+     "chars": 46,
+     "lines": 2,
+     "size": 34,
+     "vw": 2.3,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 109,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 3,
+     "firstScreen": 3,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 5,
+     "radii": [
+      [
+       0,
+       3
+      ],
+      [
+       10,
+       2
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 0,
+     "kpiMax": 10.24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.25,
+     "tiny": 12,
+     "tinySamples": [
+      "learn > practice > progr 10px",
+      "Workspace 10px",
+      "Account 10px",
+      "systems online 10px"
+     ],
+     "sizes": [
+      9,
+      10,
+      11,
+      13,
+      14,
+      15,
+      18,
+      19,
+      34
+     ]
+    },
+    "title": {
+     "text": "Practical cybersecurity training environments.",
+     "size": 34,
+     "top": 109
+    },
+    "colourShare": 0.001
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.62,
+    0.64
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 1001,
+     "screens": 1.2,
+     "words": 125,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 7,
+     "sections": 1,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "☰"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Practical cybersecurity training environments.",
+     "words": 4,
+     "chars": 46,
+     "lines": 2,
+     "size": 26,
+     "vw": 6.8,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 109,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Practical cybersecurity training environments.",
+     "words": 4,
+     "lines": 2,
+     "size": 26.4,
+     "font": "DM Sans"
+    },
+    "headings": [
+     {
+      "text": "Practical cybersecurity training environments.",
+      "words": 4,
+      "chars": 46,
+      "lines": 2,
+      "size": 26.4,
+      "vw": 6.8,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 109,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.76,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.24,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      8,
+      10,
+      11,
+      13,
+      14,
+      15,
+      18,
+      26
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 12.8,
+      "leading": 1.55,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 5
+     },
+     "measureChars": 47,
+     "max": {
+      "size": 26.4,
+      "vw": 6.8,
+      "font": "DM Sans",
+      "text": "Practical cybersecurity training environ"
+     },
+     "monoShare": 0.24,
+     "monoProseShare": 0.24,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "vortezxd · admin",
+      "cyber range",
+      "isolated networks · real targets · flag ",
+      "1 available",
+      ">_",
+      "training path"
+     ],
+     "microLabels": 3,
+     "microLabelShare": 0.094,
+     "microSamples": [
+      "cyber range",
+      "isolated networks · real targets · flag ",
+      "How it works"
+     ],
+     "upperShare": 0.12,
+     "centerShare": 0.03,
+     "smallText": 11
+    },
+    "eyebrows": [],
+    "numbered": [
+     {
+      "text": "01",
+      "size": 10.2,
+      "top": 598
+     },
+     {
+      "text": "02",
+      "size": 10.2,
+      "top": 692
+     },
+     {
+      "text": "03",
+      "size": 10.2,
+      "top": 805
+     }
+    ],
+    "color": {
+     "bodyBg": "#171717",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#1a1a1a",
+       "top": 547,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#898989",
+       "share": 0.4
+      },
+      {
+       "color": "#b4b4b4",
+       "share": 0.33
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.18
+      },
+      {
+       "color": "#6b6b6b",
+       "share": 0.06
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.02
+      }
+     ],
+     "button": null,
+     "lowContrast": [
+      {
+       "text": "isolated networks · real targets · flag ",
+       "ratio": 3.4,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#171717"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 0,
+     "inHero": 0,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": []
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.5) 0px 10px 30px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "header.topbar 390px",
+      "header.range-hero 358px",
+      "div.range-step 318px",
+      "div.range-step 318px",
+      "footer.foot 390px"
+     ],
+     "outlinedBoxes": 3,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 3,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 0,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "source code pro"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 1001,
+    "margins": {
+     "left": 16,
+     "right": 19
+    },
+    "sections": [
+     {
+      "sel": "header.range-hero",
+      "tag": "header",
+      "top": 87,
+      "height": 215,
+      "words": 36,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Practical cybersecurity training environments.",
+       "size": 26,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 19,
+      "textLeft": 16,
+      "textRight": 19,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.range-grid",
+      "tag": "div",
+      "top": 327,
+      "height": 577,
+      "words": 83,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "OSCP",
+       "size": 18,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 16,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Practical cybersecurity training environments.",
+      "size": 26,
+      "top": 109,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 3
+     },
+     {
+      "x": 64,
+      "n": 3
+     },
+     {
+      "x": 102,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 7,
+    "bodySize": 13,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#171717",
+    "sidebar": null,
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 16,
+     "right": 16
+    },
+    "hero": {
+     "text": "Practical cybersecurity training environments.",
+     "words": 4,
+     "chars": 46,
+     "lines": 2,
+     "size": 26,
+     "vw": 6.8,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 109,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 2,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 4,
+     "radii": [
+      [
+       10,
+       2
+      ],
+      [
+       0,
+       2
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 0,
+     "kpiMax": 10.24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.24,
+     "tiny": 11,
+     "tinySamples": [
+      "learn > practice > progr 10px",
+      "Workspace 10px",
+      "Account 10px",
+      "systems online 10px"
+     ],
+     "sizes": [
+      8,
+      10,
+      11,
+      13,
+      14,
+      15,
+      18,
+      19,
+      26
+     ]
+    },
+    "title": {
+     "text": "Practical cybersecurity training environments.",
+     "size": 26,
+     "top": 109
+    },
+    "colourShare": 0.001
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "micro-label",
+   "width": 1440,
+   "message": "4 tiny uppercase letter-spaced labels (e.g. \"learn > practice > progress\", \"cyber range\", \"isolated networks · real targets · flag \", \"How it works\").",
+   "fix": "Use sentence-case text at a readable size, or delete the label.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "button-fx",
+   "width": 1440,
+   "message": "Buttons with shadow/glow.",
+   "fix": "Flat fill, one colour."
+  },
+  {
+   "level": "WARN",
+   "id": "contrast",
+   "width": 1440,
+   "message": "Low-contrast text: \"isolated networks · real targets · flag \" 3.4:1 needs 4.5:1; \"learn > practice > progress\" 3.5:1 needs 4.5:1; \"Workspace\" 3.5:1 needs 4.5:1; \"Account\" 3.5:1 needs 4.5:1",
+   "fix": "Darken or lighten the text colour.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "tiny-text",
+   "width": 1440,
+   "message": "12 text blocks under 11px: learn > practice > progr 10px, Workspace 10px, Account 10px, systems online 10px.",
+   "fix": "Nothing below 11px; secondary text 12px, data 13–14px.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "emoji",
+   "width": 390,
+   "message": "Emoji in the page: ☰",
+   "fix": "Remove. Use words or real imagery."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/labs/desktop-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/labs/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/labs/mobile-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/labs/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

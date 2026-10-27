@@ -22,7 +22,7 @@ describe("vm3 definition", () => {
   it("loads under the existing 6.2.1 exercise (not a new module/section)", async () => {
     const { loadAllDefinitions, normalizePlacement } = await import("../server/labs/definitions.js");
     const all = loadAllDefinitions(path.join(REPO, "labs"));
-    assert.equal(all.length, 4);
+    assert.equal(all.length, 21);
     const vm3 = all.find((l) => l.def.slug === VM3_SLUG);
     assert.ok(vm3, "vm-03/lab.json must be discovered");
     assert.equal(vm3.def.title, "6.2.1 Whois Enumeration");
@@ -273,9 +273,9 @@ describe("vm3 service (sqlite)", () => {
 
   it("course and module progress include Lab 3 automatically", async () => {
     const cp = await svc.courseProgress(userId, lab.course_id);
-    assert.equal(cp.total, 4);
+    assert.equal(cp.total, 21);
     const mp = await svc.moduleProgress(userId, lab.course_id, 6);
-    assert.equal(mp.total, 4);
+    assert.equal(mp.total, 12);
   });
 });
 

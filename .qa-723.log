@@ -1,0 +1,6 @@
+CIDR 10.200.30.0/24
+JOB sj_9a9ed2753343e50f92d410df targets? [ '10.200.30.11', '10.200.30.12', '10.200.30.13', '10.200.30.151' ]
+status complete 100
+FINDING: High | Apache 2.4.49 < 2.4.51 Path Traversal Vulnerability | 10.200.30.151:80
+SITEMAP PAGES: 0
+QA DONE

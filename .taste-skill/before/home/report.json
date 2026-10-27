@@ -1,0 +1,1254 @@
+{
+ "url": "http://127.0.0.1:3200/",
+ "at": "2026-10-27T07:30:44.376Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.78,
+    0.76
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 1040,
+     "screens": 1.2,
+     "words": 205,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 7,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 34,
+     "vw": 2.3,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "lines": 1,
+     "size": 33.6,
+     "font": "DM Sans"
+    },
+    "headings": [
+     {
+      "text": "Good to see you, vortex.",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.23,
+      "top": 107,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.52,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.48,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      24,
+      34
+     ],
+     "sizeCount": 11,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 13.4,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 5
+     },
+     "measureChars": 91,
+     "max": {
+      "size": 33.6,
+      "vw": 2.3,
+      "font": "DM Sans",
+      "text": "Good to see you, ."
+     },
+     "monoShare": 0.48,
+     "monoProseShare": 0.48,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "learn > practice > progress",
+      "Workspace",
+      "Account",
+      "systems online",
+      "axiom · self-hosted · v1.0",
+      "vortezxd · admin"
+     ],
+     "microLabels": 12,
+     "microLabelShare": 0.152,
+     "microSamples": [
+      "learn > practice > progress",
+      "Workspace",
+      "Learning time",
+      "Current streak",
+      "Completed",
+      "Total progress"
+     ],
+     "upperShare": 0.18,
+     "centerShare": 0.03,
+     "smallText": 18
+    },
+    "eyebrows": [
+     {
+      "text": "Workspace",
+      "above": "Good to see you, vortex.",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 10.2,
+      "top": 85
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#171717",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#898989",
+       "share": 0.31
+      },
+      {
+       "color": "#b4b4b4",
+       "share": 0.3
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.25
+      },
+      {
+       "color": "#6b6b6b",
+       "share": 0.1
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#3ecf8e",
+      "hsl": {
+       "h": 153,
+       "s": 0.6,
+       "l": 0.53
+      },
+      "fg": "#0f0f0f"
+     },
+     "lowContrast": [
+      {
+       "text": "Less",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 10.6,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "More",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 10.6,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "progress, not perfection",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 11.2,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "learn > practice > progress",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      },
+      {
+       "text": "Workspace",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      },
+      {
+       "text": "Account",
+       "ratio": 3.5,
+       "need": 4.5,
+       "size": 9.6,
+       "fg": "#6b6b6b",
+       "bg": "#121212"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 7,
+     "inHero": 7,
+     "radius": 6,
+     "height": 41,
+     "withShadow": 1,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Workspace",
+      "Library",
+      "Cyber Range",
+      "Profile",
+      "Settings"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.5) 0px 10px 30px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "aside#appnav.appnav 252px",
+      "header.topbar 1188px",
+      "a 303px",
+      "a 303px",
+      "footer.foot 1188px"
+     ],
+     "outlinedBoxes": 7,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 7,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 196
+      },
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 197
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 1,
+     "fixed": true,
+     "height": 900,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "source code pro"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 1040,
+    "margins": {
+     "left": 19,
+     "right": 39
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Good to see you, vortex.",
+      "size": 34,
+      "top": 107,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 284,
+      "n": 2
+     },
+     {
+      "x": 304,
+      "n": 2
+     },
+     {
+      "x": 1087,
+      "n": 2
+     },
+     {
+      "x": 525,
+      "n": 1
+     },
+     {
+      "x": 1104,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 13,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0.08,
+    "voidBox": {
+     "x": 0,
+     "y": 420,
+     "w": 240,
+     "h": 420
+    }
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": true,
+    "ground": "#171717",
+    "sidebar": {
+     "w": 252,
+     "tag": "aside",
+     "links": 8,
+     "share": 0.18
+    },
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 32,
+     "right": 32
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 34,
+     "vw": 2.3,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 2,
+    "layout": {
+     "panels": 6,
+     "firstScreen": 6,
+     "ragged": [
+      {
+       "diff": 74,
+       "top": 196
+      }
+     ],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 11,
+     "radii": [
+      [
+       10,
+       6
+      ],
+      [
+       0,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#3fd18e on #1f1f1f (8.42:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.46,
+     "tiny": 29,
+     "tinySamples": [
+      "learn > practice > progr 10px",
+      "Workspace 10px",
+      "Account 10px",
+      "systems online 10px"
+     ],
+     "sizes": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      24,
+      34
+     ]
+    },
+    "title": {
+     "text": "Good to see you, vortex.",
+     "size": 34,
+     "top": 107
+    },
+    "colourShare": 0.011
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 3,
+   "filled": [
+    0.78,
+    0.86,
+    0.79
+   ],
+   "motion": {
+    "elements": 0,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 1943,
+     "screens": 2.3,
+     "words": 183,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 7,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [
+      "☰"
+     ],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 24,
+     "vw": 6.2,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "lines": 1,
+     "size": 24,
+     "font": "DM Sans"
+    },
+    "headings": [
+     {
+      "text": "Good to see you, vortex.",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.79,
+      "top": 107,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "0s",
+      "words": 1,
+      "chars": 2,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.36,
+      "top": 289,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "0 days",
+      "words": 2,
+      "chars": 6,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.36,
+      "top": 289,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "1 course",
+      "words": 2,
+      "chars": 8,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.36,
+      "top": 390,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "97%",
+      "words": 1,
+      "chars": 3,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "DM Sans",
+      "weight": 500,
+      "tracking": -0.03,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.36,
+      "top": 390,
+      "tag": "b",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 5,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 2,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "DM Sans",
+       "share": 0.55,
+       "mono": false
+      },
+      {
+       "family": "Source Code Pro",
+       "share": 0.45,
+       "mono": true
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      24
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "DM Sans",
+      "size": 13.4,
+      "leading": 1.6,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 5
+     },
+     "measureChars": 47,
+     "max": {
+      "size": 24,
+      "vw": 6.2,
+      "font": "DM Sans",
+      "text": "Good to see you, ."
+     },
+     "monoShare": 0.45,
+     "monoProseShare": 0.45,
+     "monoFamilies": [
+      "Source Code Pro"
+     ],
+     "monoSamples": [
+      "vortezxd · admin",
+      "Workspace",
+      "Tue, Oct 27, 2026",
+      "keep going",
+      "Learning time",
+      "0s vid · 0s read"
+     ],
+     "microLabels": 11,
+     "microLabelShare": 0.144,
+     "microSamples": [
+      "Workspace",
+      "Learning time",
+      "Current streak",
+      "Completed",
+      "Total progress",
+      "This week"
+     ],
+     "upperShare": 0.16,
+     "centerShare": 0.04,
+     "smallText": 15
+    },
+    "eyebrows": [
+     {
+      "text": "Workspace",
+      "above": "Good to see you, vortex.",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 10.2,
+      "top": 85
+     },
+     {
+      "text": "Learning time",
+      "above": "0s",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 9.6,
+      "top": 267
+     },
+     {
+      "text": "Current streak",
+      "above": "0 days",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 9.6,
+      "top": 267
+     },
+     {
+      "text": "Completed",
+      "above": "1 course",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 9.6,
+      "top": 367
+     },
+     {
+      "text": "Total progress",
+      "above": "97%",
+      "upper": true,
+      "tracked": true,
+      "mono": true,
+      "pill": false,
+      "size": 9.6,
+      "top": 367
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#171717",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.09
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#1a1a1a",
+       "top": 801,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#898989",
+       "share": 0.36
+      },
+      {
+       "color": "#b4b4b4",
+       "share": 0.27
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.26
+      },
+      {
+       "color": "#6b6b6b",
+       "share": 0.07
+      },
+      {
+       "color": "#3ecf8e",
+       "share": 0.02
+      }
+     ],
+     "button": {
+      "bg": "#3ecf8e",
+      "hsl": {
+       "h": 153,
+       "s": 0.6,
+       "l": 0.53
+      },
+      "fg": "#0f0f0f"
+     },
+     "lowContrast": [
+      {
+       "text": "Less",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 10.6,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "More",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 10.6,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      },
+      {
+       "text": "progress, not perfection",
+       "ratio": 3.3,
+       "need": 4.5,
+       "size": 11.2,
+       "fg": "#6b6b6b",
+       "bg": "#1a1a1a"
+      }
+     ]
+    },
+    "buttons": {
+     "count": 1,
+     "inHero": 1,
+     "radius": "pill",
+     "height": 46,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Revisit →"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.acct-menu → rgba(0, 0, 0, 0.5) 0px 10px 30px 0px"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 5,
+     "hairlineSamples": [
+      "header.topbar 390px",
+      "aside.act-side 318px",
+      "a 321px",
+      "a 321px",
+      "footer.foot 390px"
+     ],
+     "outlinedBoxes": 8,
+     "dashed": 0,
+     "blurred": 1,
+     "roundedBoxes": 8,
+     "boxRadius": 10,
+     "squareMedia": 0,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 252
+      }
+     ]
+    },
+    "heroMedia": [],
+    "nav": {
+     "links": 0,
+     "fixed": true,
+     "height": 0,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "dm sans",
+     "source code pro"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 1943,
+    "margins": {
+     "left": 16,
+     "right": 23
+    },
+    "sections": [
+     {
+      "sel": "section.ws-head",
+      "tag": "section",
+      "top": 85,
+      "height": 145,
+      "words": 21,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Good to see you,",
+       "size": 24,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 67,
+      "textLeft": 16,
+      "textRight": 67,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.ws-grid",
+      "tag": "div",
+      "top": 251,
+      "height": 1594,
+      "words": 140,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "0s",
+       "size": 24,
+       "tag": "b"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 16,
+      "fullBleed": false,
+      "footer": true,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Good to see you, vortex.",
+      "size": 24,
+      "top": 107,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 35,
+      "n": 4
+     },
+     {
+      "x": 16,
+      "n": 2
+     },
+     {
+      "x": 52,
+      "n": 1
+     },
+     {
+      "x": 200,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 8,
+    "bodySize": 15,
+    "stage": false,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": true,
+    "ground": "#171717",
+    "sidebar": null,
+    "topbar": {
+     "h": 58
+    },
+    "canvas": {
+     "left": 16,
+     "right": 23
+    },
+    "hero": {
+     "text": "Good to see you, vortex.",
+     "words": 5,
+     "chars": 24,
+     "lines": 1,
+     "size": 24,
+     "vw": 6.2,
+     "font": "DM Sans",
+     "weight": 500,
+     "tracking": -0.03,
+     "leading": 1.08,
+     "top": 107,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 2,
+    "layout": {
+     "panels": 6,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 12,
+     "radii": [
+      [
+       10,
+       7
+      ],
+      [
+       0,
+       5
+      ]
+     ],
+     "heavyBorders": 1,
+     "borderSamples": [
+      "#3fd18e on #1f1f1f (8.42:1)"
+     ],
+     "heavyShadows": 0,
+     "softShadows": 0,
+     "shadowSamples": [],
+     "glass": 0
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 3,
+     "tabularShare": 1,
+     "kpiMax": 24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.45,
+     "tiny": 28,
+     "tinySamples": [
+      "learn > practice > progr 10px",
+      "Workspace 10px",
+      "Account 10px",
+      "systems online 10px"
+     ],
+     "sizes": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      24
+     ]
+    },
+    "title": {
+     "text": "Good to see you, vortex.",
+     "size": 24,
+     "top": 107
+    },
+    "colourShare": 0.043
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "micro-label",
+   "width": 1440,
+   "message": "12 tiny uppercase letter-spaced labels (e.g. \"learn > practice > progress\", \"Workspace\", \"Learning time\", \"Current streak\").",
+   "fix": "Use sentence-case text at a readable size, or delete the label.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "button-fx",
+   "width": 1440,
+   "message": "Buttons with shadow/glow.",
+   "fix": "Flat fill, one colour."
+  },
+  {
+   "level": "WARN",
+   "id": "contrast",
+   "width": 1440,
+   "message": "Low-contrast text: \"Less\" 3.3:1 needs 4.5:1; \"More\" 3.3:1 needs 4.5:1; \"progress, not perfection\" 3.3:1 needs 4.5:1; \"learn > practice > progress\" 3.5:1 needs 4.5:1",
+   "fix": "Darken or lighten the text colour.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "tiny-text",
+   "width": 1440,
+   "message": "29 text blocks under 11px: learn > practice > progr 10px, Workspace 10px, Account 10px, systems online 10px.",
+   "fix": "Nothing below 11px; secondary text 12px, data 13–14px.",
+   "alsoAt": [
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "ragged-row",
+   "width": 1440,
+   "message": "1 pair(s) of cards in one row end at different heights (by 74px).",
+   "fix": "Cards that share a row share a bottom edge: balance them by their content (the same number of rows, a block of similar height beside it), or stack them. In testing, ragged rows were marked down every time."
+  },
+  {
+   "level": "FAIL",
+   "id": "emoji",
+   "width": 390,
+   "message": "Emoji in the page: ☰",
+   "fix": "Remove. Use words or real imagery."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/home/desktop-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/home/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/home/mobile-fold.jpg",
+   "pages": [
+    "/home/xubm/Desktop/personal/projects/ctf-platform/.taste-skill/before/home/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

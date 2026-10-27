@@ -280,9 +280,9 @@ describe("vm2 service (sqlite)", () => {
 
   it("course and module progress include Lab 2 automatically", async () => {
     const cp = await svc.courseProgress(userId, lab.course_id);
-    assert.equal(cp.total, 4);
+    assert.equal(cp.total, 21);
     const mp = await svc.moduleProgress(userId, lab.course_id, 6);
-    assert.equal(mp.total, 4);
+    assert.equal(mp.total, 12);
   });
 });
 

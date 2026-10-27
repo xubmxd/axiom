@@ -344,3 +344,191 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally { termInput.disabled = false; termInput.focus(); }
   });
 });
+
+// ---------- Axiom vulnerability scanner console (Module 7.2) ----------
+// No-dependency renderer over the owner-scoped scanner API. Everything
+// below only runs when the server rendered a [data-scanner] shell.
+(() => {
+  const root = document.querySelector("[data-scanner]");
+  if (!root) return;
+  const wrap = root.closest(".labwrap");
+  const labId = wrap?.dataset.lab;
+  if (!labId) return;
+  const $ = (sel) => root.querySelector(sel);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const api = (p, body) => fetch(`/api/labs/${encodeURIComponent(labId)}/scanner/${p}`, body === undefined
+    ? {}
+    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const msg = (t) => { const m = $("[data-scanner-msg]"); if (m) m.textContent = t; };
+
+  async function loadConsole() {
+    let cfg;
+    try {
+      const r = await api("config");
+      cfg = await r.json();
+      if (!r.ok) throw new Error(cfg.error || "Scanner unavailable.");
+    } catch (e) {
+      msg(e.message || "Start the lab to use the scanner.");
+      return;
+    }
+    const tpl = $("[data-scanner-templates]");
+    if (tpl) {
+      const cats = [...new Set((cfg.templates || []).map((t) => t.category))];
+      tpl.innerHTML = `<dl class="kv">${cats.map((c) => {
+        const names = (cfg.templates || []).filter((t) => t.category === c).map((t) => esc(t.name)).join(", ");
+        return `<div><dt>${esc(c)}</dt><dd>${names}</dd></div>`;
+      }).join("")}</dl>`;
+    }
+    const tgt = $("[data-scanner-targets]");
+    if (tgt) {
+      tgt.innerHTML = (cfg.targets || []).length
+        ? (cfg.targets || []).map((t) => `<label class="check"><input type="checkbox" name="target" value="${esc(t.ip)}" checked> ${esc(t.name)} <span class="mono dim">${esc(t.ip)}</span></label>`).join("")
+        : `<p class="dim small">This console has no range — templates and settings only.</p>`;
+    }
+    const set = $("[data-scanner-settings]");
+    if (set) {
+      const adv = cfg.advanced || {};
+      set.innerHTML = `<dl class="kv">${Object.entries(adv).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="mono">${esc(v)}</dd></div>`).join("")}</dl>`;
+    }
+    refreshScans();
+  }
+
+  async function refreshScans() {
+    const list = $("[data-scanner-list]");
+    if (!list) return;
+    let scans = [];
+    try {
+      const r = await api("scans");
+      const j = await r.json();
+      if (r.ok) scans = j.scans || [];
+    } catch { /* keep previous */ }
+    if (!scans.length) { list.innerHTML = `<p class="dim small">No scans yet.</p>`; return; }
+    list.innerHTML = `<dl class="kv">${scans.map((s) => `<div><dt>${esc(s.name)}</dt><dd><button class="link mono" data-scan="${esc(s.id)}">${esc(s.status)}${s.status === "running" ? ` · ${s.progress}%` : ""}</button> <span class="dim small">${esc(s.targets.join(", "))}</span></dd></div>`).join("")}</dl>`;
+    if (scans.some((s) => s.status === "running" || s.status === "queued")) {
+      clearTimeout(refreshScans._t);
+      refreshScans._t = setTimeout(refreshScans, 3000);
+    }
+  }
+
+  async function showScan(jobId) {
+    const fbox = $("[data-scanner-findings]");
+    const sbox = $("[data-scanner-sitemap]");
+    try {
+      const r = await api(`scans/${encodeURIComponent(jobId)}`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Scan not found.");
+      const groups = new Map();
+      for (const f of j.findings || []) {
+        if (!groups.has(f.pluginId)) groups.set(f.pluginId, { name: f.pluginName, family: f.family, severity: f.severity, items: [] });
+        groups.get(f.pluginId).items.push(f);
+      }
+      if (fbox) {
+        fbox.innerHTML = groups.size ? [...groups.entries()].map(([pid, g]) => `
+          <details><summary><b>${esc(g.name)}</b> <span class="chip xs">${esc(g.severity)}</span> <span class="dim small">${g.items.length} target${g.items.length === 1 ? "" : "s"} · ${esc(g.family)}</span></summary>
+          ${g.items.map((f) => `<div class="cmdrow"><code class="mono">${esc(f.targetIp)}:${f.port}</code><button class="btn xs" data-finding="${esc(f.id)}">Open finding</button></div>`).join("")}
+          </details>`).join("") : `<p class="dim small">No findings.</p>`;
+      }
+      if (sbox) {
+        sbox.innerHTML = (j.sitemap || []).length ? `<dl class="kv">${j.sitemap.map((p) => `<div><dt class="mono">${esc(p.path)}</dt><dd><button class="link mono" data-page="${esc(p.url)}" data-job="${esc(jobId)}">${esc(p.title || p.url)}</button> <span class="dim small">${esc(p.targetIp)} · ${p.status} · ${p.links.length} links</span></dd></div>`).join("")}</dl>`
+          : `<p class="dim small">No sitemap pages. Web-application scans list discovered pages here.</p>`;
+      }
+    } catch (e) {
+      if (fbox) fbox.innerHTML = `<p class="dim small">${esc(e.message)}</p>`;
+    }
+    refreshScans();
+  }
+
+  async function showFinding(fid) {
+    const fbox = $("[data-scanner-findings]");
+    try {
+      const lab = `findings/${encodeURIComponent(fid)}`;
+      const r = await api(lab);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Finding not found.");
+      const f = j.finding;
+      const detail = Object.entries(f.details || {}).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="mono">${esc(v)}</dd></div>`).join("");
+      if (fbox) {
+        fbox.innerHTML = `<div class="card">
+          <h3>${esc(f.title)}</h3>
+          <dl class="kv">
+            <div><dt>Severity</dt><dd>${esc(f.severity)}</dd></div>
+            <div><dt>Target</dt><dd class="mono">${esc(f.targetIp)}:${f.port}/${esc(f.protocol)}</dd></div>
+            <div><dt>Plugin</dt><dd>${esc(f.pluginName)} <span class="dim small">(${esc(f.family)})</span></dd></div>
+            ${detail}
+          </dl>
+          <h3>Description</h3><p class="dim small">${esc(f.description)}</p>
+          <h3>Evidence</h3><p class="mono small">${esc(f.evidence)}</p>
+          <h3>Remediation</h3><p class="dim small">${esc(f.remediation)}</p>
+          <button class="btn xs" data-back>Back to findings</button>
+        </div>`;
+        fbox.querySelector("[data-back]")?.addEventListener("click", () => {
+          const open = fbox.dataset.job;
+          if (open) showScan(open);
+        });
+        fbox.dataset.job = f.jobId;
+      }
+    } catch (e) {
+      if (fbox) fbox.innerHTML = `<p class="dim small">${esc(e.message)}</p>`;
+    }
+  }
+
+  async function showPage(jobId, url) {
+    const sbox = $("[data-scanner-sitemap]");
+    try {
+      const r = await api(`page?jobId=${encodeURIComponent(jobId)}&url=${encodeURIComponent(url)}`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Page not found.");
+      if (sbox) {
+        sbox.innerHTML = `<div class="card"><h3 class="mono">${esc(j.page.url)}</h3>
+          <p class="dim small">HTTP ${j.page.status} · ${esc(j.page.title)}</p>
+          <pre class="mono small" style="white-space:pre-wrap">${esc(j.page.html.slice(0, 8000))}</pre></div>`;
+      }
+    } catch (e) {
+      if (sbox) sbox.innerHTML = `<p class="dim small">${esc(e.message)}</p>`;
+    }
+  }
+
+  root.addEventListener("click", (e) => {
+    const s = e.target.closest("[data-scan]");
+    if (s) { e.preventDefault(); showScan(s.dataset.scan); return; }
+    const f = e.target.closest("[data-finding]");
+    if (f) { e.preventDefault(); showFinding(f.dataset.finding); return; }
+    const p = e.target.closest("[data-page]");
+    if (p) { e.preventDefault(); showPage(p.dataset.job, p.dataset.page); return; }
+  });
+
+  const form = root.querySelector("[data-scanner-new]");
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const targets = [...root.querySelectorAll('input[name="target"]:checked')].map((c) => c.value);
+    msg("Launching scan…");
+    try {
+      const r = await api("scans", {
+        name: fd.get("name") || "Untitled scan",
+        template: fd.get("template") || "basic",
+        targets,
+        ports: fd.get("ports") || "",
+        auth: fd.get("authUser") ? { user: fd.get("authUser"), password: fd.get("authPassword") || "" } : null,
+        assessment: { mode: fd.get("assessment") || "default", webapp: !!form.querySelector('input[name="webapp"]')?.checked },
+        pluginFilter: fd.get("pluginFilter") || "",
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Launch failed.");
+      msg(`Scan launched (${j.scan.targets.length} targets). Results appear below as it completes.`);
+      refreshScans();
+      const poll = setInterval(async () => {
+        try {
+          const rr = await api(`scans/${encodeURIComponent(j.scan.id)}`);
+          const jj = await rr.json();
+          if (jj.scan && (jj.scan.status === "complete" || jj.scan.status === "failed")) {
+            clearInterval(poll);
+            showScan(j.scan.id);
+          }
+        } catch { clearInterval(poll); }
+      }, 3000);
+    } catch (err) { msg(err.message || "Launch failed."); }
+  });
+
+  loadConsole();
+})();

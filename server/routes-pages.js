@@ -241,7 +241,7 @@ pages.get("/", needAuth, async (req, res) => {
           <div class="act">
             <div class="act-main">${graphHtml(rows, bands, weeks)}</div>
             <aside class="act-side" aria-label="This week summary">
-              <p class="eyebrow">This week</p>
+              <p class="eyebrow" style="font-size:12px">This week</p>
               <div class="act-stats">
                 <div class="act-stat"><span class="mono">learned</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
                 <div class="act-stat"><span class="mono">active days</span><b>${weekActive} / 7</b></div>
@@ -910,7 +910,7 @@ pages.get("/admin", needAdmin, async (req, res) => {
     <td class="mono">${rootCounts.get(r.id) || 0}</td>
     <td class="nowrap"><button class="btn xs" data-root-toggle="${r.id}">${r.is_active ? "Pause" : "Enable"}</button> <button class="btn xs danger" data-root-del="${r.id}" data-label="${esc(r.label || r.path)}">Remove</button></td></tr>`).join("");
   res.send(layout({ title: "Admin", user: req.user, active: "admin", body: `<div class="wrap wide">
-  <p class="eyebrow mono">admin console</p><h1>System overview</h1>
+  <p class="eyebrow mono" style="font-size:12px">admin console</p><h1>System overview</h1>
   <div class="statrow six">
     <div class="stat"><span class="mono stat-label">users</span><b>${tu.n}</b></div>
     <div class="stat"><span class="mono stat-label">courses</span><b>${tc.n}</b></div>
