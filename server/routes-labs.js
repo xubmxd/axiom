@@ -192,11 +192,11 @@ labPages.get("/labs", needAuthPage, ah(async (req, res) => {
   res.send(layout({
     title: "Cyber Range", user: u, active: "labs",
     body: `<div class="wrap range-landing">
-      <header class="range-hero">
-        <p class="eyebrow" style="font-size:12px">cyber range</p>
-        <h1>Practical cybersecurity training environments.</h1>
-        <p class="range-lede">Choose a training path. Isolated hands-on labs — start a target, interrogate it like a real engagement, submit what you find.</p>
-        <p class="range-meta mono">isolated networks · real targets · flag validation</p>
+      <header class="range-hero compact">
+        <p class="eyebrow">cyber range</p>
+        <h1>Cyber Range</h1>
+        <p class="range-lede">Choose a training path and start a target. Every lab runs in an isolated network, scoped to your account.</p>
+        <p class="range-meta mono">${enriched.length} path${enriched.length === 1 ? "" : "s"} · isolated networks · flag validation</p>
       </header>
       <div class="range-grid">
         <section class="range-paths" aria-label="Training paths">
@@ -214,7 +214,7 @@ labPages.get("/labs", needAuthPage, ah(async (req, res) => {
             : emptyState("No training paths yet", "Labs appear here once definitions are registered.", u.role === "admin" ? `<a class="btn primary" href="/admin">Open Admin</a>` : "")}
         </section>
         <aside class="range-how" aria-label="How the range works">
-          <p class="eyebrow" style="font-size:12px">How it works</p>
+          <h2 class="eyebrow">How it works</h2>
           <div class="range-step"><span class="mono">01</span><div><h3>Start a target</h3><p>Launch an isolated lab network, scoped to your account and separate from every other student.</p></div></div>
           <div class="range-step"><span class="mono">02</span><div><h3>Interrogate it</h3><p>Use the built-in terminal to enumerate, exploit, and capture evidence. No host shell, no shared state.</p></div></div>
           <div class="range-step"><span class="mono">03</span><div><h3>Submit the flag</h3><p>Prove the finding. A correct flag completes the lab and feeds your range progress.</p></div></div>
@@ -376,10 +376,22 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
       </div>
     </section>
 
+    <section class="lab-statusbar" aria-label="Lab status and actions">
+      <span data-status-pill>${statusPill(inst?.status || "stopped")}</span>
+      <span class="mono lab-elapsed${inst?.startedAt ? " running" : " stopped"}" data-elapsed>${inst?.startedAt ? "…" : "Not running"}</span>
+      <span class="lrow">
+        ${!inst ? `<button class="btn primary" data-lab-action="start">Start Lab</button>`
+          : inst.status === "running" ? `<button class="btn" data-lab-action="reset">Reset</button><button class="btn danger" data-lab-action="stop">Stop</button>`
+          : inst.status === "failed" ? `<button class="btn primary" data-lab-action="start">Retry</button>`
+          : `<button class="btn" disabled aria-disabled="true">${esc(inst.status)}…</button>`}
+        ${isTheory || isScanner ? "" : `<button class="btn xs term-jump" type="button" data-term-toggle aria-expanded="false" aria-controls="termCard">Terminal</button>`}
+      </span>
+    </section>
+
     <div class="labgrid">
       <div class="labmain">
         <div class="tabs" role="tablist" aria-label="Lab workspace">
-          ${(isOsint ? ["instructions", "hints", "research", "connection", "notes", "more"] : isScanner ? ["instructions", "hints", "scanner", "connection", "notes", "more"] : ["instructions", "hints", "connection", "notes", "more"]).map((t, i) => `<button role="tab" id="tab-${t}" aria-controls="panel-${t}" aria-selected="${i === 0 ? "true" : "false"}" tabindex="${i === 0 ? "0" : "-1"}" data-tab="${t}">${t[0].toUpperCase() + t.slice(1)}${t === "hints" ? ` (${hints.length})` : ""}</button>`).join("")}
+          ${(isOsint ? ["instructions", "hints", "research", "connection", "notes", "more"] : isScanner ? ["instructions", "hints", "scanner", "connection", "notes", "more"] : ["instructions", "hints", "connection", "notes", "more"]).map((t, i) => `<button role="tab" id="tab-${t}" aria-controls="panel-${t}" aria-selected="${i === 0 ? "true" : "false"}" tabindex="${i === 0 ? "0" : "-1"}" data-tab="${t}"${t === "hints" && !hints.length ? ` aria-disabled="true" class="tab-empty" title="No hints for this lab"` : ""}>${t[0].toUpperCase() + t.slice(1)}${t === "hints" ? ` (${hints.length})` : ""}</button>`).join("")}
         </div>
 
         <section class="card tabpanel" role="tabpanel" id="panel-instructions" aria-labelledby="tab-instructions" tabindex="0">
@@ -562,19 +574,19 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
         <section class="card tabpanel" role="tabpanel" id="panel-more" aria-labelledby="tab-more" tabindex="0" hidden>
           <h2>More</h2>
           <h3>Environment</h3>
-          <div class="conn-grid">
-            <div><p class="mono dim small">PATH</p><p><a class="link" href="/labs/${esc(course.slug)}">${esc(course.title)}</a> <span class="dim">· Module ${esc(String(lab.module_number))}</span></p></div>
-            <div><p class="mono dim small">PROVIDER</p><p class="mono">${esc(inst?.provider || "—")}</p></div>
-            <div><p class="mono dim small">RESETS</p><p class="mono">${esc(String(inst?.resetCount ?? 0))}</p></div>
-            <div><p class="mono dim small">TYPE</p><p class="mono">${esc(lab.environment_type)}</p></div>
-          </div>
+          <dl class="kv">
+            <div><dt>Course</dt><dd><a class="link" href="/labs/${esc(course.slug)}">${esc(course.title)}</a> · Module ${esc(String(lab.module_number))}</dd></div>
+            <div><dt>Hosting</dt><dd>${inst?.provider ? `Managed by <span class="mono">${esc(inst.provider)}</span> on this server` : "Not running — start the lab to see its host"}</dd></div>
+            <div><dt>Times reset</dt><dd>${(inst?.resetCount ?? 0) ? `${esc(String(inst.resetCount))} — each reset rebuilds the target from scratch` : "Never reset"}</dd></div>
+            <div><dt>Environment</dt><dd>${esc({ vm: "Virtual machine", "single-target": "Single target container", osint: "Public-web research (no VM)", theory: "Knowledge exercise (no VM)", scanner: "Scanner range (no shell)" }[lab.environment_type] || lab.environment_type)}</dd></div>
+          </dl>
           <h3>Report a problem</h3>
           <p class="dim small">If the target misbehaves, reset the lab first (it rebuilds the environment). Still broken? Contact your CarnoSec administrator.</p>
         </section>
 
         ${isTheory || isScanner ? "" : `
-        <section class="card terminal-card" aria-label="Integrated terminal">
-          <div class="sech"><h2><span class="h-ic" aria-hidden="true">▸</span> ${isNmap ? "Attacker Terminal" : "Lab Terminal"}</h2><span class="mono dim small">scoped · no host shell</span></div>
+        <section class="card terminal-card" id="termCard" aria-label="Integrated terminal">
+          <div class="sech"><h2><span class="h-ic" aria-hidden="true">▸</span> ${isNmap ? "Attacker Terminal" : "Lab Terminal"}</h2><button class="term-sheet-toggle" type="button" data-term-toggle aria-expanded="false" aria-controls="termCard"><span class="term-sheet-label">${inst ? "Open" : "Starts with the lab"}</span> <span class="chev" aria-hidden="true">▴</span></button><span class="mono dim small">scoped · no host shell</span></div>
           <div class="term-out" id="termOut" role="log" aria-label="Terminal output" tabindex="0"><div class="dim">${isOsint ? "Type <b>help</b> to see available commands. Research for this exercise is browser-based — see the Research tab." : isNmap ? "Type <b>help</b> for the attacker shell. Scan the assigned subnet from the Connection tab." : "Type <b>help</b> to see available commands. Runs inside your isolated lab environment."}</div></div>
           <form class="term-in" id="termForm"><span class="mono term-ps" aria-hidden="true">${isNmap ? "kali ❯" : "lab ❯"}</span><input id="termInput" autocomplete="off" spellcheck="false" aria-label="Terminal input" placeholder="${isOsint ? "help — research is browser-based" : isDns ? `dig @${esc(targetIp)} megacorpone.com MX` : isScan ? `nc -vz ${esc(targetIp)} 1-1000` : isNmap && lab.slug === SNMP_SLUG ? `onesixtyone -c communities.txt ${esc(inst?.networkCidr || "<SUBNET>")}` : isNmap && lab.slug === SMTP_SLUG ? `nmap -sV -p 25 --open ${esc(inst?.networkCidr || "<SUBNET>")}` : isNmap && lab.slug === SMB_SLUG ? `nmap -p 445 --open ${esc(inst?.networkCidr || "<SUBNET>")}` : isNmap ? `nmap -sS --open ${esc(inst?.networkCidr || "<SUBNET>")}` : `whois ${esc(domain)} -h ${esc(targetIp)}`}" ${inst ? "" : "disabled"}><button class="btn primary xs" type="submit" ${inst ? "" : "disabled"}>Run</button></form>
         </section>`}

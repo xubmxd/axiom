@@ -19,13 +19,34 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const p of panels) p.hidden = p.id !== btn.getAttribute("aria-controls");
   }
   tabs.forEach((t, i) => {
-    t.addEventListener("click", () => selectTab(t));
+    t.addEventListener("click", () => {
+      if (t.getAttribute("aria-disabled") === "true") { toast("No hints for this lab."); return; }
+      selectTab(t);
+    });
     t.addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       e.preventDefault();
       const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
       selectTab(next, true);
     });
+  });
+
+  // ---------- terminal sheet (mobile) ----------
+  // The terminal is a fixed bottom sheet below 900px so Start, instructions and
+  // answers stay on screen. Toggled from the sheet header and the status bar.
+  const termCard = document.getElementById("termCard");
+  function setSheet(open) {
+    if (!termCard) return;
+    termCard.classList.toggle("sheet-open", open);
+    wrap.querySelectorAll("[data-term-toggle]").forEach((b) => {
+      b.setAttribute("aria-expanded", String(open));
+      const label = b.querySelector(".term-sheet-label");
+      if (label) label.textContent = open ? "Close" : (wrap.dataset.status === "stopped" ? "Starts with the lab" : "Open");
+    });
+    if (open) termCard.querySelector("#termInput:not(:disabled)")?.focus({ preventScroll: true });
+  }
+  wrap.querySelectorAll("[data-term-toggle]").forEach((b) => {
+    b.addEventListener("click", () => setSheet(!termCard?.classList.contains("sheet-open")));
   });
 
   // ---------- copy buttons ----------
@@ -131,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const b = e.target.closest("[data-lab-action]");
     if (!b) return;
     const action = b.dataset.labAction;
+    if (action === "reset" && !confirm("Reset this lab? The environment is rebuilt from scratch and the target may be unavailable for a minute. Your notes and submitted answers are kept.")) return;
     b.disabled = true;
     say(action === "start" ? "Provisioning isolated target…" : action === "reset" ? "Rebuilding environment…" : "Tearing down… (usually under a minute)");
     const ctrl = new AbortController();
@@ -205,16 +227,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ---------- elapsed timer ----------
-  const elapsedEl = wrap.querySelector("[data-elapsed]");
+  const elapsedEls = [...wrap.querySelectorAll("[data-elapsed]")];
   const startedAt = wrap.dataset.startedAt;
-  if (elapsedEl && startedAt) {
+  if (elapsedEls.length && startedAt) {
     const t0 = new Date(startedAt).getTime();
     const tick = () => {
       const s = Math.max(0, Math.floor((Date.now() - t0) / 1000));
       const h = String(Math.floor(s / 3600)).padStart(2, "0");
       const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
       const ss = String(s % 60).padStart(2, "0");
-      elapsedEl.textContent = `● ${h}:${m}:${ss}`;
+      for (const el of elapsedEls) el.textContent = `● ${h}:${m}:${ss}`;
     };
     tick();
     setInterval(tick, 1000);

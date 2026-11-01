@@ -10,6 +10,8 @@
   const tabId = Math.random().toString(36).slice(2);
   const tzOffset = new Date().getTimezoneOffset();
   const bar = document.querySelector("#readProgress i");
+  const barEl = document.getElementById("readProgress");
+  const pctEl = document.getElementById("readPct");
   const doneBtn = document.getElementById("btnDone");
   const startPx = parseInt(root.dataset.scroll || "0", 10);
   let activeAccum = 0, lastInteract = Date.now(), maxPct = 0, done = doneBtn?.classList.contains("done");
@@ -50,7 +52,10 @@
   }, { passive: true });
 
   function paint() {
-    if (bar) bar.style.width = Math.round(Math.max(maxPct, progress()) * 100) + "%";
+    const pct = Math.round(Math.max(maxPct, progress()) * 100);
+    if (bar) bar.style.width = pct + "%";
+    if (barEl) barEl.setAttribute("aria-valuenow", String(pct));
+    if (pctEl) pctEl.textContent = pct + "%";
   }
   function progress() {
     const h = document.documentElement;
@@ -71,6 +76,11 @@
       if ((await r.json()).completed) { showDone(); if (!auto) toast("Marked complete"); }
     } catch { toast("Couldn't save — retry"); }
   }
-  function showDone() { done = true; if (doneBtn) { doneBtn.classList.add("done"); doneBtn.textContent = "✓ Completed"; } }
+  function showDone() {
+    done = true;
+    if (doneBtn) { doneBtn.classList.add("done"); doneBtn.textContent = "✓ Completed"; }
+    const label = document.querySelector(".rc-label");
+    if (label) label.textContent = "Read in full — completion recorded";
+  }
   if (doneBtn) doneBtn.onclick = () => markDone(false);
 })();

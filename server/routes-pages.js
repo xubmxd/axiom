@@ -7,8 +7,8 @@ import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressB
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
-// Rotating workspace line — server-rendered once per page load, stable for
-// the session. No backend needed; edit this list freely.
+// Workspace line — chosen deterministically from the learner's real state so
+// it never contradicts the numbers beside it and doesn't change on reload.
 const MOTIVATION = [
   "Small steps every day compound into expertise.",
   "Progress is built one difficult lesson at a time.",
@@ -184,15 +184,21 @@ pages.get("/", needAuth, async (req, res) => {
   const allPct = allTotal ? Math.round(allDone / allTotal * 100) : 0;
   // Activity range selector (real re-render, default 12 weeks).
   const weeks = [12, 26, 52].includes(parseInt(req.query.range)) ? parseInt(req.query.range) : 12;
-  const msg = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
+  // Stable per state (not per reload) and never congratulates a zero-day
+  // streak: the line under the greeting has to agree with the numbers.
+  const msg = st.current === 0 && allDone === 0
+    ? "Pick one lesson. The first mark on the graph is the hard one."
+    : st.current === 0
+      ? "No streak today yet — one lesson restarts it."
+      : MOTIVATION[(allDone + st.current) % MOTIVATION.length];
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const firstName = esc(u.display_name.split(" ")[0] || u.username);
   const contCount = cont.length;
   const progCount = inProg.length;
 
   const statDelta = delta === null
-    ? `<small class="mono">${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</small>`
-    : `<small><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> <span class="mono">${fmtDur(weekVideo)} vid · ${fmtDur(weekReading)} read</span></small>`;
+    ? `<small class="mono">${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`
+    : `<small><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> <span class="mono">${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</span></small>`;
 
   // ONE resume point: the single last-accessed item (or the empty state).
   // Completed items are never substituted — the action becomes "Revisit",
@@ -203,14 +209,18 @@ pages.get("/", needAuth, async (req, res) => {
     const done = !!it.done;
     const pct = it.t === "video" && it.dur ? Math.round((it.pos / it.dur) * 100)
       : (it.t === "reading" && it.pos !== undefined && it.pos !== null ? Math.round(Number(it.pos) * 100) : null);
-    const meta = it.t === "video" && it.dur ? `${fmtClock(it.pos)} / ${fmtClock(it.dur)} · ${pct}%`
-      : (pct !== null ? `${pct}% through this page` : "");
+    // A completed item is never shown at 0%. Completion is its own state, not
+    // a percentage of the same bar the learner was watching.
+    const meta = done
+      ? (it.t === "video" && it.dur ? `Watched in full · ${fmtClock(it.dur)}` : "Read in full")
+      : it.t === "video" && it.dur ? `${fmtClock(it.pos)} / ${fmtClock(it.dur)} watched`
+      : (pct !== null ? `${pct}% of this page read` : "");
     const action = done ? "Revisit →" : (it.t === "video" ? "▶ Resume" : "Continue reading →");
     return `<div class="resume-featured">
       <div class="resume-top"><span class="mono dim resume-course">${esc(it.course)}</span><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span></div>
       <h3>${esc(it.title)}</h3>
-      ${meta ? `<p class="mono dim small resume-meta">${esc(meta)}</p>` : ""}
-      ${pct !== null ? progressBar(pct, it.title) : ""}
+      ${meta ? `<p class="mono dim small resume-meta">${done ? `<span class="proof"><span class="tick" aria-hidden="true">✓</span>completed</span> ` : ""}${esc(meta)}</p>` : ""}
+      ${!done && pct !== null ? progressBar(pct, `${it.title} — position`): ""}
       <a class="btn primary resume-btn" href="/learn/${it.t}/${it.content_id}">${action}</a>
     </div>`;
   })();
@@ -230,9 +240,9 @@ pages.get("/", needAuth, async (req, res) => {
       <div class="ws-main">
         <div class="statrow" role="list" aria-label="Learning statistics">
           <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Learning time</span></div><b>${fmtDur(weekSecs)}</b>${statDelta}</div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Current streak</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}</b><small class="mono">Best: ${st.longest} day${st.longest === 1 ? "" : "s"}</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Current streak</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}${st.current > 0 ? ` <span class="proof" title="Counted from recorded learning time"><span class="tick" aria-hidden="true">✓</span>verified</span>` : ""}</b><small class="mono">Best: ${st.longest} day${st.longest === 1 ? "" : "s"} · recorded activity</small></div>
           <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Completed</span></div><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small class="mono">Out of ${courses.length}</small></div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Total progress</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small class="mono">${allDone}/${allTotal} items</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Total progress</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small class="mono">${allDone} of ${allTotal} items complete</small></div>
         </div>
 
         <section class="card act-card" aria-label="Activity">
@@ -243,7 +253,7 @@ pages.get("/", needAuth, async (req, res) => {
             <aside class="act-side" aria-label="This week summary">
               <p class="eyebrow" style="font-size:12px">This week</p>
               <div class="act-stats">
-                <div class="act-stat"><span class="mono">learned</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
+                <div class="act-stat"><span class="mono">watched + read</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
                 <div class="act-stat"><span class="mono">active days</span><b>${weekActive} / 7</b></div>
                 <div class="act-stat"><span class="mono">most active day</span><b>${mostActive}${bestSecs ? ` <em class="mono dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
               </div>
@@ -253,7 +263,7 @@ pages.get("/", needAuth, async (req, res) => {
         </section>
 
         <section aria-label="In progress"><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
-        ${inProg.length ? `<div class="coursegrid" data-n="${Math.min(inProg.length, 6)}">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? "Something new is waiting in the library." : ""}</div>`}</section>
+        ${inProg.length ? `<div class="coursegrid" data-n="${Math.min(inProg.length, 6)}">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? `Something new is waiting in the <a class="link" href="/library?f=todo">library →</a>` : `Everything here is complete. <a class="link" href="/library">Browse the library →</a>`}</div>`}</section>
 
         <a class="range-cta" href="/labs">
           <div class="range-cta-body">
@@ -287,7 +297,7 @@ function courseCard({ c, done, total, pct, lessons, pages }) {
     <div class="ccard-art">${iconArt(c, 48)}</div>
     <div class="ccard-b"><div class="ccard-t"><span class="mono ccard-code">${esc(kind)} course</span><span class="pill ${kind}">${kind}</span></div>
     <h3>${esc(c.title)}</h3>
-    ${progressBar(pct, c.title)}<p class="mono ccard-meta"><span>${Math.round(pct)}%</span><span>${counts}</span></p></div></a>`;
+    ${progressBar(pct, c.title)}<p class="mono ccard-meta"><span>${Math.round(pct)}% of items</span><span>${counts}</span></p></div></a>`;
 }
 
 // ---------- Library ----------
@@ -332,9 +342,9 @@ pages.get("/library", needAuth, async (req, res) => {
 
   res.send(layout({ title: "Library", user: u, active: "library", body: `
   <div class="wrap">
-    <div class="sech"><div><p class="eyebrow">library · ${list.length} courses</p><h1>Course library</h1></div></div>
+    <div class="sech"><div><p class="eyebrow">library</p><h1>Course library</h1></div><span class="mono dim small">${list.length} course${list.length === 1 ? "" : "s"}${q ? ` matching “${esc(req.query.q)}”` : ""}</span></div>
     <form class="toolbar" method="get" action="/library">
-      <input class="search" name="q" placeholder="Search courses, lessons, pages…" value="${esc(req.query.q || "")}">
+      <input type="hidden" name="q" value="${esc(req.query.q || "")}">
       <div class="filter-group"><span class="filter-label">status</span>
         ${["all", "progress", "todo", "done"].map((x) => `<a href="${qs({ f: x })}" class="chip ${f === x ? "on" : ""}"${f === x ? ` aria-current="true"` : ""}>${{ all: "All", progress: "In progress", todo: "Not started", done: "Completed" }[x]}</a>`).join("")}
       </div>
@@ -350,6 +360,7 @@ pages.get("/library", needAuth, async (req, res) => {
       </label>
       <input type="hidden" name="f" value="${esc(f)}"><input type="hidden" name="kind" value="${esc(kind)}">
     </form>
+    <h2 class="sr-only">Courses</h2>
     ${list.length ? `<div class="coursegrid">${list.map(courseCard).join("")}</div>`
       : emptyState(q ? "No courses found" : "Your library is empty", q ? "Try another search or clear the filters." : "Add courses to the configured course directory and they'll appear here.")}
   </div>` }));
@@ -388,12 +399,13 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
       ${iconArt(c, 88)}
       <div><p class="eyebrow mono">${esc(kindLabel)} course · ${esc(countLabel)}</p>
       <h1>${esc(c.title)}</h1>
-      <p class="dim small mono">source: ${esc(rootLabel || c.root_path || "courses")}/${esc(c.kind)}/${esc(c.dir_name)}</p>
-      <div class="crow"><div class="cfill">${progressBar(p.pct, c.title)}<span class="dim small">${Math.round(p.pct)}% · ${p.done}/${p.total}</span></div>
+      <p class="prov"><b>From</b> ${esc(rootLabel || "your library")}${c.last_scanned_at ? ` · scanned ${esc(fmtDate(c.last_scanned_at, u.timezone))}` : ""} · ${p.total} item${p.total === 1 ? "" : "s"} indexed</p>
+      <details class="prov-path"><summary>Folder path</summary><span class="mono">${esc(rootLabel || c.root_path || "courses")}/${esc(c.kind)}/${esc(c.dir_name)}</span></details>
+      <div class="crow"><div class="cfill">${progressBar(p.pct, c.title)}<span class="dim small">${p.done} of ${p.total} items complete · ${Math.round(p.pct)}%</span></div>
       ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"} →</a>` : ""}</div></div>
     </section>
-    ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} learned · ${comp.items_done}/${comp.items_total} items</p></div><span class="seal">100% complete</span></div>` : ""}
-    ${flatLessons.length ? bulkBarHTML("card") : ""}
+    ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Every item finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} recorded</p></div><span class="seal">verified</span></div>` : ""}
+    ${flatLessons.length && p.pct < 100 ? bulkBarHTML("card") : ""}
     ${p.total === 0 ? emptyState("No lessons indexed", "The course folder has no recognised video, reading or resource files yet.") : renderDetailTree(tree)}
   </div>` }));
 });
@@ -514,13 +526,13 @@ function renderSideTree(node, currentId, depth = 0) {
 // Learn sidebar shell: prominent course title, secondary % + bar, search,
 // COURSE CONTENT header with Select + Expand all, contextual bulk toolbar
 // (visible only in selection mode), independently scrollable tree.
-function learnSidebar({ courseId, courseTitle, pct, tree, currentId, after = "" }) {
+function learnSidebar({ courseId, courseTitle, pct, done = 0, total = 0, tree, currentId, after = "" }) {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
   return `<aside class="side side-new" id="side" data-selecting="off">`
     + `<div class="side-top"><div class="side-course-row"><a class="side-back" href="/courses/${esc(courseId)}"><span class="side-back-arrow" aria-hidden="true">←</span><span class="side-course-t">${esc(courseTitle)}</span></a>`
     + `<button class="iconbtn side-collapse" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>`
-    + `<p class="mono side-pct">${p}% complete</p>`
-    + `<div class="side-pbar"><div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="Course progress"><i style="width:${p}%"></i></div></div>`
+    + `<p class="mono side-pct">${done} of ${total} items complete · ${p}%</p>`
+    + `<div class="side-pbar"><div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion, ${done} of ${total} items"><i style="width:${p}%"></i></div></div>`
     + `<div class="side-search"><span class="side-search-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span><input id="sideSearch" type="search" placeholder="Search lessons…" aria-label="Search lessons" autocomplete="off"></div>`
     + `<div class="side-chead"><span class="mono side-chead-t">Course content</span><span class="side-chead-actions"><button type="button" class="side-linkbtn" data-side-select aria-pressed="false">Select</button><button type="button" class="side-linkbtn" data-side-expand>Expand all</button></span></div>`
     + `<div class="side-selbar" data-bulk-bar><div class="side-sel-top"><label class="bulk-select"><input type="checkbox" data-bulk-select-all> <span>Select all</span></label><span class="mono side-sel-count" data-bulk-count aria-live="polite">0 selected</span></div>`
@@ -555,7 +567,7 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
 
   res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
   <div class="learn" data-lesson="${l.id}" data-course="${l.course_id}" data-pos="${prog?.position_secs || 0}" data-autoplay="${settings?.autoplay ?? 1}" data-speed="${+settings?.playback_speed || 1}" data-threshold="${config.videoCompletionThreshold}">
-    ${learnSidebar({ courseId: l.course_id, courseTitle: l.course, pct: cprog.pct, tree, currentId: l.id })}
+    ${learnSidebar({ courseId: l.course_id, courseTitle: l.course, pct: cprog.pct, done: cprog.done, total: cprog.total, tree, currentId: l.id })}
     <div class="stage">
       ${crumbs({ id: l.course_id, title: l.course }, chain, l.title)}
       <h1 class="ltitle">${esc(l.title)}</h1>
@@ -705,10 +717,10 @@ pages.get("/learn/reading/:id", needAuth, async (req, res) => {
 
   res.send(layout({ title: p.title, user: u, active: "library", extraScript: `<script src="/js/reader.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
   <div class="learn reading" data-page="${p.id}" data-course="${p.course_id}" data-scroll="${prog?.scroll_px || 0}" data-threshold="${config.readingCompletionThreshold}">
-    ${learnSidebar({ courseId: p.course_id, courseTitle: p.course, pct: cprogR.pct, tree, currentId: p.id, after: headings.length ? `<p class="mono side-onpage">On this page</p><ol class="sles small ghost">${headings.slice(0, 12).map((h) => `<li class="sles-row"><a class="sles-a" href="#${h.id}"><span class="sles-t">${esc(h.text)}</span></a></li>`).join("")}</ol>` : "" })}
+    ${learnSidebar({ courseId: p.course_id, courseTitle: p.course, pct: cprogR.pct, done: cprogR.done, total: cprogR.total, tree, currentId: p.id, after: headings.length ? `<p class="mono side-onpage">On this page</p><ol class="sles small ghost">${headings.slice(0, 12).map((h) => `<li class="sles-row"><a class="sles-a" href="#${h.id}"><span class="sles-t">${esc(h.text)}</span></a></li>`).join("")}</ol>` : "" })}
     <div class="stage read-stage">
       ${crumbs({ id: p.course_id, title: p.course }, chain, p.title)}
-      <div class="readbar"><div class="pbar" id="readProgress"><i style="width:${Math.round((prog?.scroll_pct || 0) * 100)}%"></i></div></div>
+      <div class="readbar"><div class="pbar" id="readProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((prog?.scroll_pct || 0) * 100)}" aria-label="This page read"><i style="width:${Math.round((prog?.scroll_pct || 0) * 100)}%"></i></div><p class="mono dim rc-label"><span id="readPct">${Math.round((prog?.scroll_pct || 0) * 100)}%</span> of this page read · completion at ${Math.round(config.readingCompletionThreshold * 100)}%</p></div>
       <article class="prose" id="prose"><h1>${esc(p.title)}</h1>${html || "<p class=dim>Empty page.</p>"}</article>
       <div class="lrow">
         <button class="btn" id="btnFocus">Focus mode</button>
@@ -782,9 +794,9 @@ pages.get("/settings", needAuth, async (req, res) => {
   const s = await get(`SELECT * FROM user_settings WHERE user_id=?`, [u.id]);
   res.send(layout({ title: "Settings", user: u, active: "settings", body: `<div class="wrap narrow">
   <h1>Settings</h1>
-  <div id="saveMsg"></div>
+  <div id="saveMsg" role="status" aria-live="polite"></div>
   <section class="card" aria-labelledby="picH">
-    <h3 id="picH">Profile picture</h3>
+    <h2 id="picH">Profile picture</h2>
     <div class="pic-row">
       <div class="pic-prev" id="picPrev" data-initials="${esc(initials(u.display_name))}">${avatarHtml(u, true)}</div>
       <div class="pic-body">
@@ -798,21 +810,25 @@ pages.get("/settings", needAuth, async (req, res) => {
       </div>
     </div>
   </section>
-  <form class="card form" id="profileForm">
-    <h3>Profile</h3>
-    <label>Display name<input name="display_name" value="${esc(u.display_name)}" maxlength="80"></label>
-    <label>Email<input name="email" type="email" value="${esc(u.email)}"></label>
-    <label>Timezone (IANA, e.g. Asia/Kolkata)<input name="timezone" value="${esc(u.timezone)}" maxlength="60" placeholder="Asia/Kolkata"><small class="dim">Formats dates shown to you. Daily activity follows this device's clock.</small></label>
+  <form class="card form" id="profileForm" method="post" action="/settings">
+    <h2>Profile</h2>
+    <label>Display name<input name="display_name" value="${esc(u.display_name)}" maxlength="80" autocomplete="name"></label>
+    <label>Email<input name="email" type="email" value="${esc(u.email)}" autocomplete="email"></label>
+    <label>Timezone<input name="timezone" value="${esc(u.timezone)}" maxlength="60" placeholder="Asia/Kolkata" list="tzList" autocomplete="off"><small class="dim">Formats dates shown to you. Daily activity follows this device's clock.</small></label>
+    <datalist id="tzList">${["UTC","Europe/London","Europe/Berlin","Europe/Paris","Asia/Kolkata","Asia/Singapore","Asia/Tokyo","Australia/Sydney","America/New_York","America/Chicago","America/Denver","America/Los_Angeles","America/Sao_Paulo"].map((z) => `<option value="${z}">`).join("")}</datalist>
     <button class="btn primary" type="submit">Save profile</button>
+    <p class="mono dim small form-status" data-form-status role="status" aria-live="polite"></p>
   </form>
-  <form class="card form" id="passForm"><h3>Password</h3>
+  <form class="card form" id="passForm" method="post" action="/settings"><h2>Password</h2>
     <label>Current password<input name="current" type="password" autocomplete="current-password"></label>
     <label>New password (min 10 chars)<input name="next" type="password" minlength="10" autocomplete="new-password"></label>
-    <button class="btn primary" type="submit">Change password</button></form>
-  <form class="card form" id="prefForm"><h3>Learning preferences</h3>
+    <button class="btn primary" type="submit">Change password</button>
+    <p class="mono dim small form-status" data-form-status role="status" aria-live="polite"></p></form>
+  <form class="card form" id="prefForm" method="post" action="/settings"><h2>Learning preferences</h2>
     <label class="check"><input type="checkbox" name="autoplay" ${s?.autoplay ? "checked" : ""}> Autoplay countdown after videos</label>
     <label>Default playback speed<select name="playback_speed">${[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((v) => `<option ${(+s?.playback_speed || 1) === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-    <button class="btn primary" type="submit">Save preferences</button></form>
+    <button class="btn primary" type="submit">Save preferences</button>
+    <p class="mono dim small form-status" data-form-status role="status" aria-live="polite"></p></form>
   <section class="card sess" aria-labelledby="sessH">
     <h3 id="sessH">Session security</h3>
     <p class="dim small sess-sub">You are currently signed in. Ending the session signs you out of CarnoSec on this browser.</p>
@@ -829,7 +845,16 @@ pages.get("/settings", needAuth, async (req, res) => {
       </div>
     </dialog>
   </section>
-  <script>document.getElementById('profileForm').onsubmit=saveJSON('/api/settings/profile','saveMsg');document.getElementById('passForm').onsubmit=saveJSON('/api/settings/password','saveMsg');document.getElementById('prefForm').onsubmit=saveJSON('/api/settings/prefs','saveMsg');</script>
+  <script>
+  // Bind after deferred app.js has run. Each form is a real POST target, so
+  // there is no GET fallback that could carry a password or email in the URL.
+  document.addEventListener("DOMContentLoaded", () => {
+    [["profileForm", "/api/settings/profile"], ["passForm", "/api/settings/password"], ["prefForm", "/api/settings/prefs"]].forEach(([id, url]) => {
+      const form = document.getElementById(id);
+      if (form && window.saveJSON) form.addEventListener("submit", saveJSON(url, "saveMsg", form));
+    });
+  });
+  </script>
   <script>
   // Profile picture: validated client-side, cropped to a 256px square JPEG
   // in-browser so uploads stay small, then stored via the avatar endpoint.
@@ -873,6 +898,14 @@ pages.get("/settings", needAuth, async (req, res) => {
 });
 
 // ---------- Admin ----------
+// Break long filesystem paths at their separators, never mid-word.
+function pathHtml(raw) {
+  const segs = String(raw || "").split("/");
+  return segs.map((seg, i) => {
+    const piece = (i ? "/" : "") + esc(seg);
+    return i < segs.length - 1 ? `${piece}<wbr>` : piece;
+  }).join("");
+}
 pages.get("/admin", needAdmin, async (req, res) => {
   const users = await all(`SELECT id, username, email, display_name, role, status, created_at, last_seen_at FROM users ORDER BY created_at ASC`);
   let courses = [];
@@ -904,8 +937,8 @@ pages.get("/admin", needAdmin, async (req, res) => {
     const out = execSync(`du -shc ${arg} 2>/dev/null | tail -1 | cut -f1`).toString().trim();
     storage = out || "n/a";
   } catch {}
-  const rows = courses.map((c) => `<tr><td>${esc(c.title)}</td><td><span class="pill ${c.kind}">${c.kind}</span></td><td class="dim small">${esc(c.root_label || c.root_path || "default")}</td><td class="mono">${c.lesson_count || c.page_count || 0}</td><td class="mono dim">${c.last_scanned_at ? fmtDate(c.last_scanned_at) : "—"}</td></tr>`).join("");
-  const rootRows = roots.map((r) => `<tr><td><b>${esc(r.label || "Library")}</b><br><span class="dim small mono">${esc(r.path)}</span>${r.last_error ? `<br><span class="dim small">⚠ ${esc(r.last_error.slice(0, 120))}</span>` : ""}</td>
+  const rows = courses.map((c) => `<tr><td>${esc(c.title)}</td><td><span class="pill ${c.kind}">${c.kind}</span></td><td class="dim small">${esc(c.root_label || "default")}</td><td class="mono">${c.lesson_count || c.page_count || 0}</td><td class="mono dim nowrap">${c.last_scanned_at ? fmtDate(c.last_scanned_at, req.user.timezone) : "—"}</td></tr>`).join("");
+  const rootRows = roots.map((r) => `<tr><td><b>${esc(r.label || "Library")}</b><br><span class="dim small mono path">${pathHtml(r.path)}</span>${r.last_error ? `<br><span class="dim small">⚠ ${esc(r.last_error.slice(0, 120))}</span>` : ""}</td>
     <td>${r.is_active ? '<span class="pill reading">active</span>' : '<span class="pill video">paused</span>'}</td>
     <td class="mono">${rootCounts.get(r.id) || 0}</td>
     <td class="nowrap"><button class="btn xs" data-root-toggle="${r.id}">${r.is_active ? "Pause" : "Enable"}</button> <button class="btn xs danger" data-root-del="${r.id}" data-label="${esc(r.label || r.path)}">Remove</button></td></tr>`).join("");
@@ -916,7 +949,7 @@ pages.get("/admin", needAdmin, async (req, res) => {
     <div class="stat"><span class="mono stat-label">courses</span><b>${tc.n}</b></div>
     <div class="stat"><span class="mono stat-label">libraries</span><b>${roots.length}</b></div>
     <div class="stat"><span class="mono stat-label">items</span><b>${tl.n || 0}</b></div>
-    <div class="stat"><span class="mono stat-label">learned</span><b>${fmtDur(tt.s || 0)}</b></div>
+    <div class="stat"><span class="mono stat-label">learned · all users</span><b>${fmtDur(tt.s || 0)}</b></div>
     <div class="stat"><span class="mono stat-label">storage</span><b>${esc(storage)}</b></div>
   </div>
   <div class="admin-grid">
@@ -935,17 +968,18 @@ pages.get("/admin", needAdmin, async (req, res) => {
     </form>
     <h3>Courses</h3><div class="tablewrap"><table><thead><tr><th>Title</th><th>Type</th><th>Library</th><th>Items</th><th>Scanned</th></tr></thead><tbody>${rows}</tbody></table></div></section>
   <section class="card"><div class="sech"><h2>Users</h2><span class="dim small mono">${users.length}</span></div>
-    <div class="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>
+    <div class="tablewrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     ${users.map((x) => `<tr><td><b>${esc(x.display_name)}</b><br><span class="dim small mono">@${esc(x.username)}</span></td><td>${esc(x.role)}</td><td>${esc(x.status)}</td>
     <td>${x.id !== req.user.id ? `<button class="btn xs" data-act="${x.status === "active" ? "disable" : "enable"}" data-id="${x.id}">${x.status === "active" ? "Disable" : "Enable"}</button>` : `<span class="dim small">you</span>`}</td></tr>`).join("")}
     </tbody></table></div>
     <h3>Invitations</h3>
     <form id="invForm" class="lrow invform"><input name="email_hint" placeholder="email hint (optional)"><select name="role"><option>user</option><option>admin</option></select><button class="btn primary">Generate invitation</button></form>
     <div id="invOut"></div>
-    <ul class="llist small">${invs.map((i) => `<li><span class="mono small">${esc(i.id.slice(0, 12))}… · ${esc(i.role)} · ${i.used_at ? "used" : "open"} · exp ${esc(i.expires_at.slice(0, 10))}</span></li>`).join("")}</ul></section>
+    <p class="mono dim small">Invitations · newest first · single use</p>
+    <ul class="llist small">${invs.map((i) => `<li><span class="mono small">${esc(i.role)} · ${i.used_at ? `used ${esc(fmtDate(i.used_at, req.user.timezone))}` : "open"} · expires ${esc(fmtDate(i.expires_at, req.user.timezone))}</span></li>`).join("")}</ul></section>
   </div>
-  <section class="card"><h2>Recent activity</h2><div class="tablewrap"><table><thead><tr><th>Day</th><th>User</th><th>Learned</th></tr></thead><tbody>
-  ${recent.map((r) => `<tr><td class="mono">${r.day}</td><td>${esc(r.display_name)}</td><td class="mono">${fmtDur(r.video_secs + r.reading_secs)}</td></tr>`).join("") || `<tr><td colspan=3 class=dim>No activity yet.</td></tr>`}
+  <section class="card"><div class="sech"><h2>Recent activity</h2><span class="mono dim small">all users · per day</span></div><div class="tablewrap"><table><thead><tr><th>Day</th><th>User</th><th>Learned that day</th></tr></thead><tbody>
+  ${recent.map((r) => `<tr><td class="mono nowrap">${esc(fmtDate(r.day, req.user.timezone))}</td><td>${esc(r.display_name)}</td><td class="mono">${fmtDur(r.video_secs + r.reading_secs)}</td></tr>`).join("") || `<tr><td colspan=3 class=dim>No activity yet.</td></tr>`}
   </tbody></table></div></section>
   </div>
   <script>

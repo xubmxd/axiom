@@ -115,6 +115,9 @@ export const PLAYER_ICONS = {
   check: PI(`<path d="M20 6 9 17l-5-5"/>`, 14),
 };
 
+const BRAND = "CarnoSec";
+const VERSION = "1.0";
+
 export function layout({ title, user, active = "", body, extraHead = "", extraScript = "" }) {
   const isAdmin = user?.role === "admin";
   // Sidebar lists ONLY routes that actually exist — never decorative items.
@@ -134,30 +137,19 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
   const navItem = (n) => `<li><a href="${n.href}" title="${n.label}" class="${active === n.id ? "on" : ""}"${active === n.id ? ` aria-current="page"` : ""}><span class="ni" aria-hidden="true">${n.icon}</span><span class="nl">${n.label}</span></a></li>`;
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · CarnoSec</title>
-<meta name="description" content="CarnoSec — your calm, self-hosted learning workspace.">
-<meta property="og:title" content="${esc(title)} · CarnoSec">
+<title>${esc(title)} · ${BRAND}</title>
+<meta name="description" content="${BRAND} — your calm, self-hosted learning workspace.">
+<meta property="og:title" content="${esc(title)} · ${BRAND}">
 <link rel="icon" href="/img/carno-sec.png" type="image/png">
 <link rel="apple-touch-icon" href="/img/carno-sec.png">
 <meta property="og:image" content="/img/carno-sec.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/app.css">
-<style>
-  body {font-size: 16px !important;}
-  .acct-chev {font-size: 12px !important;}
-  .stat small {font-size: 12px !important;}
-  .act-stat em {font-size: 12px !important;}
-  .ft {font-size: 12px !important;}
-  .pill.res {font-size: 12px !important;}
-  .pct {font-size: 12px !important;}
-</style>${extraHead}</head>
+<link rel="stylesheet" href="/css/app.css">${extraHead}</head>
 <body data-user-tz="${esc(user?.timezone || "UTC")}">
 <a class="skip" href="#main">Skip to content</a>
 <div class="app">
 ${user ? `<aside class="appnav" id="appnav" aria-label="Primary">
 <div class="appnav-h">
-<a class="brand" href="/" aria-label="CarnoSec home" title="CarnoSec — Workspace"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="28" height="28" loading="eager" decoding="async"><span class="brand-name">CarnoSec</span></a>
+<a class="brand" href="/" aria-label="${BRAND} home" title="${BRAND} — Workspace"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="28" height="28" loading="eager" decoding="async"><span class="brand-name">${BRAND}</span></a>
 <button class="iconbtn appnav-collapse" id="appnavToggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="appnav">⟨</button>
 </div>
 <p class="brand-path mono" aria-hidden="true">learn &gt; practice &gt; progress</p>
@@ -167,7 +159,7 @@ ${wsNav.map(navItem).join("")}
 <nav aria-label="Account"><p class="nav-group mono" style="font-size:12px">Account</p><ul>
 ${acctNav.map(navItem).join("")}
 </ul></nav>
-<div class="appnav-foot"><p class="mono side-ver"><span class="sys" style="font-size:12px"><i aria-hidden="true"></i>systems online</span></p><p class="mono dim side-ver" style="font-size:12px">carno-sec · self-hosted · v1.0</p></div>
+<div class="appnav-foot"><p class="mono dim side-ver">${BRAND} · self-hosted · v${VERSION}</p></div>
 </aside>` : ""}
 <div class="appmain">
 ${user ? `<header class="topbar"><div class="topbar-in">
@@ -192,7 +184,7 @@ ${user ? `<header class="topbar"><div class="topbar-in">
 <nav class="mobilenav" id="mobileNav" aria-label="Mobile">${allNav.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<form method="post" action="/logout"><button>Sign out</button></form></nav>
 </header>` : ""}
 <main id="main" class="main">${body}</main>
-<footer class="foot"><span class="mono dim">axiom · v1.0 · self-hosted</span></footer>
+<footer class="foot"><span class="mono dim">${BRAND} · v${VERSION} · self-hosted</span></footer>
 </div>
 </div>
 <div id="toasts" aria-live="polite"></div>
@@ -248,24 +240,24 @@ export function graphHtml(rows, bands, range = 52) {
     const m = first ? new Date(first + "T12:00:00Z").toLocaleDateString(undefined, { month: "short" }) : "";
     if (m && m !== prevM && c - prevC >= 5) { months += `<span style="grid-column:${c + 2}">${esc(m)}</span>`; prevM = m; prevC = c; }
   }
-  let html = `<div class="graph${monthMode ? " graph-month" : ""}${!monthMode && cols <= 15 ? " graph-short" : ""}${!monthMode && cols > 30 ? " graph-long" : ""}" role="img" aria-label="Learning activity graph, ${rangeLabel}"><div class="graph-months" aria-hidden="true">${months}</div><div class="graph-grid">`;
+  let html = `<div class="graph${monthMode ? " graph-month" : ""}${!monthMode && cols <= 15 ? " graph-short" : ""}${!monthMode && cols > 30 ? " graph-long" : ""}" role="group" aria-label="Learning activity graph, ${rangeLabel}"><div class="graph-months" aria-hidden="true">${months}</div><div class="graph-grid">`;
   WD.forEach((w, i) => { html += `<span class="gday" style="grid-row:${i + 1}">${w}</span>`; });
   for (const d of cells) {
-    if (!d) { html += `<span class="cell empty"></span>`; continue; }
+    if (!d) { html += `<span class="cell empty" aria-hidden="true"></span>`; continue; }
     const tot = byDay.get(d) || 0;
     const lv = levelFor(tot, bands);
     const dt = new Date(d + "T12:00:00Z").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
     const tipLines = [`${fmtDur(tot)} learned`, `${fmtDur(vids.get(d) || 0)} video · ${fmtDur(reads.get(d) || 0)} reading`];
     if (comp.get(d)) tipLines.push(`${comp.get(d)} completed`);
     const tip = `${dt}\n${tipLines.join("\n")}`;
-    html += `<span class="cell lv${lv}" data-tip="${esc(tip)}" tabindex="0"></span>`;
+    html += `<span class="cell lv${lv}" role="img" aria-label="${esc(tip.replace(/\n/g, ", "))}" data-tip="${esc(tip)}" tabindex="0"></span>`;
   }
   html += `</div><div class="graph-legend mono"><span>Less</span><span class="cell lv0"></span><span class="cell lv1"></span><span class="cell lv2"></span><span class="cell lv3"></span><span class="cell lv4"></span><span>More</span></div></div>`;
   return html;
 }
 
 export function emptyState(title, hint, cta = "") {
-  return `<div class="empty"><div class="empty-mark" aria-hidden="true">&gt;_</div><h3>${esc(title)}</h3><p>${esc(hint)}</p>${cta}</div>`;
+  return `<div class="empty"><div class="empty-mark" aria-hidden="true">&gt;_</div><h2>${esc(title)}</h2><p>${esc(hint)}</p>${cta}</div>`;
 }
 
 // Month view: a real 7-column calendar with day numbers. The week-strip
@@ -282,7 +274,7 @@ export function monthCalendarHtml(rows, bands) {
   const vids = new Map(rows.map((r) => [r.day, r.video_secs || 0]));
   const reads = new Map(rows.map((r) => [r.day, r.reading_secs || 0]));
   const WD = ["S", "M", "T", "W", "T", "F", "S"];
-  let html = `<div class="cal" role="img" aria-label="Learning activity, ${esc(monthName)}"><div class="cal-head" aria-hidden="true">${WD.map((d) => `<span>${d}</span>`).join("")}</div><div class="cal-grid">`;
+  let html = `<div class="cal" role="group" aria-label="Learning activity, ${esc(monthName)}"><div class="cal-head" aria-hidden="true">${WD.map((d) => `<span>${d}</span>`).join("")}</div><div class="cal-grid">`;
   for (let i = 0; i < startPad; i++) html += `<span class="cal-pad" aria-hidden="true"></span>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
@@ -292,7 +284,7 @@ export function monthCalendarHtml(rows, bands) {
     const tipLines = [`${fmtDur(tot)} learned`, `${fmtDur(vids.get(iso) || 0)} video · ${fmtDur(reads.get(iso) || 0)} reading`];
     if (comp.get(iso)) tipLines.push(`${comp.get(iso)} completed`);
     const tip = `${dt}\n${tipLines.join("\n")}`;
-    html += `<span class="cal-cell lv${lv}" data-tip="${esc(tip)}" tabindex="0"><b>${d}</b></span>`;
+    html += `<span class="cal-cell lv${lv}" role="img" aria-label="${esc(tip.replace(/\n/g, ", "))}" data-tip="${esc(tip)}" tabindex="0"><b>${d}</b></span>`;
   }
   html += `</div><div class="graph-legend mono"><span>Less</span><span class="cal-dot lv0"></span><span class="cal-dot lv1"></span><span class="cal-dot lv2"></span><span class="cal-dot lv3"></span><span class="cal-dot lv4"></span><span>More</span></div></div>`;
   return html;

@@ -20,16 +20,24 @@ document.addEventListener("DOMContentLoaded", () => {
       nt.setAttribute("aria-expanded", String(!collapsed));
       nt.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
       nt.textContent = collapsed ? "⟩" : "⟨";
-      try { localStorage.setItem("axiom:nav", collapsed ? "0" : "1"); } catch {}
+      try { localStorage.setItem("carnosec:nav", collapsed ? "0" : "1"); } catch {}
     };
     let init = false;
-    try { init = localStorage.getItem("axiom:nav") === "0"; } catch {}
+    try { init = localStorage.getItem("carnosec:nav") === "0"; } catch {}
     apply(init);
     nt.onclick = () => apply(document.body.classList.contains("nav-collapsed") === false);
   }
-  // close the account menu on outside click / Escape is native to <details>
+  // Account menu: close on outside click and on Escape (details only handles
+  // outside click natively), returning focus to the summary.
   document.addEventListener("click", (e) => {
     document.querySelectorAll("details.acct[open]").forEach((d) => { if (!d.contains(e.target)) d.removeAttribute("open"); });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll("details.acct[open]").forEach((d) => {
+      d.removeAttribute("open");
+      d.querySelector("summary")?.focus({ preventScroll: true });
+    });
   });
   const st = document.getElementById("sideToggle"), learn = document.querySelector(".learn");
   const side = document.getElementById("side");
@@ -41,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // (without it, a collapsed panel has no way back — the old toggle hides
   // with the panel). State changes only from real user actions.
   if (st && learn && side) {
-    const KEY = "axiom:learn-side";
+    const KEY = "carnosec:learn-side";
     const mq = window.matchMedia("(max-width: 900px)");
     const isMobile = () => mq.matches;
     const stage = learn.querySelector(".stage");
@@ -185,15 +193,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-window.saveJSON = (url, msgId) => async (e) => {
+window.saveJSON = (url, msgId, formEl) => async (e) => {
   e.preventDefault();
-  const fd = new FormData(e.target);
+  const form = formEl || e.target;
+  const fd = new FormData(form);
   const body = {};
-  for (const [k, v] of fd) body[k] = e.target.querySelector(`[name="${k}"]`)?.type === "checkbox" ? e.target.querySelector(`[name="${k}"]`).checked : v;
-  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const j = await r.json();
-  const m = document.getElementById(msgId);
-  if (j.ok) { toast("Saved"); if (m) m.innerHTML = ""; }
-  else { toast(j.error || "Save failed"); if (m) m.innerHTML = `<div class="alert">${j.error || "Failed"}</div>`; }
-  return false;
+  for (const [k, v] of fd) body[k] = form.querySelector(`[name="${k}"]`)?.type === "checkbox" ? form.querySelector(`[name="${k}"]`).checked : v;
+  const status = form.querySelector("[data-form-status]");
+  const btn = form.querySelector('button[type="submit"]');
+  const setStatus = (text, bad = false) => {
+    if (status) { status.textContent = text; status.classList.toggle("bad", bad); }
+    const m = document.getElementById(msgId);
+    if (m) {
+      m.innerHTML = "";
+      if (bad) {
+        const div = document.createElement("div");
+        div.className = "alert"; div.textContent = text;
+        m.appendChild(div);
+      }
+    }
+  };
+  if (btn) btn.disabled = true;
+  setStatus("Saving…");
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || "Save failed.");
+    setStatus("Saved just now");
+    toast("Saved");
+    if (form.id === "passForm") form.reset();
+  } catch (err) {
+    setStatus(err.message || "Save failed. Nothing was changed.", true);
+    toast(err.message || "Save failed");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 };
