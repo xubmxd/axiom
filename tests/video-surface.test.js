@@ -228,6 +228,19 @@ describe("video surface input model", () => {
     assert.equal(v.pauseCount, 1);
   });
 
+  it("center click whose icon was replaced never reaches the surface toggle", () => {
+    const { v, player } = buildContext(true);
+    v.paused = false;
+    // bigPlay's onclick replaces its innerHTML synchronously, detaching the
+    // clicked <span> before the event bubbles to player.onclick. The target
+    // then has no button ancestor, but the dispatch-time path still does.
+    const detached = { closest: () => null, tagName: "SPAN" };
+    const button = { matches: (sel) => sel.includes("button") };
+    player.onclick({ target: detached, detail: 1, composedPath: () => [detached, button, player] });
+    assert.equal(v.pauseCount, 0);
+    assert.equal(v.playCount, 0);
+  });
+
   it("beat fires on explicit toggle in both directions", () => {
     const { v, player, bigPlay } = buildContext(true);
     v.paused = true;

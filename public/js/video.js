@@ -279,12 +279,23 @@
   if (bigPlay) bigPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
   document.getElementById("btnFf").onclick = () => { if (v.duration) v.currentTime = Math.min(v.duration, v.currentTime + 5); wake(); };
+  // True when the gesture belongs to player chrome (transport, menus, seek).
+  // The center button swaps its inner icon synchronously, which detaches the
+  // click target (the <span>) before the event bubbles here, so
+  // target.closest() can find no button. composedPath is snapshotted at
+  // dispatch and still contains the button, so prefer it and fall back to
+  // closest() for synthetic events (tests, older browsers).
+  const CONTROL_SEL = "button,input,a,.nextUp,.pbar-wrap,.pmenu";
+  function inChrome(e) {
+    if (typeof e.composedPath === "function" && e.composedPath().some((n) => n.matches?.(CONTROL_SEL))) return true;
+    return !!e.target?.closest?.(CONTROL_SEL);
+  }
   // Surface clicks never toggle playback on touch — taps toggle overlay
   // visibility only (show when hidden, hide when visible). Mouse clicks
   // keep desktop click-to-toggle. Never fires for controls, menus, links,
   // the seek bar, or the autoplay prompt.
   player.onclick = (e) => {
-    if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return;
+    if (inChrome(e)) return;
     const touchTap = isTouchTap(e);
     lastTouchTap = false;
     if (touchTap) {
@@ -301,7 +312,7 @@
     togglePlay();
   };
   player.ondblclick = (e) => {
-    if (e.target.closest("button,input,a,.nextUp,.pbar-wrap,.pmenu")) return;
+    if (inChrome(e)) return;
     const touchTap = isTouchTap(e);
     lastTouchTap = false;
     if (touchTap) {
