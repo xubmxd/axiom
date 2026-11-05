@@ -241,16 +241,20 @@ describe("video surface input model", () => {
     assert.equal(v.playCount, 0);
   });
 
-  it("flash fires on explicit toggle in both directions", () => {
+  it("flash fires when starting playback; pausing hands off to the play button", () => {
     const { v, player, bigPlay } = buildContext(true);
     v.paused = true;
     bigPlay.onclick({ target: bigPlay });
     assert.ok(player.classList.contains("flash"));
     assert.equal(v.paused, false);
+    // Simulate the flash timer finishing, then pause from the center button.
     player.classList.remove("flash");
     bigPlay.onclick({ target: bigPlay });
-    assert.ok(player.classList.contains("flash"));
     assert.equal(v.paused, true);
+    // A pause icon must never appear: the persistent play button takes over.
+    assert.ok(!player.classList.contains("flash"));
+    assert.match(bigPlay.innerHTML, /M7 4\.5v15/);
+    assert.doesNotMatch(bigPlay.innerHTML, /<rect/);
   });
 });
 

@@ -232,19 +232,24 @@
     wake();
   }
   // ---- transport controls ----
-  // Center feedback: the icon appears immediately and quickly fades out,
-  // YouTube-style — opacity only, no bounce or scale. Any in-flight
-  // animation is cancelled first, so rapid toggles never queue or wedge.
+  // Starting playback: the play icon appears and quickly fades out,
+  // YouTube-style — opacity only, no bounce or scale. Pausing does not
+  // flash an icon at all: the player's .paused state fades the persistent
+  // play button in, so a pause icon never pops up mid-transition.
   const bigIcon = (icon) => '<span class="pcircle">' + icon + "</span>";
   const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const FLASH_MS = 240;
   let flashTimer = null, flashAnim = null;
+  function endFlash() {
+    if (flashAnim) { try { flashAnim.cancel(); } catch {} flashAnim = null; }
+    clearTimeout(flashTimer);
+    player.classList.remove("flash");
+  }
   function flashCenter(icon) {
     if (!bigPlay) return;
-    if (flashAnim) { try { flashAnim.cancel(); } catch {} flashAnim = null; }
+    endFlash();
     bigPlay.innerHTML = bigIcon(icon);
     player.classList.add("flash");
-    clearTimeout(flashTimer);
     // Animate the whole button: .flash only guarantees visibility, so the
     // handoff back to the persistent paused/playing state never snaps.
     if (!reduceMotion && typeof bigPlay.animate === "function") {
@@ -260,13 +265,12 @@
       } catch { flashAnim = null; }
     }
     flashTimer = setTimeout(() => {
-      if (flashAnim) { try { flashAnim.cancel(); } catch {} flashAnim = null; }
-      player.classList.remove("flash");
+      endFlash();
       syncBig();
     }, FLASH_MS);
   }
   // Center icon persists only while paused (big play button); while playing
-  // it stays hidden and appears solely via the in-flight flash above.
+  // it stays hidden and only the start-of-playback flash above is visible.
   function syncBig() {
     if (!bigPlay || player.classList.contains("flash")) return;
     bigPlay.innerHTML = bigIcon(v.paused ? IC.play : IC.pause);
@@ -275,7 +279,11 @@
   // The flash fires here — the only intentional-toggle entry point (center
   // button, transport button, keyboard) — never from surface taps or media
   // events, so showing/hiding the overlay stays animation-free.
-  const togglePlay = () => { flashCenter(v.paused ? IC.play : IC.pause); v.paused ? v.play() : v.pause(); };
+  const togglePlay = () => {
+    if (v.paused) flashCenter(IC.play); // play: play icon fades out
+    else endFlash();                    // pause: persistent play button fades in
+    v.paused ? v.play() : v.pause();
+  };
   btnPlay.onclick = togglePlay;
   if (bigPlay) bigPlay.onclick = togglePlay;
   document.getElementById("btnRw").onclick = () => { v.currentTime = Math.max(0, v.currentTime - 5); wake(); };
