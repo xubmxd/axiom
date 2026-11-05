@@ -14,7 +14,10 @@
   const pctEl = document.getElementById("readPct");
   const doneBtn = document.getElementById("btnDone");
   const startPx = parseInt(root.dataset.scroll || "0", 10);
-  let activeAccum = 0, lastInteract = Date.now(), maxPct = 0, done = doneBtn?.classList.contains("done");
+  // Seed from the server-rendered value: otherwise the first paint resets the
+  // bar to 0 while the sidebar already shows saved progress.
+  const serverPct = parseFloat(barEl?.getAttribute("aria-valuenow") || "0") || 0;
+  let activeAccum = 0, lastInteract = Date.now(), maxPct = Math.max(0, Math.min(1, serverPct / 100)), done = doneBtn?.classList.contains("done");
 
   // Restore saved position after layout settles (images shift content):
   // try immediately, again on window load, and once more after 1.2s.

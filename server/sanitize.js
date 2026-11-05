@@ -157,8 +157,13 @@ function sanitize(rawHtml, { mediaPrefix, linkPrefix, pageDir, onLargeImage }) {
     }
     return `<${tag}${out}>`;
   });
+  // Imported documents ship their own h1. The reader already renders the page
+  // title as the only h1, so shift imported headings down one level and keep
+  // the outline consistent with the rendered document.
+  html = html.replace(/<(h[1-3])(\b[^>]*)>/gi, (m, t, attrs) => `<h${+t[1] + 1}${attrs}>`);
+  html = html.replace(/<\/(h[1-3])>/gi, (m, t) => `</h${+t[1] + 1}>`);
   // collect headings for the outline (ids returned so the sidebar can anchor to them)
-  html = html.replace(/<(h[123])[^>]*>([\s\S]*?)<\/\1>/gi, (m, t, inner) => {
+  html = html.replace(/<(h[234])[^>]*>([\s\S]*?)<\/\1>/gi, (m, t, inner) => {
     const text = inner.replace(/<[^>]+>/g, "").trim().slice(0, 120);
     if (text) {
       const id = "s-" + headings.length + "-" + text.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);

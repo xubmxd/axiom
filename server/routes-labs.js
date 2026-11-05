@@ -12,7 +12,7 @@
 import { Router } from "express";
 import fs from "node:fs";
 import { get } from "./db.js";
-import { layout, esc, emptyState, labCourseArt } from "./views.js";
+import { layout, esc, emptyState, labCourseArt, displayTitle, specimenNo } from "./views.js";
 import { ah } from "./wrap.js";
 import { log } from "./log.js";
 import * as svc from "./labs/service.js";
@@ -193,7 +193,7 @@ labPages.get("/labs", needAuthPage, ah(async (req, res) => {
     title: "Cyber Range", user: u, active: "labs",
     body: `<div class="wrap range-landing">
       <header class="range-hero compact">
-        <p class="eyebrow">cyber range</p>
+        <p class="catalogue">Cyber range · isolated practice</p>
         <h1>Cyber Range</h1>
         <p class="range-lede">Choose a training path and start a target. Every lab runs in an isolated network, scoped to your account.</p>
         <p class="range-meta mono">${enriched.length} path${enriched.length === 1 ? "" : "s"} · isolated networks · flag validation</p>
@@ -203,18 +203,19 @@ labPages.get("/labs", needAuthPage, ah(async (req, res) => {
           <div class="sech"><h2>Training paths</h2><span class="mono dim small">${enriched.length} available</span></div>
           ${enriched.length ? `<div class="courselist">${enriched.map(({ course, moduleCount, progress }) => `
             <a class="ccard coursecard" href="/labs/${esc(course.slug)}">
-              <div class="ccard-art">${labCourseArt(course, 56)}</div>
+              <span class="ccard-no">${specimenNo("lab-" + course.slug)}</span>
+              <div class="ccard-art">${labCourseArt(course, 48)}</div>
               <div class="ccard-b">
-                <div class="ccard-t"><span class="mono ccard-code">training path</span><span class="mono dim small">${progress.completed}/${progress.total} completed</span></div>
-                <h3>${esc(course.title)}</h3>
+                <div class="ccard-t"><span class="ccard-code">Training path</span><span class="mono dim small">${progress.completed}/${progress.total} completed</span></div>
+                <h3>${esc(displayTitle(course.title))}</h3>
                 ${course.subtitle ? `<p class="dim small lab-desc">${esc(course.subtitle)}</p>` : ""}
-                <div class="pbar" role="progressbar" aria-valuenow="${progress.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(course.title)} progress"><i style="width:${progress.pct}%"></i></div>
-                <p class="mono ccard-meta"><span>${moduleCount} module${moduleCount === 1 ? "" : "s"} · ${progress.total} lab${progress.total === 1 ? "" : "s"}</span><span class="link">View labs →</span></p>
+                <div class="pbar" role="progressbar" aria-valuenow="${progress.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(displayTitle(course.title))} progress"><i style="width:${progress.pct}%"></i></div>
+                <p class="mono ccard-meta"><span>${moduleCount} module${moduleCount === 1 ? "" : "s"} · ${progress.total} lab${progress.total === 1 ? "" : "s"}</span><span class="link">View labs</span></p>
               </div></a>`).join("")}</div>`
             : emptyState("No training paths yet", "Labs appear here once definitions are registered.", u.role === "admin" ? `<a class="btn primary" href="/admin">Open Admin</a>` : "")}
         </section>
         <aside class="range-how" aria-label="How the range works">
-          <h2 class="eyebrow">How it works</h2>
+          <h2>How it works</h2>
           <div class="range-step"><span class="mono">01</span><div><h3>Start a target</h3><p>Launch an isolated lab network, scoped to your account and separate from every other student.</p></div></div>
           <div class="range-step"><span class="mono">02</span><div><h3>Interrogate it</h3><p>Use the built-in terminal to enumerate, exploit, and capture evidence. No host shell, no shared state.</p></div></div>
           <div class="range-step"><span class="mono">03</span><div><h3>Submit the flag</h3><p>Prove the finding. A correct flag completes the lab and feeds your range progress.</p></div></div>
@@ -258,11 +259,11 @@ labPages.get("/labs/:courseSlug", needAuthPage, ah(async (req, res) => {
       <span class="dim small">${esc(lab.difficulty)} · ${lp.done}/${lp.total} steps</span></span>${pill}</a>`;
   };
   res.send(layout({
-    title: course.title, user: u, active: "labs",
+    title: displayTitle(course.title), user: u, active: "labs",
     body: `<div class="wrap">
-      <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/labs">cyber range</a> / <span>${esc(course.title)}</span></nav>
-      <p class="eyebrow mono">training path</p>
-      <h1>${esc(course.title)}</h1>
+      <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/labs">cyber range</a> / <span>${esc(displayTitle(course.title))}</span></nav>
+      <p class="catalogue">Training path · ${specimenNo("lab-" + course.slug)}</p>
+      <h1>${esc(displayTitle(course.title))}</h1>
       ${course.subtitle ? `<p class="dim">${esc(course.subtitle)}</p>` : ""}
       <section class="card course-progress" aria-label="Overall progress">
         <div class="sech"><h2>Overall progress</h2><span class="mono dim small">${progress.completed} / ${progress.total} labs completed · ${progress.pct}%</span></div>
@@ -272,7 +273,7 @@ labPages.get("/labs/:courseSlug", needAuthPage, ah(async (req, res) => {
       ${modules.length ? modules.map((m) => `
         <section class="rmod" aria-label="Module ${m.number}">
           <header class="rmod-head">
-            <div><p class="eyebrow mono">Module ${esc(String(m.number))}</p><h2>${esc(m.title || `Module ${m.number}`)}</h2></div>
+            <div><p class="catalogue">Module ${esc(String(m.number))}</p><h2>${esc(displayTitle(m.title || `Module ${m.number}`))}</h2></div>
             <span class="mono dim small">${m.completed} / ${m.total} completed</span>
           </header>
           <div class="pbar thin" role="progressbar" aria-valuenow="${m.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Module ${esc(String(m.number))} progress"><i style="width:${m.pct}%"></i></div>
@@ -281,7 +282,7 @@ labPages.get("/labs/:courseSlug", needAuthPage, ah(async (req, res) => {
             const sDone = s.labs.filter((l) => l.progress.complete).length;
             return `
             <div class="rex">
-              <div class="rex-head"><h3>${s.section ? `<span class="mono dim">${esc(s.section)}</span> ` : ""}${esc(s.title)}</h3><span class="mono dim small">${s.labs.length} exercise${s.labs.length === 1 ? "" : "s"} · ${sDone}/${s.labs.length} done</span></div>
+              <div class="rex-head"><h3>${s.section ? `<span class="mono dim">${esc(s.section)}</span> ` : ""}${esc(displayTitle(s.title))}</h3><span class="mono dim small">${s.labs.length} exercise${s.labs.length === 1 ? "" : "s"} · ${sDone}/${s.labs.length} done</span></div>
               <div class="labrows">${s.labs.map(labRow).join("")}</div>
             </div>`; }).join("")}
           </div>
@@ -360,17 +361,18 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
     </li>`).join("");
 
   res.send(layout({
-    title: lab.title, user: u, active: "labs",
+    title: displayTitle(lab.title), user: u, active: "labs",
     extraScript: `<script src="/js/lab.js" defer></script>`,
     body: `
   <div class="wrap labwrap" data-lab="${esc(lab.id)}" data-slug="${esc(lab.slug)}" data-env="${esc(lab.environment_type)}"
        data-status="${esc(inst?.status || "stopped")}" data-started-at="${esc(inst?.startedAt || "")}"
        data-target-ip="${esc(inst?.targetIp || "")}">
-    <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/labs">cyber range</a> / <a href="/labs/${esc(course.slug)}">${esc(course.title)}</a> / <a href="/labs/${esc(course.slug)}">Module ${esc(String(lab.module_number))}</a> / <span>${esc(lab.section_number)} ${esc(extra.sectionName || lab.section_name)}</span> / <span>Lab ${esc(String(lab.lab_number))}</span></nav>
+    <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/labs">cyber range</a> / <a href="/labs/${esc(course.slug)}">${esc(displayTitle(course.title))}</a> / <a href="/labs/${esc(course.slug)}">Module ${esc(String(lab.module_number))}</a> / <span>${esc(lab.section_number)} ${esc(displayTitle(extra.sectionName || lab.section_name))}</span> / <span>Lab ${esc(String(lab.lab_number))}</span></nav>
     <section class="labhead">
       <div>
-        <h1>${esc(lab.title)}</h1>
-        <p class="dim lab-sub">Lab ${esc(String(lab.lab_number))} — ${esc(extra.machineName || primary.name || "Target")} · ${esc(primary.os || "Linux")}${primary.target_type ? ` (${esc(primary.target_type)})` : ""}</p>
+        <p class="catalogue">${specimenNo(lab.id)} · Lab ${esc(String(lab.lab_number))} · ${esc(lab.difficulty)}</p>
+        <h1>${esc(displayTitle(lab.title))}</h1>
+        <p class="dim lab-sub">${esc(extra.machineName || primary.name || "Target")} · ${esc(primary.os || "Linux")}${primary.target_type ? ` (${esc(primary.target_type)})` : ""}</p>
         <p class="dim lab-desc">${esc(lab.description)}</p>
         <div class="lab-tags" aria-label="Lab topics">${labTags(lab).map((t) => `<span class="chip xs">${esc(t)}</span>`).join("")}<span class="chip xs diff">${esc(lab.difficulty)}</span></div>
       </div>
@@ -575,7 +577,7 @@ labPages.get("/labs/:courseSlug/:labSlug", needAuthPage, ah(async (req, res) => 
           <h2>More</h2>
           <h3>Environment</h3>
           <dl class="kv">
-            <div><dt>Course</dt><dd><a class="link" href="/labs/${esc(course.slug)}">${esc(course.title)}</a> · Module ${esc(String(lab.module_number))}</dd></div>
+            <div><dt>Course</dt><dd><a class="link" href="/labs/${esc(course.slug)}">${esc(displayTitle(course.title))}</a> · Module ${esc(String(lab.module_number))}</dd></div>
             <div><dt>Hosting</dt><dd>${inst?.provider ? `Managed by <span class="mono">${esc(inst.provider)}</span> on this server` : "Not running — start the lab to see its host"}</dd></div>
             <div><dt>Times reset</dt><dd>${(inst?.resetCount ?? 0) ? `${esc(String(inst.resetCount))} — each reset rebuilds the target from scratch` : "Never reset"}</dd></div>
             <div><dt>Environment</dt><dd>${esc({ vm: "Virtual machine", "single-target": "Single target container", osint: "Public-web research (no VM)", theory: "Knowledge exercise (no VM)", scanner: "Scanner range (no shell)" }[lab.environment_type] || lab.environment_type)}</dd></div>

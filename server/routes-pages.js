@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
-import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, monthCalendarHtml, emptyState, iconArt, PLAYER_ICONS } from "./views.js";
+import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, monthCalendarHtml, emptyState, iconArt, displayTitle, specimenNo, PLAYER_ICONS } from "./views.js";
 import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
@@ -87,7 +87,7 @@ export async function groupChain(groupId) {
 }
 
 export function crumbs(course, chain, leaf) {
-  return `<nav class="crumbs mono" aria-label="Breadcrumb"><a href="/library">library</a> / <a href="/courses/${course.id}">${esc(course.title)}</a>${chain.map((g) => ` / <span>${esc(g.title)}</span>`).join("")} / <span>${esc(leaf)}</span></nav>`;
+  return `<nav class="crumbs mono" aria-label="Breadcrumb"><a href="/library">library</a> / <a href="/courses/${course.id}">${esc(displayTitle(course.title))}</a>${chain.map((g) => ` / <span>${esc(displayTitle(g.title))}</span>`).join("")} / <span>${esc(displayTitle(leaf))}</span></nav>`;
 }
 
 async function continueItems(userId) {
@@ -113,17 +113,24 @@ async function continueItems(userId) {
 pages.get("/login", (req, res) => {
   if (req.user) return res.redirect("/");
   res.send(layout({ title: "Sign in", user: null, body: `
-  <div class="authwrap"><div class="authcard">
-    <div class="brand big"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">CarnoSec</span></div>
-    <h1>Welcome back</h1><p class="dim">Sign in to your private learning workspace.</p>
-    ${req.query.err ? `<div class="alert" role="alert">${esc(req.query.err)}</div>` : ""}
-    <form method="post" action="/login" class="form">
-      <label>Username or email<input name="identifier" autocomplete="username" required></label>
-      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-      <input type="hidden" name="next" value="${esc(req.query.next || "/")}">
-      <button class="btn primary" type="submit">Sign in</button>
-    </form>
-    <p class="dim small">Invite-only · ask your administrator for an invitation link.</p>
+  <div class="authwrap"><div class="auth-grid">
+    <div class="auth-plate" aria-hidden="true">
+      <p class="auth-cat">CarnoSec · field record</p>
+      <img class="auth-specimen" src="/img/carno-sec.png" alt="" width="1448" height="1086" decoding="async">
+      <p class="auth-cat">Specimen 001 · access control</p>
+    </div>
+    <div class="authcard">
+      <p class="auth-kicker">Access</p>
+      <h1>Welcome back</h1><p class="dim">Sign in to your private learning workspace.</p>
+      ${req.query.err ? `<div class="alert" role="alert">${esc(req.query.err)}</div>` : ""}
+      <form method="post" action="/login" class="form">
+        <label>Username or email<input name="identifier" autocomplete="username" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <input type="hidden" name="next" value="${esc(req.query.next || "/")}">
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+      <p class="dim small">Invite-only. Ask your administrator for an invitation link.</p>
+    </div>
   </div></div>` }));
 });
 
@@ -132,8 +139,14 @@ pages.get("/invite/:token", async (req, res) => {
   const inv = await get(`SELECT * FROM invitations WHERE token_hash=?`, [sha256(req.params.token)]);
   const bad = !inv || inv.used_at || new Date(inv.expires_at) < new Date();
   res.send(layout({ title: "Accept invitation", user: null, body: `
-  <div class="authwrap"><div class="authcard">
-    <div class="brand big"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="36" height="36" loading="eager" decoding="async"><span class="brand-name">CarnoSec</span></div>
+  <div class="authwrap"><div class="auth-grid">
+    <div class="auth-plate" aria-hidden="true">
+      <p class="auth-cat">CarnoSec · field record</p>
+      <img class="auth-specimen" src="/img/carno-sec.png" alt="" width="1448" height="1086" decoding="async">
+      <p class="auth-cat">Specimen 002 · enrolment</p>
+    </div>
+    <div class="authcard">
+    <p class="auth-kicker">Enrolment</p>
     ${bad ? `<h1>Invitation invalid</h1><p class="dim">This link is expired, already used, or never existed. Ask an admin for a fresh one.</p><a class="btn" href="/login">Back to sign in</a>`
     : `<h1>Create your account</h1><p class="dim">You've been invited${inv.email_hint ? ` as <b>${esc(inv.email_hint)}</b>` : ""} · role: <b>${esc(inv.role)}</b></p>
     ${req.query.err ? `<div class="alert">${esc(req.query.err)}</div>` : ""}
@@ -144,6 +157,7 @@ pages.get("/invite/:token", async (req, res) => {
       <label>Password<input name="password" type="password" required minlength="10" autocomplete="new-password"></label>
       <button class="btn primary" type="submit">Create account</button>
     </form>`}
+    </div>
   </div></div>` }));
 });
 
@@ -197,15 +211,15 @@ pages.get("/", needAuth, async (req, res) => {
   const progCount = inProg.length;
 
   const statDelta = delta === null
-    ? `<small class="mono">${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`
-    : `<small><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> <span class="mono">${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</span></small>`;
+    ? `<small>${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`
+    : `<small><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> ${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`;
 
   // ONE resume point: the single last-accessed item (or the empty state).
   // Completed items are never substituted — the action becomes "Revisit",
   // reopening the same existing lesson route.
   const continueRail = (() => {
     const it = cont[0];
-    if (!it) return emptyState("Nothing to resume yet.", "Start a lesson from your Library and it will appear here.", `<a class="btn primary" href="/library">Browse Library →</a>`);
+    if (!it) return emptyState("Nothing to resume yet.", "Start a lesson from your Library and it will appear here.", `<a class="btn primary" href="/library">Browse library</a>`);
     const done = !!it.done;
     const pct = it.t === "video" && it.dur ? Math.round((it.pos / it.dur) * 100)
       : (it.t === "reading" && it.pos !== undefined && it.pos !== null ? Math.round(Number(it.pos) * 100) : null);
@@ -215,12 +229,12 @@ pages.get("/", needAuth, async (req, res) => {
       ? (it.t === "video" && it.dur ? `Watched in full · ${fmtClock(it.dur)}` : "Read in full")
       : it.t === "video" && it.dur ? `${fmtClock(it.pos)} / ${fmtClock(it.dur)} watched`
       : (pct !== null ? `${pct}% of this page read` : "");
-    const action = done ? "Revisit →" : (it.t === "video" ? "▶ Resume" : "Continue reading →");
+    const action = done ? "Revisit" : (it.t === "video" ? "Resume" : "Continue reading");
     return `<div class="resume-featured">
-      <div class="resume-top"><span class="mono dim resume-course">${esc(it.course)}</span><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span></div>
-      <h3>${esc(it.title)}</h3>
+      <div class="resume-top"><span class="mono dim resume-course">${esc(displayTitle(it.course))}</span><span class="pill ${it.t}">${it.t === "video" ? "Video" : "Reading"}</span></div>
+      <h3>${esc(displayTitle(it.title))}</h3>
       ${meta ? `<p class="mono dim small resume-meta">${done ? `<span class="proof"><span class="tick" aria-hidden="true">✓</span>completed</span> ` : ""}${esc(meta)}</p>` : ""}
-      ${!done && pct !== null ? progressBar(pct, `${it.title} — position`): ""}
+      ${!done && pct !== null ? progressBar(pct, `${displayTitle(it.title)} — position`): ""}
       <a class="btn primary resume-btn" href="/learn/${it.t}/${it.content_id}">${action}</a>
     </div>`;
   })();
@@ -229,61 +243,59 @@ pages.get("/", needAuth, async (req, res) => {
   <div class="wrap ws">
     <section class="ws-head">
       <div class="ws-welcome">
-        <p class="eyebrow">Workspace</p>
         <h1>Good to see you, <span class="hl">${firstName}</span>.</h1>
         <p class="ws-msg">${esc(msg)}</p>
       </div>
-      <div class="ws-date"><p class="mono dim">${esc(todayLabel)}</p><p class="mono dim small">keep going</p></div>
+      <div class="ws-date"><p class="mono dim">${esc(todayLabel)}</p><p class="mono dim small">field record</p></div>
     </section>
 
     <div class="ws-grid" data-cont="${contCount}" data-prog="${progCount}">
       <div class="ws-main">
         <div class="statrow" role="list" aria-label="Learning statistics">
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Learning time</span></div><b>${fmtDur(weekSecs)}</b>${statDelta}</div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Current streak</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}${st.current > 0 ? ` <span class="proof" title="Counted from recorded learning time"><span class="tick" aria-hidden="true">✓</span>verified</span>` : ""}</b><small class="mono">Best: ${st.longest} day${st.longest === 1 ? "" : "s"} · recorded activity</small></div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Completed</span></div><b>${tot.coursesCompleted} course${tot.coursesCompleted === 1 ? "" : "s"}</b><small class="mono">Out of ${courses.length}</small></div>
-          <div class="stat" role="listitem"><div class="stat-top"><span class="mono stat-label">Total progress</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small class="mono">${allDone} of ${allTotal} items complete</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="stat-label">Learning time</span></div><b>${fmtDur(weekSecs)}</b>${statDelta}</div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="stat-label">Current streak</span></div><b>${st.current} day${st.current === 1 ? "" : "s"}${st.current > 0 ? ` <span class="proof" title="Counted from recorded learning time"><span class="tick" aria-hidden="true">✓</span>verified</span>` : ""}</b><small>Best: ${st.longest} day${st.longest === 1 ? "" : "s"} · recorded activity</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="stat-label">Courses complete</span></div><b>${tot.coursesCompleted}</b><small>Out of ${courses.length}</small></div>
+          <div class="stat" role="listitem"><div class="stat-top"><span class="stat-label">Total progress</span></div><b>${allPct}%</b>${progressBar(allPct, "Overall progress")}<small>${allDone} of ${allTotal} items complete</small></div>
         </div>
 
         <section class="card act-card" aria-label="Activity">
-          <div class="act-head"><div><h2>Activity</h2><p class="act-sub mono dim">daily learning time</p></div>
+          <div class="act-head"><div><h2>Activity</h2><p class="act-sub">daily learning time</p></div>
           <form class="range" action="/" method="get"><select name="range" onchange="this.form.submit()" aria-label="Activity range">${[12, 26, 52].map((w) => `<option value="${w}" ${weeks === w ? "selected" : ""}>Last ${w} weeks</option>`).join("")}</select></form></div>
           <div class="act">
             <div class="act-main">${graphHtml(rows, bands, weeks)}</div>
             <aside class="act-side" aria-label="This week summary">
-              <p class="eyebrow" style="font-size:12px">This week</p>
+              <p class="catalogue">This week</p>
               <div class="act-stats">
-                <div class="act-stat"><span class="mono">watched + read</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
-                <div class="act-stat"><span class="mono">active days</span><b>${weekActive} / 7</b></div>
-                <div class="act-stat"><span class="mono">most active day</span><b>${mostActive}${bestSecs ? ` <em class="mono dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
+                <div class="act-stat"><span>watched + read</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
+                <div class="act-stat"><span>active days</span><b>${weekActive} / 7</b></div>
+                <div class="act-stat"><span>most active day</span><b>${mostActive}${bestSecs ? ` <em class="dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
               </div>
-              <p class="mono dim small act-quote">progress, not perfection</p>
+              <p class="act-quote">progress, not perfection</p>
             </aside>
           </div>
         </section>
 
-        <section aria-label="In progress"><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all →</a></div>
-        ${inProg.length ? `<div class="coursegrid" data-n="${Math.min(inProg.length, 6)}">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? `Something new is waiting in the <a class="link" href="/library?f=todo">library →</a>` : `Everything here is complete. <a class="link" href="/library">Browse the library →</a>`}</div>`}</section>
+        <section aria-label="In progress"><div class="sech"><h2>In progress</h2><a class="link" href="/library?f=progress">View all</a></div>
+        ${inProg.length ? `<div class="coursegrid" data-n="${Math.min(inProg.length, 6)}">${inProg.slice(0, 6).map((p) => courseCard(p)).join("")}</div>` : `<div class="card dim">Nothing in progress. ${notStarted.length ? `Something new is waiting in the <a class="link" href="/library?f=todo">library</a>` : `Everything here is complete. <a class="link" href="/library">Browse the library</a>`}</div>`}</section>
 
         <a class="range-cta" href="/labs">
           <div class="range-cta-body">
-            <p class="eyebrow">Cyber range</p>
             <h2>Practice what you just learned.</h2>
-            <p>Isolated hands-on labs — start a target, interrogate it like a real engagement, submit what you find.</p>
+            <p>Isolated hands-on labs. Start a target, interrogate it like a real engagement, submit what you find.</p>
           </div>
-          <span class="range-cta-arrow" aria-hidden="true">→</span>
+          <span class="btn">Enter the range</span>
         </a>
       </div>
 
       <div class="ws-rail">
-        <section class="card rail-card" aria-label="Continue learning"><div class="sech rail-head"><h2>Continue learning</h2><a class="link" href="/library" aria-label="Browse library">→</a></div>
+        <section class="card rail-card" aria-label="Continue learning"><div class="sech rail-head"><h2>Continue learning</h2><a class="link" href="/library" aria-label="Browse library">All courses</a></div>
         ${continueRail}</section>
 
         <section class="card rail-card" aria-label="Quick actions"><div class="sech rail-head"><h2>Quick actions</h2></div>
         <div class="qal">
-          <a href="/library"><span><b>Browse library</b><small class="mono dim">${courses.length} courses</small></span><span aria-hidden="true">→</span></a>
-          ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span><b>Resume learning</b><small class="mono dim">${esc(cont[0].title.slice(0, 34))}</small></span><span aria-hidden="true">→</span></a>` : ""}
-          ${u.role === "admin" ? `<a href="/admin"><span><b>Open admin console</b><small class="mono dim">system &amp; scanner</small></span><span aria-hidden="true">→</span></a>` : `<a href="/profile"><span><b>View profile</b><small class="mono dim">stats &amp; activity</small></span><span aria-hidden="true">→</span></a>`}
+          <a href="/library"><span><b>Browse library</b><small class="mono dim">${courses.length} courses</small></span><span class="mono dim" aria-hidden="true">01</span></a>
+          ${cont[0] ? `<a href="/learn/${cont[0].t}/${cont[0].content_id}"><span><b>Resume learning</b><small class="mono dim">${esc(displayTitle(cont[0].title).slice(0, 34))}</small></span><span class="mono dim" aria-hidden="true">02</span></a>` : ""}
+          ${u.role === "admin" ? `<a href="/admin"><span><b>Open admin console</b><small class="mono dim">system &amp; scanner</small></span><span class="mono dim" aria-hidden="true">03</span></a>` : `<a href="/profile"><span><b>View profile</b><small class="mono dim">stats &amp; activity</small></span><span class="mono dim" aria-hidden="true">03</span></a>`}
         </div></section>
       </div>
     </div>
@@ -293,11 +305,13 @@ pages.get("/", needAuth, async (req, res) => {
 function courseCard({ c, done, total, pct, lessons, pages }) {
   const kind = lessons > 0 && pages > 0 ? "mixed" : c.kind;
   const counts = [lessons ? `${lessons} lesson${lessons === 1 ? "" : "s"}` : "", pages ? `${pages} page${pages === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") || `${total} items`;
+  const kindName = kind === "mixed" ? "Mixed" : kind === "video" ? "Video" : "Reading";
   return `<a class="ccard" href="/courses/${c.id}">
-    <div class="ccard-art">${iconArt(c, 48)}</div>
-    <div class="ccard-b"><div class="ccard-t"><span class="mono ccard-code">${esc(kind)} course</span><span class="pill ${kind}">${kind}</span></div>
-    <h3>${esc(c.title)}</h3>
-    ${progressBar(pct, c.title)}<p class="mono ccard-meta"><span>${Math.round(pct)}% of items</span><span>${counts}</span></p></div></a>`;
+    <span class="ccard-no">${specimenNo(c.id)}</span>
+    <div class="ccard-art">${iconArt(c, 44)}</div>
+    <div class="ccard-b"><div class="ccard-t"><span class="ccard-code">${kindName} course</span><span class="pill ${kind}">${kind}</span></div>
+    <h3>${esc(displayTitle(c.title))}</h3>
+    ${progressBar(pct, displayTitle(c.title))}<p class="ccard-meta"><span class="mono">${Math.round(pct)}% complete</span><span class="mono">${esc(counts)}</span></p></div></a>`;
 }
 
 // ---------- Library ----------
@@ -342,16 +356,16 @@ pages.get("/library", needAuth, async (req, res) => {
 
   res.send(layout({ title: "Library", user: u, active: "library", body: `
   <div class="wrap">
-    <div class="sech"><div><p class="eyebrow">library</p><h1>Course library</h1></div><span class="mono dim small">${list.length} course${list.length === 1 ? "" : "s"}${q ? ` matching “${esc(req.query.q)}”` : ""}</span></div>
+    <div class="sech"><div><h1>Course library</h1><p class="catalogue">${list.length} course${list.length === 1 ? "" : "s"}${q ? ` matching “${esc(req.query.q)}”` : ""}</p></div></div>
     <form class="toolbar" method="get" action="/library">
       <input type="hidden" name="q" value="${esc(req.query.q || "")}">
-      <div class="filter-group"><span class="filter-label">status</span>
+      <div class="filter-group"><span class="filter-label">Status</span>
         ${["all", "progress", "todo", "done"].map((x) => `<a href="${qs({ f: x })}" class="chip ${f === x ? "on" : ""}"${f === x ? ` aria-current="true"` : ""}>${{ all: "All", progress: "In progress", todo: "Not started", done: "Completed" }[x]}</a>`).join("")}
       </div>
-      <div class="filter-group"><span class="filter-label">type</span>
+      <div class="filter-group"><span class="filter-label">Type</span>
         ${["all", "video", "reading"].map((x) => `<a href="${qs({ kind: x })}" class="chip ${kind === x ? "on" : ""}"${kind === x ? ` aria-current="true"` : ""}>${x === "all" ? "All types" : x[0].toUpperCase() + x.slice(1)}</a>`).join("")}
       </div>
-      <label class="sortwrap"><span class="filter-label">sort</span>
+      <label class="sortwrap"><span class="filter-label">Sort</span>
         <select name="sort" onchange="this.form.submit()" aria-label="Sort courses">
           <option value="recent" ${sort === "recent" ? "selected" : ""}>Recent</option>
           <option value="name" ${sort === "name" ? "selected" : ""}>Name</option>
@@ -384,7 +398,7 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
   const firstPage = flatPages.find((x) => !x.done) || flatPages[0];
   const firstNext = firstLesson ? { t: "video", id: firstLesson.id } : firstPage ? { t: "reading", id: firstPage.id } : null;
   const kindLabel = p.lessons > 0 && p.pages > 0 ? "Mixed" : p.lessons > 0 ? "Video" : "Reading";
-  const countLabel = [p.lessons ? `${p.lessons} lessons` : "", p.pages ? `${p.pages} pages` : ""].filter(Boolean).join(" · ") || "empty";
+  const countLabel = [p.lessons ? `${p.lessons} lesson${p.lessons === 1 ? "" : "s"}` : "", p.pages ? `${p.pages} page${p.pages === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") || "empty";
   const comp = p.total > 0 && p.pct >= 100 ? await get(`SELECT * FROM course_completions WHERE user_id=? AND course_id=?`, [u.id, c.id]) : null;
   let rootLabel = "";
   try {
@@ -392,17 +406,17 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
     rootLabel = rr?.label || c.root_path || "";
   } catch {}
 
-  res.send(layout({ title: c.title, user: u, active: "library", extraScript: `<script src="/js/bulk-complete.js?v=2" defer></script>`, body: `
+  res.send(layout({ title: displayTitle(c.title), user: u, active: "library", extraScript: `<script src="/js/bulk-complete.js?v=2" defer></script>`, body: `
   <div class="wrap">
-    <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/library">library</a> / <span>${esc(c.title)}</span></nav>
+    <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/library">library</a> / <span>${esc(displayTitle(c.title))}</span></nav>
     <section class="chead">
       ${iconArt(c, 88)}
-      <div><p class="eyebrow mono">${esc(kindLabel)} course · ${esc(countLabel)}</p>
-      <h1>${esc(c.title)}</h1>
+      <div><p class="catalogue">${specimenNo(c.id)} · ${esc(kindLabel)} course · ${esc(countLabel)}</p>
+      <h1>${esc(displayTitle(c.title))}</h1>
       <p class="prov"><b>From</b> ${esc(rootLabel || "your library")}${c.last_scanned_at ? ` · scanned ${esc(fmtDate(c.last_scanned_at, u.timezone))}` : ""} · ${p.total} item${p.total === 1 ? "" : "s"} indexed</p>
       <details class="prov-path"><summary>Folder path</summary><span class="mono">${esc(rootLabel || c.root_path || "courses")}/${esc(c.kind)}/${esc(c.dir_name)}</span></details>
-      <div class="crow"><div class="cfill">${progressBar(p.pct, c.title)}<span class="dim small">${p.done} of ${p.total} items complete · ${Math.round(p.pct)}%</span></div>
-      ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"} →</a>` : ""}</div></div>
+      <div class="crow"><div class="cfill">${progressBar(p.pct, displayTitle(c.title))}<span class="dim small">${p.done} of ${p.total} item${p.total === 1 ? "" : "s"} complete · ${Math.round(p.pct)}%</span></div>
+      ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"}</a>` : ""}</div></div>
     </section>
     ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Every item finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} recorded</p></div><span class="seal">verified</span></div>` : ""}
     ${flatLessons.length && p.pct < 100 ? bulkBarHTML("card") : ""}
@@ -411,14 +425,16 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
 });
 
 function lessonRow(l) {
-  return `<li class="bulk-row" data-bulk-row="${esc(l.id)}"><input type="checkbox" class="bulk-check" value="${esc(l.id)}" aria-label="Select ${esc(l.title)}"><a href="/learn/video/${l.id}"><span class="n mono">▸</span><span class="t">${esc(l.title)}</span>${l.done ? `<span class="done" aria-label="completed">✓</span>` : (l.pos ? `<span class="pct dim mono">${fmtClock(l.pos)}</span>` : "")}</a></li>`;
+  const title = displayTitle(l.title);
+  return `<li class="bulk-row" data-bulk-row="${esc(l.id)}"><input type="checkbox" class="bulk-check" value="${esc(l.id)}" aria-label="Select ${esc(title)}"><a href="/learn/video/${l.id}"><span class="n mono">▸</span><span class="t">${esc(title)}</span>${l.done ? `<span class="done" aria-label="completed">✓</span>` : (l.pos ? `<span class="pct dim mono">${fmtClock(l.pos)}</span>` : "")}</a></li>`;
 }
 function pageRow(pg) {
-  return `<li><a href="/learn/reading/${pg.id}"><span class="n mono">▸</span><span class="t">${esc(pg.title)}</span>${pg.done ? `<span class="done">✓</span>` : `<span class="pct dim mono">${Math.round((pg.scroll_pct || 0) * 100)}%</span>`}</a></li>`;
+  const title = displayTitle(pg.title);
+  return `<li><a href="/learn/reading/${pg.id}"><span class="n mono">▸</span><span class="t">${esc(title)}</span>${pg.done ? `<span class="done">✓</span>` : `<span class="pct dim mono">${Math.round((pg.scroll_pct || 0) * 100)}%</span>`}</a></li>`;
 }
 function resourceRow(r, lessonById) {
-  const link = r.lesson_id && lessonById.get(r.lesson_id) ? ` → ${esc(lessonById.get(r.lesson_id).title)}` : "";
-  return `<li class="res"><a href="/media/${r.course_id}/resource/${r.id}"><span class="pill res">${esc(r.kind)}</span><span class="t">${esc(r.title)}</span><span class="dim small mono">${esc(link)}</span></a></li>`;
+  const link = r.lesson_id && lessonById.get(r.lesson_id) ? ` → ${esc(displayTitle(lessonById.get(r.lesson_id).title))}` : "";
+  return `<li class="res"><a href="/media/${r.course_id}/resource/${r.id}"><span class="pill res">${esc(r.kind)}</span><span class="t">${esc(displayTitle(r.title))}</span><span class="dim small mono">${esc(link)}</span></a></li>`;
 }
 // Bulk mark-watched bar (videos only): shared by the course page and the
 // learn sidebar. bulk-complete.js binds to [data-bulk-bar] + .bulk-check.
@@ -440,7 +456,7 @@ function subtreeHasVideos(node) {
   return (node.children || []).some(subtreeHasVideos);
 }
 function modCheckHTML(label) {
-  return `<label class="bulk-mod" title="Select all videos in this module"><input type="checkbox" data-bulk-mod aria-label="Select all videos in ${esc(label)}"></label>`;
+  return `<label class="bulk-mod" title="Select all videos in this module"><input type="checkbox" data-bulk-mod aria-label="Select all videos in ${esc(displayTitle(label))}"></label>`;
 }
 function renderDetailTree(node, lessonById = null) {
   if (!lessonById) {
@@ -455,7 +471,7 @@ function renderDetailTree(node, lessonById = null) {
       child.pages.length ? `${child.pages.length} pages` : "",
       child.resources.length ? `${child.resources.length} files` : "",
     ].filter(Boolean).join(" · ");
-    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(g.title)}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</summary>`;
+    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(displayTitle(g.title))}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</summary>`;
     if (child.lessons.length) html += `<ol class="llist">${child.lessons.map(lessonRow).join("")}</ol>`;
     if (child.pages.length) html += `<ol class="llist">${child.pages.map(pageRow).join("")}</ol>`;
     if (child.resources.length) html += `<ol class="llist small">${child.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol>`;
@@ -502,8 +518,8 @@ function ringSVG(done, total) {
 function renderSideTree(node, currentId, depth = 0) {
   let html = "";
   const items = [
-    ...node.lessons.map((l) => ({ t: "video", id: l.id, title: l.title, done: l.done })),
-    ...node.pages.map((p) => ({ t: "reading", id: p.id, title: p.title, done: p.done })),
+    ...node.lessons.map((l) => ({ t: "video", id: l.id, title: displayTitle(l.title), done: l.done })),
+    ...node.pages.map((p) => ({ t: "reading", id: p.id, title: displayTitle(p.title), done: p.done })),
   ];
   if (items.length) {
     html += `<ol class="sles">${items.map((s) => {
@@ -519,7 +535,7 @@ function renderSideTree(node, currentId, depth = 0) {
     const st = nodeStats(child);
     const open = subtreeHasCurrent(child, currentId);
     const gdepth = Math.min(child.group.depth || 1, 4);
-    html += `<details class="smod sdepth-${gdepth}"${open ? " open" : ""}${open ? ` data-active-child` : ""} data-title="${esc((child.group.title || "").toLowerCase())}"><summary class="smod-sum">${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="smod-t">${esc(child.group.title)}</span><span class="smod-meta"><span class="mono smod-count">${st.done}/${st.total}</span>${ringSVG(st.done, st.total)}</span></summary><div class="smod-body">${renderSideTree(child, currentId, depth + 1)}</div></details>`;
+    html += `<details class="smod sdepth-${gdepth}"${open ? " open" : ""}${open ? ` data-active-child` : ""} data-title="${esc(displayTitle(child.group.title || "").toLowerCase())}"><summary class="smod-sum">${subtreeHasVideos(child) ? modCheckHTML(child.group.title) : ""}<span class="smod-t">${esc(displayTitle(child.group.title))}</span><span class="smod-meta"><span class="mono smod-count">${st.done}/${st.total}</span>${ringSVG(st.done, st.total)}</span></summary><div class="smod-body">${renderSideTree(child, currentId, depth + 1)}</div></details>`;
   }
   return html;
 }
@@ -529,10 +545,10 @@ function renderSideTree(node, currentId, depth = 0) {
 function learnSidebar({ courseId, courseTitle, pct, done = 0, total = 0, tree, currentId, after = "" }) {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
   return `<aside class="side side-new" id="side" data-selecting="off">`
-    + `<div class="side-top"><div class="side-course-row"><a class="side-back" href="/courses/${esc(courseId)}"><span class="side-back-arrow" aria-hidden="true">←</span><span class="side-course-t">${esc(courseTitle)}</span></a>`
+    + `<div class="side-top"><div class="side-course-row"><a class="side-back" href="/courses/${esc(courseId)}"><span class="side-back-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="side-course-t">${esc(displayTitle(courseTitle))}</span></a>`
     + `<button class="iconbtn side-collapse" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>`
-    + `<p class="mono side-pct">${done} of ${total} items complete · ${p}%</p>`
-    + `<div class="side-pbar"><div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion, ${done} of ${total} items"><i style="width:${p}%"></i></div></div>`
+    + `<p class="mono side-pct">${done} of ${total} item${total === 1 ? "" : "s"} complete · ${p}%</p>`
+    + `<div class="side-pbar"><div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion, ${done} of ${total} item${total === 1 ? "" : "s"}"><i style="width:${p}%"></i></div></div>`
     + `<div class="side-search"><span class="side-search-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span><input id="sideSearch" type="search" placeholder="Search lessons…" aria-label="Search lessons" autocomplete="off"></div>`
     + `<div class="side-chead"><span class="mono side-chead-t">Course content</span><span class="side-chead-actions"><button type="button" class="side-linkbtn" data-side-select aria-pressed="false">Select</button><button type="button" class="side-linkbtn" data-side-expand>Expand all</button></span></div>`
     + `<div class="side-selbar" data-bulk-bar><div class="side-sel-top"><label class="bulk-select"><input type="checkbox" data-bulk-select-all> <span>Select all</span></label><span class="mono side-sel-count" data-bulk-count aria-live="polite">0 selected</span></div>`
@@ -565,12 +581,12 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
   const subs = attached.filter((a) => a.kind === "subtitle");
   const files = attached.filter((a) => a.kind !== "subtitle");
 
-  res.send(layout({ title: l.title, user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
+  res.send(layout({ title: displayTitle(l.title), user: u, active: "library", extraScript: `<script src="/js/video.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
   <div class="learn" data-lesson="${l.id}" data-course="${l.course_id}" data-pos="${prog?.position_secs || 0}" data-autoplay="${settings?.autoplay ?? 1}" data-speed="${+settings?.playback_speed || 1}" data-threshold="${config.videoCompletionThreshold}">
     ${learnSidebar({ courseId: l.course_id, courseTitle: l.course, pct: cprog.pct, done: cprog.done, total: cprog.total, tree, currentId: l.id })}
     <div class="stage">
       ${crumbs({ id: l.course_id, title: l.course }, chain, l.title)}
-      <h1 class="ltitle">${esc(l.title)}</h1>
+      <h1 class="ltitle">${esc(displayTitle(l.title))}</h1>
       <div class="player" id="player">
         <video id="vid" src="/media/${l.course_id}/video/${l.id}" preload="metadata" playsinline>${subs.map((s, i) => `<track kind="subtitles" src="/media/${l.course_id}/resource/${s.id}" srclang="en" label="${esc(s.title)}${subs.length > 1 ? ` ${i + 1}` : ""}">`).join("")}</video>
         <div class="pspinner" id="pSpin" aria-hidden="true"></div>
@@ -606,10 +622,10 @@ pages.get("/learn/video/:id", needAuth, async (req, res) => {
       <div class="lrow">
         <button class="btn" id="btnFocus">Focus mode</button>
         <button class="btn ${prog?.completed ? "done" : ""}" id="btnDone">${prog?.completed ? "✓ Completed" : "Mark as complete"}</button>
-        ${prev ? `<a class="btn" href="/learn/video/${prev.id}">← ${esc(prev.title.slice(0, 28))}</a>` : `<span></span>`}
-        ${next ? `<a class="btn primary" id="nextLink" href="/learn/video/${next.id}">${esc(next.title.slice(0, 28))} →</a>` : `<span></span>`}
+        ${prev ? `<a class="btn" href="/learn/video/${prev.id}">← ${esc(displayTitle(prev.title).slice(0, 28))}</a>` : `<span></span>`}
+        ${next ? `<a class="btn primary" id="nextLink" href="/learn/video/${next.id}">Next · ${esc(displayTitle(next.title).slice(0, 24))}</a>` : `<span class="seal">End of course</span>`}
       </div>
-      ${files.length ? `<div class="attach"><p class="mono dim small">ATTACHED FILES</p><div class="lrow">${files.map((f) => `<a class="btn xs" href="/media/${l.course_id}/resource/${f.id}">⧉ ${esc(f.title)} <span class="dim">· ${esc(f.kind)}</span></a>`).join("")}</div></div>` : ""}
+      ${files.length ? `<div class="attach"><p class="catalogue">Attached files</p><div class="lrow">${files.map((f) => `<a class="btn xs" href="/media/${l.course_id}/resource/${f.id}">${esc(f.title)} <span class="dim">· ${esc(f.kind)}</span></a>`).join("")}</div></div>` : ""}
       <p class="dim small mono keys-hint" data-next-id="${next?.id || ""}" data-prev-id="${prev?.id || ""}">space/k play · ←/→ 5s · f fullscreen · m mute · p PiP · resume saves automatically</p>
     </div>
   </div>` }));
@@ -715,18 +731,18 @@ pages.get("/learn/reading/:id", needAuth, async (req, res) => {
   const chain = await groupChain(p.group_id);
   const cprogR = course ? await courseProgress(u.id, course) : { pct: 0 };
 
-  res.send(layout({ title: p.title, user: u, active: "library", extraScript: `<script src="/js/reader.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
+  res.send(layout({ title: displayTitle(p.title), user: u, active: "library", extraScript: `<script src="/js/reader.js" defer></script><script src="/js/bulk-complete.js?v=3" defer></script>`, body: `
   <div class="learn reading" data-page="${p.id}" data-course="${p.course_id}" data-scroll="${prog?.scroll_px || 0}" data-threshold="${config.readingCompletionThreshold}">
     ${learnSidebar({ courseId: p.course_id, courseTitle: p.course, pct: cprogR.pct, done: cprogR.done, total: cprogR.total, tree, currentId: p.id, after: headings.length ? `<p class="mono side-onpage">On this page</p><ol class="sles small ghost">${headings.slice(0, 12).map((h) => `<li class="sles-row"><a class="sles-a" href="#${h.id}"><span class="sles-t">${esc(h.text)}</span></a></li>`).join("")}</ol>` : "" })}
     <div class="stage read-stage">
       ${crumbs({ id: p.course_id, title: p.course }, chain, p.title)}
       <div class="readbar"><div class="pbar" id="readProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((prog?.scroll_pct || 0) * 100)}" aria-label="This page read"><i style="width:${Math.round((prog?.scroll_pct || 0) * 100)}%"></i></div><p class="mono dim rc-label"><span id="readPct">${Math.round((prog?.scroll_pct || 0) * 100)}%</span> of this page read · completion at ${Math.round(config.readingCompletionThreshold * 100)}%</p></div>
-      <article class="prose" id="prose"><h1>${esc(p.title)}</h1>${html || "<p class=dim>Empty page.</p>"}</article>
+      <article class="prose" id="prose"><h1>${esc(displayTitle(p.title))}</h1>${html || "<p class=dim>Empty page.</p>"}</article>
       <div class="lrow">
         <button class="btn" id="btnFocus">Focus mode</button>
         <button class="btn ${prog?.completed ? "done" : ""}" id="btnDone">${prog?.completed ? "✓ Completed" : "Mark as complete"}</button>
-        ${prev ? `<a class="btn" href="/learn/reading/${prev.id}">← ${esc(prev.title.slice(0, 30))}</a>` : `<span></span>`}
-        ${next ? `<a class="btn primary" href="/learn/reading/${next.id}">${esc(next.title.slice(0, 30))} →</a>` : `<span class="seal">◆ end</span>`}
+        ${prev ? `<a class="btn" href="/learn/reading/${prev.id}">← ${esc(displayTitle(prev.title).slice(0, 30))}</a>` : `<span></span>`}
+        ${next ? `<a class="btn primary" href="/learn/reading/${next.id}">Next · ${esc(displayTitle(next.title).slice(0, 26))}</a>` : `<span class="seal">End of course</span>`}
       </div>
     </div>
   </div>` }));
@@ -764,11 +780,11 @@ pages.get("/profile", needAuth, async (req, res) => {
   const profActivity = rows.length ? `<div class="act">
       <div class="act-main">${monthCalendarHtml(rows, bands)}</div>
       <aside class="act-side" aria-label="This month summary">
-        <p class="eyebrow mono">This month</p>
+        <p class="catalogue">This month</p>
         <div class="act-stats">
-          <div class="act-stat"><span class="mono dim">learned</span><b>${fmtDur(monthSecs)}</b></div>
-          <div class="act-stat"><span class="mono dim">active days</span><b>${monthActive}</b></div>
-          <div class="act-stat"><span class="mono dim">most active</span><b>${monthBestDay}${monthBestSecs ? ` <em class="mono dim">${fmtDur(monthBestSecs)}</em>` : ""}</b></div>
+          <div class="act-stat"><span>learned</span><b>${fmtDur(monthSecs)}</b></div>
+          <div class="act-stat"><span>active days</span><b>${monthActive}</b></div>
+          <div class="act-stat"><span>most active</span><b>${monthBestDay}${monthBestSecs ? ` <em class="dim">${fmtDur(monthBestSecs)}</em>` : ""}</b></div>
         </div>
       </aside>
     </div>` : emptyState("No learning activity yet.", "Start a lesson and your history will appear here.", `<a class="btn primary" href="/library">Browse Library</a>`);
@@ -777,13 +793,13 @@ pages.get("/profile", needAuth, async (req, res) => {
   <div><h1>${esc(u.display_name)}</h1><p class="dim mono small">@${esc(u.username)} · ${esc(u.email)} · ${esc(u.role)}</p></div>
   <a class="btn" href="/settings">Settings</a></div>
   <div class="statrow">
-    <div class="stat"><div class="stat-top"><span class="mono stat-label">Total learned</span></div><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b><small class="mono">${fmtDur(tot.videoSecs)} video · ${fmtDur(tot.readingSecs)} reading</small></div>
-    <div class="stat"><div class="stat-top"><span class="mono stat-label">Current streak</span></div><b>${st.current}d</b><small class="mono">longest ${st.longest}d</small></div>
-    <div class="stat"><div class="stat-top"><span class="mono stat-label">Courses done</span></div><b>${tot.coursesCompleted}</b><small class="mono">of ${totalCourses}</small></div>
-    <div class="stat"><div class="stat-top"><span class="mono stat-label">Lessons done</span></div><b>${tot.completions}</b><small class="mono">all time</small></div>
+    <div class="stat"><div class="stat-top"><span class="stat-label">Total learned</span></div><b>${fmtDur(tot.videoSecs + tot.readingSecs)}</b><small>${fmtDur(tot.videoSecs)} video · ${fmtDur(tot.readingSecs)} reading</small></div>
+    <div class="stat"><div class="stat-top"><span class="stat-label">Current streak</span></div><b>${st.current}d</b><small>longest ${st.longest}d</small></div>
+    <div class="stat"><div class="stat-top"><span class="stat-label">Courses done</span></div><b>${tot.coursesCompleted}</b><small>of ${totalCourses}</small></div>
+    <div class="stat"><div class="stat-top"><span class="stat-label">Lessons done</span></div><b>${tot.completions}</b><small>all time</small></div>
   </div>
   <section class="card act-card prof-act" aria-label="Activity">
-    <div class="act-head"><div><h2>Activity</h2><p class="act-sub mono dim">${monthMeta}</p></div></div>
+    <div class="act-head"><div><h2>Activity</h2><p class="act-sub">${monthMeta}</p></div></div>
     ${profActivity}
   </section>
   </div>` }));
@@ -830,7 +846,7 @@ pages.get("/settings", needAuth, async (req, res) => {
     <button class="btn primary" type="submit">Save preferences</button>
     <p class="mono dim small form-status" data-form-status role="status" aria-live="polite"></p></form>
   <section class="card sess" aria-labelledby="sessH">
-    <h3 id="sessH">Session security</h3>
+    <h2 id="sessH">Session security</h2>
     <p class="dim small sess-sub">You are currently signed in. Ending the session signs you out of CarnoSec on this browser.</p>
     <form method="post" action="/logout" id="signoutForm">
       <button class="btn danger" type="submit" id="signoutBtn">Sign out</button>
@@ -937,20 +953,20 @@ pages.get("/admin", needAdmin, async (req, res) => {
     const out = execSync(`du -shc ${arg} 2>/dev/null | tail -1 | cut -f1`).toString().trim();
     storage = out || "n/a";
   } catch {}
-  const rows = courses.map((c) => `<tr><td>${esc(c.title)}</td><td><span class="pill ${c.kind}">${c.kind}</span></td><td class="dim small">${esc(c.root_label || "default")}</td><td class="mono">${c.lesson_count || c.page_count || 0}</td><td class="mono dim nowrap">${c.last_scanned_at ? fmtDate(c.last_scanned_at, req.user.timezone) : "—"}</td></tr>`).join("");
+  const rows = courses.map((c) => `<tr><td>${esc(displayTitle(c.title))}</td><td><span class="pill ${c.kind}">${c.kind}</span></td><td class="dim small">${esc(c.root_label || "default")}</td><td class="mono">${c.lesson_count || c.page_count || 0}</td><td class="mono dim nowrap">${c.last_scanned_at ? fmtDate(c.last_scanned_at, req.user.timezone) : "—"}</td></tr>`).join("");
   const rootRows = roots.map((r) => `<tr><td><b>${esc(r.label || "Library")}</b><br><span class="dim small mono path">${pathHtml(r.path)}</span>${r.last_error ? `<br><span class="dim small">⚠ ${esc(r.last_error.slice(0, 120))}</span>` : ""}</td>
     <td>${r.is_active ? '<span class="pill reading">active</span>' : '<span class="pill video">paused</span>'}</td>
     <td class="mono">${rootCounts.get(r.id) || 0}</td>
     <td class="nowrap"><button class="btn xs" data-root-toggle="${r.id}">${r.is_active ? "Pause" : "Enable"}</button> <button class="btn xs danger" data-root-del="${r.id}" data-label="${esc(r.label || r.path)}">Remove</button></td></tr>`).join("");
   res.send(layout({ title: "Admin", user: req.user, active: "admin", body: `<div class="wrap wide">
-  <p class="eyebrow mono" style="font-size:12px">admin console</p><h1>System overview</h1>
+  <p class="catalogue">Admin console</p><h1>System overview</h1>
   <div class="statrow six">
-    <div class="stat"><span class="mono stat-label">users</span><b>${tu.n}</b></div>
-    <div class="stat"><span class="mono stat-label">courses</span><b>${tc.n}</b></div>
-    <div class="stat"><span class="mono stat-label">libraries</span><b>${roots.length}</b></div>
-    <div class="stat"><span class="mono stat-label">items</span><b>${tl.n || 0}</b></div>
-    <div class="stat"><span class="mono stat-label">learned · all users</span><b>${fmtDur(tt.s || 0)}</b></div>
-    <div class="stat"><span class="mono stat-label">storage</span><b>${esc(storage)}</b></div>
+    <div class="stat"><span class="stat-label">Users</span><b>${tu.n}</b></div>
+    <div class="stat"><span class="stat-label">Courses</span><b>${tc.n}</b></div>
+    <div class="stat"><span class="stat-label">Libraries</span><b>${roots.length}</b></div>
+    <div class="stat"><span class="stat-label">Items</span><b>${tl.n || 0}</b></div>
+    <div class="stat"><span class="stat-label">Learned · all users</span><b>${fmtDur(tt.s || 0)}</b></div>
+    <div class="stat"><span class="stat-label">Storage</span><b>${esc(storage)}</b></div>
   </div>
   <div class="admin-grid">
   <section class="card"><div class="sech"><h2>Scanner</h2><span class="pill ${scan.last_status === "ok" ? "reading" : "video"}">${esc(scan.last_status)}</span></div>

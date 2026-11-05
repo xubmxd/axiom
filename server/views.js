@@ -43,6 +43,34 @@ export function initials(name) {
   return String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
 }
 
+// Display titles only. Folder names, slugs and on-disk paths stay untouched;
+// this removes distributor tags that would otherwise dominate a heading.
+// Two sources: configured exact patterns (private env) and the common
+// bracketed @team tag. The @ must open the bracket so real titles such as
+// "SSH [user@host]" survive.
+export function displayTitle(title) {
+  const raw = String(title ?? "");
+  let s = raw;
+  for (const tag of config.titleStrip || []) s = s.split(tag).join("");
+  s = s.replace(/[\s\-–—|:]*[\[(（【]\s*@[^\])）】]*[\])）】]/g, "");
+  s = s.replace(/\s*[-–—|:]\s*(?=[-–—|:]\s*)/g, "");
+  s = s.replace(/\s{2,}/g, " ").replace(/^[\s\-–—|:]+|[\s\-–—|:]+$/g, "");
+  return s || raw;
+}
+
+// A stable catalogue number for a course or path. Two-part, compact enough
+// for the fixed column in the catalogue rows.
+export function specimenNo(seed) {
+  const s = String(seed ?? "");
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const n = (h >>> 0).toString(36).toUpperCase().padStart(4, "0").slice(-4);
+  return `CS-${n}`;
+}
+
 // Profile picture if the user uploaded one (DATA_DIR/avatars/<id>.<ext>),
 // otherwise the existing initials fallback. Decorative: surrounding labels
 // carry the accessible name.
@@ -68,14 +96,14 @@ export function avatarHtml(user, big = false) {
 function iconArt(course, size = 56) {
   if (course.has_icon) return `<img class="art" src="/media/${course.id}/icon" alt="" width="${size}" height="${size}" loading="lazy">`;
   const hue = [...course.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-  return `<div class="art art-fallback" style="--h:${hue};width:${size}px;height:${size}px" aria-hidden="true"><span>${esc(initials(course.title))}</span></div>`;
+  return `<div class="art art-fallback" style="--h:${hue};width:${size}px;height:${size}px" aria-hidden="true"><span>${esc(initials(displayTitle(course.title)))}</span></div>`;
 }
 
 export function labCourseArt(course, size = 56) {
   let hit = null;
   try { hit = course?.slug ? findLabCourseIcon(course.slug) : null; } catch { hit = null; }
   if (hit) return `<img class="art" src="/media/lab-course/${esc(course.slug)}" alt="" width="${size}" height="${size}" loading="lazy">`;
-  return `<div class="art art-fallback lab-art" aria-hidden="true"><span>&gt;_</span></div>`;
+  return `<div class="art art-fallback lab-art" aria-hidden="true"><span>${esc(initials(displayTitle(course?.title || course?.slug)))}</span></div>`;
 }
 
 const ICONS = {
@@ -149,14 +177,14 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <div class="app">
 ${user ? `<aside class="appnav" id="appnav" aria-label="Primary">
 <div class="appnav-h">
-<a class="brand" href="/" aria-label="${BRAND} home" title="${BRAND} — Workspace"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="28" height="28" loading="eager" decoding="async"><span class="brand-name">${BRAND}</span></a>
+<a class="brand" href="/" aria-label="${BRAND} home" title="${BRAND} — Workspace"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="40" height="40" loading="eager" decoding="async"><span class="brand-text"><span class="brand-name">${BRAND}</span><span class="brand-tag">FIELD RECORD</span></span></a>
 <button class="iconbtn appnav-collapse" id="appnavToggle" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="appnav">⟨</button>
 </div>
 <p class="brand-path mono" aria-hidden="true">learn &gt; practice &gt; progress</p>
-<nav aria-label="Workspace"><p class="nav-group mono" style="font-size:12px">Workspace</p><ul>
+<nav aria-label="Workspace"><p class="nav-group">Workspace</p><ul>
 ${wsNav.map(navItem).join("")}
 </ul></nav>
-<nav aria-label="Account"><p class="nav-group mono" style="font-size:12px">Account</p><ul>
+<nav aria-label="Account"><p class="nav-group">Account</p><ul>
 ${acctNav.map(navItem).join("")}
 </ul></nav>
 <div class="appnav-foot"><p class="mono dim side-ver">${BRAND} · self-hosted · v${VERSION}</p></div>
@@ -173,7 +201,7 @@ ${user ? `<header class="topbar"><div class="topbar-in">
 <details class="acct">
 <summary aria-label="Account menu">${avatarHtml(user)}<span class="acct-name">${esc(user.display_name.split(" ")[0] || user.username)}</span><span class="acct-chev" aria-hidden="true">▾</span></summary>
 <div class="acct-menu">
-<p class="mono dim acct-head" style="font-size:12px">${esc(user.username)} · ${esc(user.role)}</p>
+<p class="mono dim acct-head">${esc(user.username)} · ${esc(user.role)}</p>
 <a href="/profile">Profile</a>
 <a href="/settings">Settings</a>
 <form method="post" action="/logout"><button type="submit">Sign out</button></form>
@@ -250,14 +278,14 @@ export function graphHtml(rows, bands, range = 52) {
     const tipLines = [`${fmtDur(tot)} learned`, `${fmtDur(vids.get(d) || 0)} video · ${fmtDur(reads.get(d) || 0)} reading`];
     if (comp.get(d)) tipLines.push(`${comp.get(d)} completed`);
     const tip = `${dt}\n${tipLines.join("\n")}`;
-    html += `<span class="cell lv${lv}" role="img" aria-label="${esc(tip.replace(/\n/g, ", "))}" data-tip="${esc(tip)}" tabindex="0"></span>`;
+    html += `<span class="cell lv${lv}" role="img" aria-label="${esc(tip.replace(/\n/g, ", "))}" data-tip="${esc(tip)}"${tot > 0 ? ' tabindex="0"' : ""}></span>`;
   }
   html += `</div><div class="graph-legend mono"><span>Less</span><span class="cell lv0"></span><span class="cell lv1"></span><span class="cell lv2"></span><span class="cell lv3"></span><span class="cell lv4"></span><span>More</span></div></div>`;
   return html;
 }
 
 export function emptyState(title, hint, cta = "") {
-  return `<div class="empty"><div class="empty-mark" aria-hidden="true">&gt;_</div><h2>${esc(title)}</h2><p>${esc(hint)}</p>${cta}</div>`;
+  return `<div class="empty"><div class="empty-mark" aria-hidden="true"></div><h2>${esc(title)}</h2><p>${esc(hint)}</p>${cta}</div>`;
 }
 
 // Month view: a real 7-column calendar with day numbers. The week-strip
@@ -284,7 +312,7 @@ export function monthCalendarHtml(rows, bands) {
     const tipLines = [`${fmtDur(tot)} learned`, `${fmtDur(vids.get(iso) || 0)} video · ${fmtDur(reads.get(iso) || 0)} reading`];
     if (comp.get(iso)) tipLines.push(`${comp.get(iso)} completed`);
     const tip = `${dt}\n${tipLines.join("\n")}`;
-    html += `<span class="cal-cell lv${lv}" role="img" aria-label="${esc(tip.replace(/\n/g, ", "))}" data-tip="${esc(tip)}" tabindex="0"><b>${d}</b></span>`;
+    html += `<span class="cal-cell lv${lv}" role="img" aria-label="${esc(tip.replace(/\n/g, ", "))}" data-tip="${esc(tip)}"${tot > 0 ? ' tabindex="0"' : ""}><b>${d}</b></span>`;
   }
   html += `</div><div class="graph-legend mono"><span>Less</span><span class="cal-dot lv0"></span><span class="cal-dot lv1"></span><span class="cal-dot lv2"></span><span class="cal-dot lv3"></span><span class="cal-dot lv4"></span><span>More</span></div></div>`;
   return html;

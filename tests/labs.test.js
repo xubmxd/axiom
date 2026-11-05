@@ -331,9 +331,11 @@ describe("training-path icons", () => {
     assert.equal(findLabCourseIcon(""), null);
     assert.equal(findLabCourseIcon("Core"), null); // slugs are lowercase
   });
-  it("card art uses the icon when present, terminal mark otherwise", async () => {
+  it("card art uses the icon when present, initials otherwise", async () => {
     const { labCourseArt } = await import("../server/views.js");
     assert.ok(labCourseArt({ slug: "core", title: "Core" }).includes("/media/lab-course/core"));
-    assert.ok(labCourseArt({ slug: "nosuch", title: "X" }).includes("&gt;_"));
+    const fallback = labCourseArt({ slug: "nosuch", title: "X" });
+    assert.ok(fallback.includes("art-fallback"));
+    assert.ok(fallback.includes(">X<"));
   });
 });
