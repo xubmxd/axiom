@@ -232,46 +232,47 @@
     wake();
   }
   // ---- transport controls ----
-  // Center feedback beat: a persistent icon node animated with WAAPI
-  // (fade + scale) only on intentional toggles. Any in-flight animation
-  // is cancelled first, so rapid toggles never queue, flicker, or wedge.
+  // Center feedback: the icon appears immediately and quickly fades out,
+  // YouTube-style — opacity only, no bounce or scale. Any in-flight
+  // animation is cancelled first, so rapid toggles never queue or wedge.
   const bigIcon = (icon) => '<span class="pcircle">' + icon + "</span>";
   const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let flashTimer = null, beatAnim = null;
+  const FLASH_MS = 240;
+  let flashTimer = null, flashAnim = null;
   function flashCenter(icon) {
     if (!bigPlay) return;
-    if (beatAnim) { try { beatAnim.cancel(); } catch {} beatAnim = null; }
+    if (flashAnim) { try { flashAnim.cancel(); } catch {} flashAnim = null; }
     bigPlay.innerHTML = bigIcon(icon);
     player.classList.add("flash");
     clearTimeout(flashTimer);
-    const circle = bigPlay.firstElementChild || bigPlay;
-    if (!reduceMotion && circle && typeof circle.animate === "function") {
+    // Animate the whole button: .flash only guarantees visibility, so the
+    // handoff back to the persistent paused/playing state never snaps.
+    if (!reduceMotion && typeof bigPlay.animate === "function") {
       try {
-        beatAnim = circle.animate(
+        flashAnim = bigPlay.animate(
           [
-            { opacity: 0, transform: "scale(.5)" },
-            { opacity: 0.95, transform: "scale(1.06)", offset: 0.25 },
-            { opacity: 0.9, transform: "scale(1)", offset: 0.6 },
-            { opacity: 0, transform: "scale(1.18)" },
+            { opacity: 0.94, offset: 0 },
+            { opacity: 0.94, offset: 0.15 },
+            { opacity: 0 },
           ],
-          { duration: 500, easing: "ease-out" }
+          { duration: FLASH_MS, easing: "cubic-bezier(0.23, 1, 0.32, 1)", fill: "forwards" }
         );
-      } catch { beatAnim = null; }
+      } catch { flashAnim = null; }
     }
     flashTimer = setTimeout(() => {
-      if (beatAnim) { try { beatAnim.cancel(); } catch {} beatAnim = null; }
+      if (flashAnim) { try { flashAnim.cancel(); } catch {} flashAnim = null; }
       player.classList.remove("flash");
       syncBig();
-    }, 500);
+    }, FLASH_MS);
   }
   // Center icon persists only while paused (big play button); while playing
-  // it stays hidden and appears solely via the in-flight beat above.
+  // it stays hidden and appears solely via the in-flight flash above.
   function syncBig() {
     if (!bigPlay || player.classList.contains("flash")) return;
     bigPlay.innerHTML = bigIcon(v.paused ? IC.play : IC.pause);
     bigPlay.setAttribute("aria-label", v.paused ? "Play (k)" : "Pause (k)");
   }
-  // The beat fires here — the only intentional-toggle entry point (center
+  // The flash fires here — the only intentional-toggle entry point (center
   // button, transport button, keyboard) — never from surface taps or media
   // events, so showing/hiding the overlay stays animation-free.
   const togglePlay = () => { flashCenter(v.paused ? IC.play : IC.pause); v.paused ? v.play() : v.pause(); };

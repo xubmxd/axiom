@@ -241,7 +241,7 @@ describe("video surface input model", () => {
     assert.equal(v.playCount, 0);
   });
 
-  it("beat fires on explicit toggle in both directions", () => {
+  it("flash fires on explicit toggle in both directions", () => {
     const { v, player, bigPlay } = buildContext(true);
     v.paused = true;
     bigPlay.onclick({ target: bigPlay });
