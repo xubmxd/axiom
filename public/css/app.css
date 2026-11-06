@@ -300,7 +300,11 @@ a{color:inherit;text-underline-offset:.18em}
   color:var(--chalk);text-decoration:none;background:none;border:0;font:inherit;
   font-size:.9rem;cursor:pointer;padding:.5rem 0;min-height:44px;
 }
-.only-mobile{display:none}
+/* Keep the mobile sheet off the desktop layout even if it was left open
+   before a resize. */
+@media (min-width:901px){
+  .mobilenav,.mobilenav.open{display:none}
+}
 .iconbtn{
   background:transparent;border:1px solid var(--rule);color:var(--chalk);
   border-radius:var(--r-control);padding:.35rem .55rem;cursor:pointer;
@@ -309,6 +313,9 @@ a{color:inherit;text-underline-offset:.18em}
   transition:border-color var(--tr),color var(--tr),background var(--tr);
 }
 .iconbtn:hover{border-color:var(--field);color:var(--bone);background:var(--peat)}
+/* Must come after .iconbtn: both set display, and .iconbtn's inline-flex
+   would otherwise win on desktop by source order. */
+.only-mobile{display:none}
 
 /* ---------- page frame ---------- */
 .wrap{max-width:var(--content-max);margin:0 auto;padding:2rem var(--content-px) 4rem}
@@ -468,6 +475,10 @@ a{color:inherit;text-underline-offset:.18em}
 .act-stat span{font-size:.75rem;color:var(--ash)}
 .act-stat b{font-size:1rem;font-weight:600;font-variant-numeric:tabular-nums;color:var(--bone)}
 .act-stat em{font-style:normal;font-size:.75rem;color:var(--ash)}
+/* .act-stat em outranks .up/.down on specificity, so state the colours here
+   too — otherwise the arrow loses its direction colour. */
+.act-stat em.up{color:var(--sulphur)}
+.act-stat em.down{color:var(--danger)}
 .act-quote{margin:.2rem 0 0;font-size:.75rem;color:var(--ash)}
 
 /* heatmap: strata blocks, no rounded GitHub squares */

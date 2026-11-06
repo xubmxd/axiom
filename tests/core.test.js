@@ -59,6 +59,38 @@ describe("html sanitizer", () => {
   });
 });
 
+describe("weekly delta presentation", () => {
+  it("has no delta without a prior week", async () => {
+    const { weeklyDelta } = await import("../server/stats.js");
+    assert.equal(weeklyDelta(3600, 0), null);
+    assert.equal(weeklyDelta(0, 0), null);
+  });
+  it("uses a percentage against a stable baseline", async () => {
+    const { weeklyDelta } = await import("../server/stats.js");
+    const d = weeklyDelta(1800, 1200);
+    assert.deepEqual(d, { direction: "up", diff: 600, pct: 50, unit: "pct" });
+  });
+  it("falls back to the absolute change when last week was tiny", async () => {
+    const { weeklyDelta } = await import("../server/stats.js");
+    // The reported bug: 224s vs 48s used to read as +367%.
+    const d = weeklyDelta(224, 48);
+    assert.deepEqual(d, { direction: "up", diff: 176, pct: 367, unit: "secs" });
+  });
+  it("falls back to the absolute change when the percentage is extreme", async () => {
+    const { weeklyDelta } = await import("../server/stats.js");
+    const d = weeklyDelta(7200, 1200); // +500%
+    assert.equal(d.unit, "secs");
+    assert.equal(d.diff, 6000);
+  });
+  it("reports down and flat directions", async () => {
+    const { weeklyDelta } = await import("../server/stats.js");
+    const down = weeklyDelta(600, 1200);
+    assert.deepEqual(down, { direction: "down", diff: -600, pct: -50, unit: "pct" });
+    const flat = weeklyDelta(1200, 1200);
+    assert.deepEqual(flat, { direction: "flat", diff: 0, pct: 0, unit: "pct" });
+  });
+});
+
 describe("title tag stripping", () => {
   // NOTE: tests use a fictional tag and set config explicitly — the default
   // is empty and real patterns live only in private server env files.

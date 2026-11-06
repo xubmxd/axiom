@@ -191,7 +191,7 @@ ${acctNav.map(navItem).join("")}
 </aside>` : ""}
 <div class="appmain">
 ${user ? `<header class="topbar"><div class="topbar-in">
-<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="2"/><rect x="3" y="12" width="18" height="2"/></svg></button></div>
+<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="2"/><rect x="3" y="12" width="18" height="2"/></svg></button></div>
 <form class="tsearch" action="/library" method="get" role="search">
 <span class="ts-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span>
 <input name="q" placeholder="Search the library…" aria-label="Search courses, lessons, pages" autocomplete="off">

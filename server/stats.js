@@ -9,6 +9,22 @@ export function dayFor(tzOffsetMinutes, when = new Date()) {
   return local.toISOString().slice(0, 10);
 }
 
+// Week-over-week change for the dashboard. A percentage only means something
+// against a stable baseline: after a 48-second week, a normal 4-minute week
+// reads as +367%, which looks like a bug. Below MIN_PCT_BASE (10 min), or when
+// the change exceeds MAX_PCT (200%), the UI reports the absolute change
+// instead. Returns null when there is no prior week to compare against.
+export function weeklyDelta(weekSecs, prevSecs, { minBase = 600, maxPct = 200 } = {}) {
+  const week = Math.max(0, Math.round(Number(weekSecs) || 0));
+  const prev = Math.max(0, Math.round(Number(prevSecs) || 0));
+  if (prev <= 0) return null;
+  const diff = week - prev;
+  const direction = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+  const pct = Math.round((diff / prev) * 100);
+  const unit = prev >= minBase && Math.abs(pct) <= maxPct ? "pct" : "secs";
+  return { direction, diff, pct, unit };
+}
+
 export async function recordHeartbeat({ userId, courseId, contentType, contentId, tabId, activeSecs, tzOffset }) {
   const now = nowIso();
   const secs = Math.max(0, Math.min(120, Number(activeSecs) || 0));

@@ -4,7 +4,7 @@ import path from "node:path";
 import { all, get } from "./db.js";
 import { config } from "./config.js";
 import { layout, esc, fmtDur, fmtClock, fmtDate, initials, avatarHtml, progressBar, graphHtml, monthCalendarHtml, emptyState, iconArt, displayTitle, specimenNo, PLAYER_ICONS } from "./views.js";
-import { yearActivity, intensityLevels, streaks, totals, dayFor } from "./stats.js";
+import { yearActivity, intensityLevels, streaks, totals, dayFor, weeklyDelta } from "./stats.js";
 import { courseDir } from "./scanner.js";
 
 // Workspace line — chosen deterministically from the learner's real state so
@@ -188,7 +188,13 @@ pages.get("/", needAuth, async (req, res) => {
   const prevCut = new Date(new Date(weekCut + "T12:00:00Z").getTime() - 7 * 864e5).toISOString().slice(0, 10);
   const prevSecs = rows.filter((r) => r.day >= prevCut && r.day < weekCut)
     .reduce((a, r) => a + (r.video_secs || 0) + (r.reading_secs || 0), 0);
-  const delta = prevSecs > 0 ? Math.round((weekSecs - prevSecs) / prevSecs * 100) : null;
+  const delta = weeklyDelta(weekSecs, prevSecs);
+  const deltaClass = delta ? (delta.direction === "up" ? "up" : delta.direction === "down" ? "down" : "dim") : "";
+  const deltaArrow = delta ? (delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "→") : "";
+  const deltaLabel = delta
+    ? `${deltaArrow} ${delta.unit === "pct" ? `${Math.abs(delta.pct)}%` : fmtDur(Math.abs(delta.diff))}`
+    : "";
+  const deltaTitle = delta ? `vs previous 7 days (${fmtDur(prevSecs)})` : "";
   const best = weekRows.reduce((a, r) => ((r.video_secs || 0) + (r.reading_secs || 0) > ((a?.video_secs || 0) + (a?.reading_secs || 0)) ? r : a), null);
   const mostActive = best ? new Date(best.day + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short" }) : "—";
   const bestSecs = best ? ((best.video_secs || 0) + (best.reading_secs || 0)) : 0;
@@ -210,9 +216,9 @@ pages.get("/", needAuth, async (req, res) => {
   const contCount = cont.length;
   const progCount = inProg.length;
 
-  const statDelta = delta === null
-    ? `<small>${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`
-    : `<small><span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</span> ${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`;
+  const statDelta = delta
+    ? `<small><span class="${deltaClass}" title="${esc(deltaTitle)}">${deltaLabel}</span> ${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`
+    : `<small>${fmtDur(weekVideo)} watched · ${fmtDur(weekReading)} read</small>`;
 
   // ONE resume point: the single last-accessed item (or the empty state).
   // Completed items are never substituted — the action becomes "Revisit",
@@ -266,7 +272,7 @@ pages.get("/", needAuth, async (req, res) => {
             <aside class="act-side" aria-label="This week summary">
               <p class="catalogue">This week</p>
               <div class="act-stats">
-                <div class="act-stat"><span>watched + read</span><b>${fmtDur(weekSecs)} ${delta !== null ? `<em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "↑" : "↓"} ${Math.abs(delta)}%</em>` : ""}</b></div>
+                <div class="act-stat"><span>watched + read</span><b>${fmtDur(weekSecs)} ${delta ? `<em class="${deltaClass}" title="${esc(deltaTitle)}">${deltaLabel}</em>` : ""}</b></div>
                 <div class="act-stat"><span>active days</span><b>${weekActive} / 7</b></div>
                 <div class="act-stat"><span>most active day</span><b>${mostActive}${bestSecs ? ` <em class="dim">${fmtDur(bestSecs)}</em>` : ""}</b></div>
               </div>
