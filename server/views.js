@@ -159,10 +159,24 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
     { id: "settings", href: "/settings", icon: ICONS.settings, label: "Settings" },
     ...(isAdmin ? [{ id: "admin", href: "/admin", icon: ICONS.admin, label: "Admin" }] : []),
   ];
-  const allNav = [...wsNav, ...acctNav];
   // Native title tooltips: visible on hover/focus in the collapsed icon rail,
   // no focus trap, navigation stays fully usable without hover.
   const navItem = (n) => `<li><a href="${n.href}" title="${n.label}" class="${active === n.id ? "on" : ""}"${active === n.id ? ` aria-current="page"` : ""}><span class="ni" aria-hidden="true">${n.icon}</span><span class="nl">${n.label}</span></a></li>`;
+  // Mobile navigation is a full-height drawer over a scrim, mirroring the
+  // desktop sidebar instead of dropping a link list out of the topbar.
+  const mobileNav = user ? `<div class="mdrawer" id="mobileNav" role="dialog" aria-modal="true" aria-label="Navigation" aria-hidden="true" inert>
+<div class="mdrawer-h">
+<a class="brand" href="/" aria-label="${BRAND} home" title="${BRAND} — Workspace"><img class="brand-logo" src="/img/carno-sec.png" alt="" width="40" height="40" loading="eager" decoding="async"><span class="brand-text"><span class="brand-name">${BRAND}</span><span class="brand-tag">FIELD RECORD</span></span></a>
+<button class="iconbtn mdrawer-close" id="navClose" aria-label="Close navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg></button>
+</div>
+<p class="brand-path mono" aria-hidden="true">learn &gt; practice &gt; progress</p>
+<div class="mdrawer-scroll">
+<nav aria-label="Workspace"><p class="nav-group">Workspace</p><ul>${wsNav.map(navItem).join("")}</ul></nav>
+<nav aria-label="Account"><p class="nav-group">Account</p><ul>${acctNav.map(navItem).join("")}</ul></nav>
+</div>
+<div class="mdrawer-foot"><p class="mono dim">${BRAND} · self-hosted · v${VERSION}</p><form method="post" action="/logout"><button type="submit">Sign out</button></form></div>
+</div>
+<div class="mscrim" id="navScrim" aria-hidden="true"></div>` : "";
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · ${BRAND}</title>
@@ -191,7 +205,7 @@ ${acctNav.map(navItem).join("")}
 </aside>` : ""}
 <div class="appmain">
 ${user ? `<header class="topbar"><div class="topbar-in">
-<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="2"/><rect x="3" y="12" width="18" height="2"/></svg></button></div>
+<div class="topbar-left"><button class="iconbtn only-mobile" id="navToggle" aria-label="Open navigation" aria-expanded="false" aria-controls="mobileNav" aria-haspopup="dialog"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></button></div>
 <form class="tsearch" action="/library" method="get" role="search">
 <span class="ts-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span>
 <input name="q" placeholder="Search the library…" aria-label="Search courses, lessons, pages" autocomplete="off">
@@ -209,12 +223,12 @@ ${user ? `<header class="topbar"><div class="topbar-in">
 </details>
 </div>
 </div>
-<nav class="mobilenav" id="mobileNav" aria-label="Mobile">${allNav.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<form method="post" action="/logout"><button>Sign out</button></form></nav>
 </header>` : ""}
 <main id="main" class="main">${body}</main>
 <footer class="foot"><span class="mono dim">${BRAND} · v${VERSION} · self-hosted</span></footer>
 </div>
 </div>
+${mobileNav}
 <div id="toasts" aria-live="polite"></div>
 <script src="/js/app.js" defer></script><script type="module" src="/js/tip.js"></script>${extraScript}</body></html>`;
 }

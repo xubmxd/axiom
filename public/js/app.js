@@ -8,8 +8,60 @@ function toast(msg) {
 }
 window.toast = toast;
 document.addEventListener("DOMContentLoaded", () => {
+  // Mobile navigation drawer: slide-in panel + scrim, focus trap, Escape and
+  // focus return. The drawer is inert while closed so hidden links cannot be
+  // reached from the keyboard.
   const t = document.getElementById("navToggle"), m = document.getElementById("mobileNav");
-  if (t && m) t.onclick = () => { const open = m.classList.toggle("open"); t.setAttribute("aria-expanded", String(open)); };
+  const scrim = document.getElementById("navScrim");
+  if (t && m && scrim) {
+    const closeBtn = document.getElementById("navClose");
+    let restoreFocus = null;
+    const isOpen = () => m.classList.contains("open");
+    const focusables = () => [...m.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+      .filter((el) => el.getClientRects().length > 0);
+    const open = () => {
+      restoreFocus = document.activeElement;
+      m.inert = false;
+      m.classList.add("open");
+      scrim.classList.add("open");
+      m.setAttribute("aria-hidden", "false");
+      t.setAttribute("aria-expanded", "true");
+      t.setAttribute("aria-label", "Close navigation");
+      document.body.classList.add("mnav-open");
+      (closeBtn || focusables()[0])?.focus({ preventScroll: true });
+    };
+    const shut = (restore = true) => {
+      if (!isOpen()) return;
+      m.classList.remove("open");
+      scrim.classList.remove("open");
+      m.setAttribute("aria-hidden", "true");
+      t.setAttribute("aria-expanded", "false");
+      t.setAttribute("aria-label", "Open navigation");
+      document.body.classList.remove("mnav-open");
+      m.inert = true;
+      if (!restore) return;
+      const target = restoreFocus && restoreFocus.isConnected ? restoreFocus : t;
+      target.focus({ preventScroll: true });
+    };
+    t.onclick = () => (isOpen() ? shut() : open());
+    closeBtn?.addEventListener("click", () => shut());
+    scrim.addEventListener("click", () => shut());
+    m.addEventListener("click", (e) => {
+      if (e.target.closest?.("a[href]")) shut(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (!isOpen()) return;
+      if (e.key === "Escape") { e.preventDefault(); shut(); return; }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+    const desktop = window.matchMedia("(min-width: 901px)");
+    desktop.addEventListener?.("change", (e) => { if (e.matches) shut(false); });
+  }
   // Desktop sidebar collapse. One toggle lives in the sidebar header in both
   // states, so the CarnoSec mark stays a visible home anchor even collapsed.
   // Preference persists per browser (no backend needed).
