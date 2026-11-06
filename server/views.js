@@ -145,6 +145,18 @@ export const PLAYER_ICONS = {
 
 const BRAND = "CarnoSec";
 const VERSION = "1.0";
+// Static assets are served with a one-hour cache. Version their URLs by
+// mtime/size so a deploy cannot leave an old app.js or app.css paired with
+// fresh server-rendered markup.
+const PUBLIC_DIR = path.resolve(import.meta.dirname, "..", "public");
+function assetVersion(rel) {
+  try {
+    const st = fs.statSync(path.join(PUBLIC_DIR, rel));
+    return `${st.size.toString(36)}${Math.round(st.mtimeMs).toString(36)}`;
+  } catch { return VERSION; }
+}
+const APP_CSS_V = assetVersion("css/app.css");
+const APP_JS_V = assetVersion("js/app.js");
 
 export function layout({ title, user, active = "", body, extraHead = "", extraScript = "" }) {
   const isAdmin = user?.role === "admin";
@@ -185,7 +197,7 @@ export function layout({ title, user, active = "", body, extraHead = "", extraSc
 <link rel="icon" href="/img/carno-sec.png" type="image/png">
 <link rel="apple-touch-icon" href="/img/carno-sec.png">
 <meta property="og:image" content="/img/carno-sec.png">
-<link rel="stylesheet" href="/css/app.css">${extraHead}</head>
+<link rel="stylesheet" href="/css/app.css?v=${APP_CSS_V}">${extraHead}</head>
 <body data-user-tz="${esc(user?.timezone || "UTC")}">
 <a class="skip" href="#main">Skip to content</a>
 <div class="app">
@@ -230,7 +242,7 @@ ${user ? `<header class="topbar"><div class="topbar-in">
 </div>
 ${mobileNav}
 <div id="toasts" aria-live="polite"></div>
-<script src="/js/app.js" defer></script><script type="module" src="/js/tip.js"></script>${extraScript}</body></html>`;
+<script src="/js/app.js?v=${APP_JS_V}" defer></script><script type="module" src="/js/tip.js"></script>${extraScript}</body></html>`;
 }
 
 export function progressBar(pct, label = "") {
