@@ -356,7 +356,6 @@ a{color:inherit;text-underline-offset:.18em}
 .btn.danger:hover{background:rgba(224,139,128,.08);border-color:var(--danger);color:#F2B4AB}
 .btn:disabled{opacity:.45;cursor:not-allowed;background:transparent;border-color:var(--rule);color:var(--ash)}
 .btn.primary:disabled{background:var(--silt);border-color:var(--rule);color:var(--ash)}
-.btn.modules-reopen{display:none}
 
 /* ---------- forms ---------- */
 .form{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;margin-top:1.25rem}
@@ -928,10 +927,22 @@ dialog.confirm p{margin:.3rem 0}
 .learn.focus{grid-template-columns:1fr}
 .learn.side-hidden{grid-template-columns:minmax(0,1fr)}
 .learn.side-hidden .side{display:none}
-.learn.side-hidden .btn.modules-reopen{
-  display:inline-flex;align-items:center;gap:.4rem;margin-right:.7rem;
-  vertical-align:middle;min-height:32px;font-size:.75rem;padding:.2rem .6rem;
+/* Inline course-index control shown when the module panel is collapsed.
+   Typographic rather than boxed so it belongs to the breadcrumb line. */
+.modules-reopen{
+  display:none;align-items:center;gap:.45rem;margin:0 .85rem 0 0;
+  padding:0 .85rem 0 0;border:0;border-right:1px solid var(--rule);
+  background:none;color:var(--chalk);font-family:var(--mono);
+  font-size:.75rem;font-weight:500;line-height:1.2;letter-spacing:.01em;
+  cursor:pointer;min-height:32px;vertical-align:middle;white-space:nowrap;
+  transition:color var(--tr),border-color var(--tr);
 }
+.modules-reopen svg{flex:none;color:var(--ash);transition:color var(--tr)}
+.modules-reopen:hover{color:var(--bone);border-right-color:var(--field)}
+.modules-reopen:hover svg{color:var(--oxide)}
+.modules-reopen:active{color:var(--sulphur)}
+.modules-reopen:focus-visible{outline-offset:-2px}
+.learn.side-hidden .modules-reopen{display:inline-flex}
 .lrow{display:flex;gap:.6rem;margin:1.25rem 0;flex-wrap:wrap;align-items:center}
 
 /* lesson sidebar: a field index */
@@ -1592,7 +1603,7 @@ dialog.confirm p{margin:.3rem 0}
   .term-in input{font-size:16px}
   .foot{font-size:.75rem}
   .btn.xs,.iconbtn.xs{min-height:44px}
-  .learn.side-hidden .btn.modules-reopen{min-height:44px}
+  .learn.side-hidden .modules-reopen{min-height:44px}
   .chip{min-width:44px;justify-content:center}
   .range select{min-height:44px}
 }

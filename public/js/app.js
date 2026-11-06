@@ -56,9 +56,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const reopen = document.createElement("button");
     reopen.type = "button";
     reopen.id = "sideReopen";
-    reopen.className = "btn xs modules-reopen";
+    reopen.className = "modules-reopen";
     reopen.setAttribute("aria-controls", "side");
-    reopen.innerHTML = `<span aria-hidden="true">☰</span> Modules`;
+    reopen.setAttribute("title", "Show course modules");
+    reopen.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg><span>Modules</span>`;
     reopen.setAttribute("aria-label", "Show course modules");
     // Inline at the start of the breadcrumb row (library / course / …)
     // so it shares the line instead of taking its own row above it.
