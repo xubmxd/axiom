@@ -550,16 +550,18 @@ function renderSideTree(node, currentId, depth = 0) {
 // (visible only in selection mode), independently scrollable tree.
 function learnSidebar({ courseId, courseTitle, pct, done = 0, total = 0, tree, currentId, after = "" }) {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
-  return `<aside class="side side-new" id="side" data-selecting="off">`
+  return `<aside class="side side-new" id="side" aria-label="Course modules" data-selecting="off">`
     + `<div class="side-top"><div class="side-course-row"><a class="side-back" href="/courses/${esc(courseId)}"><span class="side-back-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="side-course-t">${esc(displayTitle(courseTitle))}</span></a>`
-    + `<button class="iconbtn side-collapse" id="sideToggle" aria-label="Collapse sidebar">⟨</button></div>`
+    + `<button class="iconbtn side-collapse" id="sideToggle" aria-label="Collapse sidebar">⟨</button>`
+    + `<button class="iconbtn side-close" id="sideClose" aria-label="Close course modules"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg></button></div>`
     + `<p class="mono side-pct">${done} of ${total} item${total === 1 ? "" : "s"} complete · ${p}%</p>`
     + `<div class="side-pbar"><div class="pbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100" aria-label="Course completion, ${done} of ${total} item${total === 1 ? "" : "s"}"><i style="width:${p}%"></i></div></div>`
     + `<div class="side-search"><span class="side-search-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></span><input id="sideSearch" type="search" placeholder="Search lessons…" aria-label="Search lessons" autocomplete="off"></div>`
     + `<div class="side-chead"><span class="mono side-chead-t">Course content</span><span class="side-chead-actions"><button type="button" class="side-linkbtn" data-side-select aria-pressed="false">Select</button><button type="button" class="side-linkbtn" data-side-expand>Expand all</button></span></div>`
     + `<div class="side-selbar" data-bulk-bar><div class="side-sel-top"><label class="bulk-select"><input type="checkbox" data-bulk-select-all> <span>Select all</span></label><span class="mono side-sel-count" data-bulk-count aria-live="polite">0 selected</span></div>`
     + `<div class="side-sel-actions"><button class="btn xs primary" type="button" data-bulk-done disabled>Mark watched</button><button class="btn xs" type="button" data-bulk-undone disabled>Mark unwatched</button><button class="btn xs" type="button" data-bulk-clear disabled>Clear</button></div></div></div>`
-    + `<div class="side-scroll"><div class="side-tree">${renderSideTree(tree, currentId)}</div>${after}</div></aside>`;
+    + `<div class="side-scroll"><div class="side-tree">${renderSideTree(tree, currentId)}</div>${after}</div></aside>`
+    + `<div class="mscrim side-scrim" id="sideScrim" aria-hidden="true"></div>`;
 }
 function renderRootItems(node, lessonById) {  // Ungrouped (flat-course) items render without fake group headers.
   let html = "";

@@ -331,7 +331,7 @@ a{color:inherit;text-underline-offset:.18em}
   opacity:1;visibility:visible;
   transition:opacity .24s var(--ease),visibility 0s;
 }
-body.mnav-open{overflow:hidden;overscroll-behavior:none}
+body.mnav-open,body.modules-open{overflow:hidden;overscroll-behavior:none}
 @media (min-width:901px){
   .mdrawer,.mscrim{display:none}
 }
@@ -997,6 +997,9 @@ dialog.confirm p{margin:.3rem 0}
   font-family:var(--display);font-size:1.05rem;font-weight:500;line-height:1.25;
 }
 .side-collapse{flex:none}
+/* Desktop collapses the panel; mobile closes the drawer. One is exposed at
+   each breakpoint. */
+.side-close{display:none;flex:none}
 .side-pct{margin:.7rem 0 0;font-size:.75rem;color:var(--ash)}
 .side-pbar .pbar{margin:.45rem 0 .2rem;height:2px}
 .side-search{
@@ -1516,10 +1519,38 @@ dialog.confirm p{margin:.3rem 0}
   .appnav{display:none}
   .only-mobile{display:inline-flex}
   .learn{grid-template-columns:minmax(0,1fr)}
+  /* Course modules on mobile are a left drawer over the lesson, matching the
+     navigation drawer. The panel stays rendered while closed so it can
+     slide; JS marks the open state on .learn. Out of the box it is off
+     screen, so there is no flash of an open panel before JS runs. */
   .side,.side-new{
-    position:static;max-height:none;border-right:0;border-bottom:1px solid var(--field);
+    position:fixed;top:0;bottom:0;left:0;z-index:80;
+    width:min(320px,88vw);height:100vh;height:100dvh;max-height:none;
+    border-right:1px solid var(--rule);border-bottom:0;
+    transform:translateX(-100%);visibility:hidden;
+    transition:transform .24s var(--ease),visibility 0s linear .24s;
+    box-shadow:18px 0 48px rgba(0,0,0,.45);overscroll-behavior:contain;
   }
-  .side-scroll{overflow:visible;max-height:none}
+  .learn.side-drawer-open .side{
+    transform:none;visibility:visible;
+    transition:transform .24s var(--ease),visibility 0s;
+  }
+  /* Desktop collapses with display:none; the drawer needs the element to
+     keep rendering so it can slide out instead of vanishing. */
+  .learn.side-hidden .side{display:flex}
+  /* Player and reader modes still win over the drawer. */
+  .learn.focus .side,.learn.theater .side{display:none}
+  .side-close{display:inline-flex}
+  .side-collapse{display:none}
+  .side-top{padding-top:calc(1.15rem + env(safe-area-inset-top))}
+  .side-scroll{
+    overflow-y:auto;overflow-x:hidden;max-height:none;
+    padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));
+  }
+  .side-search{min-height:44px}
+  .side-search input{font-size:16px}
+  .smod-sum{min-height:44px}
+  .sles-a{min-height:40px;padding-top:.55rem;padding-bottom:.55rem}
   .stage{padding:1.5rem 1.25rem 3rem}
   .chead{grid-template-columns:80px minmax(0,1fr);gap:1.25rem}
   .chead .art,.chead img.art,.chead .art-fallback{width:76px;height:76px}

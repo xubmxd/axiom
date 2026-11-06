@@ -93,18 +93,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const st = document.getElementById("sideToggle"), learn = document.querySelector(".learn");
   const side = document.getElementById("side");
-  // Lesson navigation: selecting a lesson auto-collapses the module panel
-  // on mobile (MPA navigation reloads the page, so the collapsed intent is
-  // kept in sessionStorage and applied on the next lesson load — mobile
-  // only, desktop auto-collapse untouched). The reopen control lives inline
-  // in the breadcrumb row whenever the panel is collapsed, on any viewport
-  // (without it, a collapsed panel has no way back — the old toggle hides
-  // with the panel). State changes only from real user actions.
+  // Lesson navigation: the module panel is a sticky desktop sidebar and a
+  // left drawer on mobile. The drawer shares the navigation drawer's
+  // interaction model — scrim, Escape, focus trap, focus return and a body
+  // scroll lock — while desktop collapse behaviour is unchanged. Mobile opens
+  // closed so the lesson stays above the fold; the inline "Modules" control
+  // in the breadcrumb row is the way back in.
   if (st && learn && side) {
-    const KEY = "carnosec:learn-side";
     const mq = window.matchMedia("(max-width: 900px)");
     const isMobile = () => mq.matches;
     const stage = learn.querySelector(".stage");
+    const scrim = document.getElementById("sideScrim");
+    const closeBtn = document.getElementById("sideClose");
     const reopen = document.createElement("button");
     reopen.type = "button";
     reopen.id = "sideReopen";
@@ -118,45 +118,110 @@ document.addEventListener("DOMContentLoaded", () => {
     const crumbs = stage?.querySelector(".crumbs");
     if (crumbs) crumbs.prepend(reopen);
     else if (stage) stage.prepend(reopen);
-    const read = () => { try { return sessionStorage.getItem(KEY); } catch { return null; } };
-    const save = (v) => { try { sessionStorage.setItem(KEY, v); } catch {} };
+    const drawerOpen = () => learn.classList.contains("side-drawer-open");
+    const focusables = () => [...side.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')]
+      .filter((el) => {
+        if (!el.getClientRects().length) return false;
+        // Links inside a closed module group are not keyboard reachable,
+        // even though Chromium still reports a box for them.
+        for (let p = el; p && p !== side; p = p.parentElement) {
+          if (p.tagName === "DETAILS" && !p.open) return false;
+        }
+        return true;
+      });
     const sync = () => {
+      const mobile = isMobile();
+      const expanded = mobile && drawerOpen();
       const hidden = learn.classList.contains("side-hidden");
-      reopen.setAttribute("aria-expanded", String(!hidden));
-      reopen.setAttribute("aria-label", hidden ? "Show course modules" : "Hide course modules");
+      reopen.setAttribute("aria-expanded", String(mobile ? expanded : !hidden));
+      reopen.setAttribute("aria-label", (mobile ? expanded : !hidden) ? "Hide course modules" : "Show course modules");
+      reopen.setAttribute("title", (mobile ? expanded : !hidden) ? "Hide course modules" : "Show course modules");
+      if (mobile) {
+        // The drawer is a modal while open; while closed it is inert so its
+        // links are not reachable behind the lesson.
+        side.inert = !expanded;
+        if (expanded) {
+          side.removeAttribute("aria-hidden");
+          side.setAttribute("aria-modal", "true");
+          side.setAttribute("role", "dialog");
+        } else {
+          side.setAttribute("aria-hidden", "true");
+          side.removeAttribute("aria-modal");
+          side.removeAttribute("role");
+        }
+        document.body.classList.toggle("modules-open", expanded);
+      } else {
+        side.inert = false;
+        side.removeAttribute("aria-hidden");
+        side.removeAttribute("aria-modal");
+        side.removeAttribute("role");
+        document.body.classList.remove("modules-open");
+      }
+      scrim?.classList.toggle("open", expanded);
     };
-    // Mobile starts collapsed so the lesson itself is above the fold; the
-    // breadcrumb "Modules" button reopens the tree. A stored "open" intent
-    // is respected on later loads.
-    try { if (isMobile() && read() !== "open") learn.classList.add("side-hidden"); } catch {}
+    const closeDrawer = (restore = true) => {
+      if (!isMobile() || !drawerOpen()) return;
+      learn.classList.add("side-hidden");
+      learn.classList.remove("side-drawer-open");
+      sync();
+      if (restore) reopen.focus({ preventScroll: true });
+    };
+    const openDrawer = () => {
+      if (!isMobile()) return;
+      learn.classList.remove("side-hidden");
+      learn.classList.add("side-drawer-open");
+      sync();
+      // Land on the current lesson so the drawer opens at the reader's place.
+      const target = side.querySelector(".sles-a.on") || closeBtn || focusables()[0];
+      target?.focus();
+    };
+    if (isMobile()) {
+      learn.classList.add("side-hidden");
+      learn.classList.remove("side-drawer-open");
+    }
     sync();
+    // Desktop collapse toggle.
     st.onclick = () => {
       learn.classList.toggle("side-hidden");
-      if (isMobile()) save(learn.classList.contains("side-hidden") ? "hidden" : "open");
       sync();
     };
     reopen.onclick = () => {
-      // Reopen control only shows while collapsed on mobile; clicking it
-      // always expands.
-      learn.classList.remove("side-hidden");
-      if (isMobile()) save("open");
-      sync();
-      side.querySelector("a,button,summary")?.focus?.({ preventScroll: true });
+      if (isMobile()) openDrawer();
+      else {
+        learn.classList.remove("side-hidden");
+        sync();
+        side.querySelector("a,button,summary")?.focus?.({ preventScroll: true });
+      }
     };
-    // Real selection event: a lesson/page link inside the module panel.
-    // Collapse immediately for feedback; the stored intent collapses the
-    // freshly loaded lesson page. Desktop untouched. No preventDefault —
-    // navigation proceeds exactly as before.
+    closeBtn?.addEventListener("click", () => closeDrawer());
+    scrim?.addEventListener("click", () => closeDrawer());
+    // Choosing a lesson closes the drawer for immediate feedback; the new
+    // page opens collapsed on mobile anyway. Navigation is not intercepted.
     side.addEventListener("click", (e) => {
       const a = e.target.closest?.('a[href^="/learn/"]');
       if (!a || !isMobile()) return;
       learn.classList.add("side-hidden");
-      save("hidden");
+      learn.classList.remove("side-drawer-open");
       sync();
     });
-    // Viewport changes only re-sync the reopen control's labels; the
-    // collapsed/expanded state itself is never altered by resize/orientation.
-    mq.addEventListener?.("change", sync);
+    document.addEventListener("keydown", (e) => {
+      if (!isMobile() || !drawerOpen()) return;
+      if (e.key === "Escape") { e.preventDefault(); closeDrawer(); return; }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+    // Crossing the breakpoint never leaves a drawer over the page or a body
+    // scroll lock behind. Entering desktop restores the full sticky sidebar.
+    mq.addEventListener?.("change", (e) => {
+      learn.classList.remove("side-drawer-open");
+      if (e.matches) learn.classList.add("side-hidden");
+      else learn.classList.remove("side-hidden");
+      sync();
+    });
   } else if (st && learn) st.onclick = () => learn.classList.toggle("side-hidden");
   // Learn sidebar v2: Select mode, Expand all, lesson search. Navigation-first:
   // checkboxes + bulk toolbar stay hidden until selection is actually used.
