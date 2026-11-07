@@ -817,6 +817,9 @@ a.chip{display:inline-flex;line-height:1.2}
 .llist li.res a{gap:.55rem}
 .attach{margin-top:.75rem}
 .done{color:var(--sulphur);font-weight:600}
+/* Module completion mirrors the lesson tick: selection stays on the left,
+   completion is a check at the row's trailing edge. */
+.modsum .mod-done{margin-left:auto;align-self:center;line-height:1;font-size:1rem}
 
 /* bulk selection */
 .bulk-row{display:flex;gap:.15rem;align-items:center}

@@ -472,12 +472,14 @@ function renderDetailTree(node, lessonById = null) {
   let html = "";
   for (const child of node.children) {
     const g = child.group;
+    const st = nodeStats(child);
+    const complete = st.total > 0 && st.done === st.total;
     const counts = [
       child.lessons.length ? `${child.lessons.length} lessons` : "",
       child.pages.length ? `${child.pages.length} pages` : "",
       child.resources.length ? `${child.resources.length} files` : "",
     ].filter(Boolean).join(" · ");
-    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(displayTitle(g.title))}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</summary>`;
+    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(displayTitle(g.title))}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}${complete ? `<span class="done mod-done" title="Module complete" aria-label="Module complete">✓</span>` : ""}</summary>`;
     if (child.lessons.length) html += `<ol class="llist">${child.lessons.map(lessonRow).join("")}</ol>`;
     if (child.pages.length) html += `<ol class="llist">${child.pages.map(pageRow).join("")}</ol>`;
     if (child.resources.length) html += `<ol class="llist small">${child.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol>`;
