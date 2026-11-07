@@ -1061,6 +1061,11 @@ dialog.confirm p{margin:.3rem 0}
 .ring svg{display:block}
 .ring-bg{fill:none;stroke:var(--rule);stroke-width:2}
 .ring-fg{fill:none;stroke:var(--sulphur);stroke-width:2;stroke-linecap:round}
+/* A zero-length arc still paints a round-cap dot, which reads as progress.
+   Show nothing until a module actually has a completed item. */
+.ring:not(.part):not(.full) .ring-fg{display:none}
+/* Completed module: filled disc so the dark tick is legible. */
+.ring.full .ring-bg{fill:var(--sulphur);stroke:var(--sulphur)}
 .ring.full .ring-fg{stroke:var(--sulphur)}
 .ring-tick{fill:none;stroke:#14140F;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .smod-body{margin-left:.8rem;padding-left:.55rem;border-left:1px solid var(--rule);display:grid;gap:1px;margin-bottom:.15rem}
