@@ -425,7 +425,7 @@ pages.get("/courses/:id", needAuth, async (req, res) => {
       ${firstNext ? `<a class="btn primary" href="/learn/${firstNext.t}/${firstNext.id}">${p.done === 0 ? "Start" : p.pct >= 100 ? "Review" : "Continue"}</a>` : ""}</div></div>
     </section>
     ${comp ? `<div class="complete"><div><h3>Course complete</h3><p class="dim small">Every item finished ${fmtDate(comp.completed_at, u.timezone)} · ${fmtDur(comp.learned_secs)} recorded</p></div><span class="seal">verified</span></div>` : ""}
-    ${flatLessons.length && p.pct < 100 ? bulkBarHTML("card") : ""}
+    ${flatLessons.length ? bulkBarHTML("card") : ""}
     ${p.total === 0 ? emptyState("No lessons indexed", "The course folder has no recognised video, reading or resource files yet.") : renderDetailTree(tree)}
   </div>` }));
 });
