@@ -817,9 +817,6 @@ a.chip{display:inline-flex;line-height:1.2}
 .llist li.res a{gap:.55rem}
 .attach{margin-top:.75rem}
 .done{color:var(--sulphur);font-weight:600}
-/* Module completion mirrors the lesson tick: selection stays on the left,
-   completion is a check at the row's trailing edge. */
-.modsum .mod-done{margin-left:auto;align-self:center;line-height:1;font-size:1rem}
 
 /* bulk selection */
 .bulk-row{display:flex;gap:.15rem;align-items:center}
@@ -855,6 +852,9 @@ a.chip{display:inline-flex;line-height:1.2}
 .bulk-select{display:flex;gap:.45rem;align-items:center;font-size:.8125rem;cursor:pointer;color:var(--ash)}
 .bulk-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:auto}
 .bulk-mod{display:inline-flex;align-items:center;cursor:pointer;margin-right:.15rem}
+/* A completed module's checkbox is a status indicator, not a bulk control. */
+.bulk-mod.is-complete{cursor:default}
+.bulk-mod.is-complete input{cursor:default;opacity:1}
 .mod>h2 .bulk-mod{margin-right:.5rem}
 .tnode>summary .bulk-mod{margin-right:.1rem}
 .tnode{margin:.15rem 0;border-left:1px solid var(--rule);padding-left:.55rem}

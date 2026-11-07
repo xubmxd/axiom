@@ -461,7 +461,10 @@ function subtreeHasVideos(node) {
   if (node.lessons?.length) return true;
   return (node.children || []).some(subtreeHasVideos);
 }
-function modCheckHTML(label) {
+function modCheckHTML(label, complete = false) {
+  if (complete) {
+    return `<label class="bulk-mod is-complete" title="Module complete — all videos watched"><input type="checkbox" checked disabled aria-label="Module complete: ${esc(displayTitle(label))}"></label>`;
+  }
   return `<label class="bulk-mod" title="Select all videos in this module"><input type="checkbox" data-bulk-mod aria-label="Select all videos in ${esc(displayTitle(label))}"></label>`;
 }
 function renderDetailTree(node, lessonById = null) {
@@ -479,7 +482,7 @@ function renderDetailTree(node, lessonById = null) {
       child.pages.length ? `${child.pages.length} pages` : "",
       child.resources.length ? `${child.resources.length} files` : "",
     ].filter(Boolean).join(" · ");
-    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(displayTitle(g.title))}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}${complete ? `<span class="done mod-done" title="Module complete" aria-label="Module complete">✓</span>` : ""}</summary>`;
+    html += `<details class="mod tdepth-${Math.min(g.depth, 4)}"><summary class="modsum">${subtreeHasVideos(child) ? modCheckHTML(g.title, complete) : ""}<span class="mono dim">${esc(depthLabel(g.depth))}</span> ${esc(displayTitle(g.title))}${counts ? ` <span class="dim small mono">· ${esc(counts)}</span>` : ""}</summary>`;
     if (child.lessons.length) html += `<ol class="llist">${child.lessons.map(lessonRow).join("")}</ol>`;
     if (child.pages.length) html += `<ol class="llist">${child.pages.map(pageRow).join("")}</ol>`;
     if (child.resources.length) html += `<ol class="llist small">${child.resources.map((r) => resourceRow(r, lessonById)).join("")}</ol>`;
